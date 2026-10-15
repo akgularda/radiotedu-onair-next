@@ -44,3 +44,10 @@ jobs:
           path: ${{ env.ONAIR_BUILD_BIN }}
           retention-days: 7
           if-no-files-found: error
+      - name: Retain native desktop separately
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-native-desktop
+          path: ${{ env.ONAIR_BUILD_BIN }}/OnAirNext.Desktop/release
+          retention-days: 7
+          if-no-files-found: error

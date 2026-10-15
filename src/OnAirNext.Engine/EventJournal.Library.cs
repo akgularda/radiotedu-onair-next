@@ -67,6 +67,9 @@ public sealed partial class EventJournal
         {
             if (ReadDesired(c, t, station) is null) throw new ArgumentException("Unknown station.");
             if (!AdmitControl(c, t, station, "library-import", payload, id)) return false;
+            using (var queued = LibraryCommand(c, t, "SELECT COUNT(*) FROM library_imports WHERE state='Pending'"))
+                if (Convert.ToInt64(queued.ExecuteScalar(), CultureInfo.InvariantCulture) >= 16)
+                    throw new InvalidOperationException("The import queue is full. Wait for an import to finish before adding another batch.");
             using (var root = LibraryCommand(c, t, "INSERT OR IGNORE INTO library_roots VALUES($station,$path,1)",
                 ("$station", station), ("$path", defaultRoot))) root.ExecuteNonQuery();
             var current = ReadLibraryRoot(c, t, station)!;
@@ -97,6 +100,15 @@ public sealed partial class EventJournal
     {
         using var cmd = LibraryCommand(c, t, "UPDATE library_imports SET state=$state,error=$error WHERE id=$id AND state='Pending'",
             ("$id", id), ("$state", error is null ? "Completed" : "Failed"), ("$error", error));
+        cmd.ExecuteNonQuery(); return true;
+    });
+
+    public Task<bool> RequestLibraryRescanAsync(string station, string id) => TransactionAsync((c, t) =>
+    {
+        if (!AdmitControl(c, t, station, "library-rescan", "", id)) return false;
+        var root = ReadLibraryRoot(c, t, station) ?? throw new InvalidOperationException("Choose a music folder before requesting a rescan.");
+        using var cmd = LibraryCommand(c, t, "UPDATE library_assets SET modified_ticks=-1,error='Validation requested.' WHERE station_id=$station AND revision=$revision AND state='Invalid'",
+            ("$station", station), ("$revision", root.Revision));
         cmd.ExecuteNonQuery(); return true;
     });
 

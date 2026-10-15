@@ -51,6 +51,8 @@ internal static class EngineConnection
         => MutateAsync(name, new(Guid.NewGuid().ToString("N"), "library-import", station, Paths: paths), token);
     internal static Task RescanLibraryAsync(string name, string station, CancellationToken token)
         => MutateAsync(name, new(Guid.NewGuid().ToString("N"), "library-rescan", station), token);
+    internal static Task UseManagedLibraryAsync(string name, string station, CancellationToken token)
+        => MutateAsync(name, new(Guid.NewGuid().ToString("N"), "library-managed", station), token);
 
     private static async Task MutateAsync(string name, Command request, CancellationToken token)
     {
@@ -96,7 +98,7 @@ internal static class EngineConnection
         string[]? Paths = null, string? Query = null, int Offset = 0);
 }
 
-internal sealed record LibraryReply(LibraryPageView Page, LibraryWorkerView Worker);
+internal sealed record LibraryReply(LibraryPageView Page, LibraryWorkerView Worker, bool CanImportFiles = false);
 internal sealed record LibraryRootView(string StationId, string Path, long Revision);
 internal sealed record LibraryAssetView(string Id, string RelativePath, string Artist, string Title, double Seconds, string State, string? Error)
 {

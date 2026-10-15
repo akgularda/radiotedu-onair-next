@@ -56,8 +56,12 @@ try
                         await coordinator.SkipAsync(skipStation, request.Id);
                         result = "{\"accepted\":true}"; break;
                     case "library-status" when request.StationId is { } libraryStation:
-                        result = JsonSerializer.Serialize(new { page = library.Page(libraryStation, request.Query ?? "", request.Offset), worker = library.Status(libraryStation) });
+                        var libraryPage = library.Page(libraryStation, request.Query ?? "", request.Offset);
+                        result = JsonSerializer.Serialize(new { page = libraryPage, worker = library.Status(libraryStation), canImportFiles = library.CanImportFiles(libraryPage.Root) });
                         break;
+                    case "library-managed" when request.StationId is { } managedStation:
+                        await library.UseManagedRootAsync(managedStation, request.Id);
+                        result = "{\"accepted\":true}"; break;
                     case "library-root" when request.StationId is { } rootStation && request.Path is { } rootPath:
                         await library.SetRootAsync(rootStation, rootPath, request.Id);
                         result = "{\"accepted\":true}"; break;
@@ -65,7 +69,7 @@ try
                         await library.ImportAsync(importStation, importPaths, request.Id);
                         result = "{\"accepted\":true}"; break;
                     case "library-rescan" when request.StationId is { } rescanStation:
-                        _ = library.Page(rescanStation, "", 0); library.Wake();
+                        await library.RescanAsync(rescanStation, request.Id);
                         result = "{\"accepted\":true}"; break;
                     case "stop":
                         shutdown = await coordinator.StopAllAsync(request.Id);

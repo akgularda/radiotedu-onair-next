@@ -125,7 +125,7 @@ public sealed class StationCoordinator : IAsyncDisposable
     {
         if (_disposed || !_slots.TryGetValue(station, out var slot)) return;
         slot.Session?.RefreshNext();
-        if (available) Interlocked.Exchange(ref slot.ContentAvailable, 1);
+        Interlocked.Exchange(ref slot.ContentAvailable, available ? 1 : 0);
         Signal(slot);
     }
 
@@ -152,7 +152,7 @@ public sealed class StationCoordinator : IAsyncDisposable
         {
             while (!_stop.IsCancellationRequested)
             {
-                if (Interlocked.Exchange(ref slot.ContentAvailable, 0) == 1) slot.Completed = false;
+                if (slot.Completed && Interlocked.Exchange(ref slot.ContentAvailable, 0) == 1) slot.Completed = false;
                 if (slot.ReleasePending || !ShouldRun(slot) && slot.Session is not null)
                 {
                     slot.ReleasePending = true;

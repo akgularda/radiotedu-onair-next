@@ -29,6 +29,10 @@ public partial class MainWindow
     {
         var enabled = HasFreshStatus && SelectedStation is not null && !_libraryBusy;
         ImportMusicButton.IsEnabled = ChooseFolderButton.IsEnabled = SearchMusicButton.IsEnabled = RescanMusicButton.IsEnabled = enabled;
+        RescanMusicButton.IsEnabled = enabled && _library?.Page.Root is not null;
+        ImportMusicButton.IsEnabled = enabled && (_library?.CanImportFiles ?? false);
+        ManagedMusicButton.IsEnabled = enabled;
+        ManagedMusicButton.Visibility = _library is { CanImportFiles: false, Page.Root: not null } ? Visibility.Visible : Visibility.Collapsed;
         PreviousMusicButton.IsEnabled = enabled && _libraryOffset > 0;
         NextMusicButton.IsEnabled = enabled && _library?.Page.Items.Length == 50;
         LibraryHeading.Text = SelectedStation is { } station ? station.Id + " · Music library" : "Music library";
@@ -50,6 +54,8 @@ public partial class MainWindow
             var job = result.Page.Import;
             LibraryProgress.Text = result.Worker.State + (result.Worker.Error is { Length: > 0 } problem ? ": " + problem : "")
                 + (job is null ? "" : $" · Latest import: {job.State}" + (job.Error is { Length: > 0 } error ? ": " + error : ""));
+            if (!result.CanImportFiles && result.Page.Root is not null)
+                LibraryProgress.Text += " · This external folder is watched read-only. Use the managed folder to copy files into this isolated installation.";
         }
         catch (Exception ex) when (ex is IOException or OperationCanceledException or JsonException or InvalidOperationException or ArgumentException)
         {
@@ -127,5 +133,10 @@ public partial class MainWindow
     {
         if (SelectedStation is not { } station) return;
         await ChangeLibraryAsync(station.Id, "Rescan live folder", (pipe, token) => EngineConnection.RescanLibraryAsync(pipe, station.Id, token));
+    }
+    private async void UseManagedMusic(object sender, RoutedEventArgs e)
+    {
+        if (SelectedStation is not { } station) return;
+        await ChangeLibraryAsync(station.Id, "Use managed music folder", (pipe, token) => EngineConnection.UseManagedLibraryAsync(pipe, station.Id, token));
     }
 }

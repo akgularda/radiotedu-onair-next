@@ -173,7 +173,7 @@ public sealed class StationEngine : IStationSession
                 if (_decoded is null)
                 {
                     if (_announced) { Emit("ended", _samples + offset / 4); Interlocked.Increment(ref _completed); }
-                    else if (++failedAssets >= _settings.Playlist.Count) throw new InvalidDataException("Approved playlist contains no audio.");
+                    else if (++failedAssets >= Math.Max(1, _planner?.AvailableItems ?? _settings.Playlist.Count)) throw new InvalidDataException("Approved playlist contains no audio.");
                     await AdvanceAsync();
                     continue;
                 }

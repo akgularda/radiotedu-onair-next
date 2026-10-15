@@ -18,6 +18,7 @@ public sealed class StationLibrary : IAsyncDisposable
     private readonly EventJournal _journal;
     private readonly string _dataRoot;
     private readonly Func<string, CancellationToken, Task<AudioMetadata>> _probe;
+    private readonly LibraryAudioProbe? _audioProbe;
     private readonly HashSet<string> _stations;
     private readonly ConcurrentDictionary<string, PlaybackSet> _playback = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, LibraryWorkerStatus> _status = new(StringComparer.Ordinal);
@@ -35,7 +36,8 @@ public sealed class StationLibrary : IAsyncDisposable
         Func<string, CancellationToken, Task<AudioMetadata>>? probe = null)
     {
         _journal = journal; _dataRoot = dataRoot; _stations = stations.ToHashSet(StringComparer.Ordinal);
-        _probe = probe ?? new LibraryAudioProbe(ffmpeg).VerifyAsync;
+        _audioProbe = probe is null ? new LibraryAudioProbe(ffmpeg) : null;
+        _probe = probe ?? _audioProbe!.VerifyAsync;
     }
 
     public async Task InitializeAsync()
@@ -58,10 +60,15 @@ public sealed class StationLibrary : IAsyncDisposable
     public async Task ImportAsync(string station, string[] paths, string command)
     {
         RequireStation(station);
-        var safeId = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(station)))[..16];
-        if (await _journal.QueueLibraryImportAsync(station, paths, Path.Combine(_dataRoot, "music", safeId), command)) Wake();
+        if (await _journal.QueueLibraryImportAsync(station, paths, ManagedRoot(station), command)) Wake();
     }
+    public Task UseManagedRootAsync(string station, string command) => SetRootAsync(station, ManagedRoot(station), command);
+    private string ManagedRoot(string station) => Path.Combine(_dataRoot, "music", Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(station)))[..16]);
+    public bool CanImportFiles(LibraryRoot? root) => root is null || IsPrivateFolder(root.Path);
+    private bool IsPrivateFolder(string root) => Path.GetFullPath(root).StartsWith(Path.TrimEndingDirectorySeparator(Path.GetFullPath(_dataRoot)) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
     public void Wake() { try { _wake.Release(); } catch (SemaphoreFullException) { } }
+    public async Task RescanAsync(string station, string command)
+    { RequireStation(station); if (await _journal.RequestLibraryRescanAsync(station, command)) Wake(); }
     private void RequireStation(string station)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -71,7 +78,7 @@ public sealed class StationLibrary : IAsyncDisposable
     public IPlayoutPlanner? Planner(StationSettings settings) => settings.Repeat ? new PlannerView(this, settings) : null;
     private sealed class PlannerView(StationLibrary owner, StationSettings settings) : IPlayoutPlanner
     {
-        private long _version = -1; private int _cycle = -1; private MediaItem[] _shuffled = [];
+        private static readonly int[] Strides = [1, 3, 5, 7, 11, 13, 17, 19];
         public int? AvailableItems => owner._playback.TryGetValue(settings.Id, out var set) && set.Configured ? set.Items.Length : settings.Playlist.Count;
         public PlayoutSelection Select(int rotationIndex, string? excludeQueueEntryId = null)
         {
@@ -81,13 +88,19 @@ public sealed class StationLibrary : IAsyncDisposable
                 return new(settings.Playlist[rotationIndex % settings.Playlist.Count]);
             }
             if (set.Items.Length == 0) throw new InvalidOperationException("The configured live folder has no validated, available music.");
+            // The background publisher orders content hashes. A coprime stride changes
+            // each cycle's traversal without sorting or hashing on the programme clock.
             var cycle = rotationIndex / set.Items.Length;
-            if (_version != set.Version || _cycle != cycle)
+            var stride = 1;
+            for (var i = 0; i < Strides.Length; i++)
             {
-                _shuffled = set.Items.OrderBy(item => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(settings.Id + "|" + cycle + "|" + item.Id))), StringComparer.Ordinal).ToArray();
-                _version = set.Version; _cycle = cycle;
+                var candidate = Strides[(cycle + i) % Strides.Length];
+                var a = candidate; var b = set.Items.Length;
+                while (b != 0) { var remainder = a % b; a = b; b = remainder; }
+                if (a == 1) { stride = candidate; break; }
             }
-            return new(_shuffled[rotationIndex % _shuffled.Length]);
+            var position = (int)((long)(rotationIndex % set.Items.Length) * stride % set.Items.Length);
+            return new(set.Items[position]);
         }
     }
 
@@ -113,6 +126,8 @@ public sealed class StationLibrary : IAsyncDisposable
                     _stop.Token.ThrowIfCancellationRequested();
                     try { await ScanAsync(root, _stop.Token); }
                     catch (OperationCanceledException) when (_stop.IsCancellationRequested) { throw; }
+                    catch (LibraryValidationUnavailableException ex)
+                    { _status[root.StationId] = new("Validation paused", ex.Message, DateTimeOffset.UtcNow); }
                     catch (Exception ex)
                     {
                         _status[root.StationId] = new("Unavailable", ex.Message, DateTimeOffset.UtcNow);
@@ -139,7 +154,16 @@ public sealed class StationLibrary : IAsyncDisposable
         var root = _journal.LibraryRoots().SingleOrDefault(x => x.StationId == job.StationId && x.Revision == job.Revision)
             ?? throw new InvalidOperationException("The music folder changed. Import these files again into the current folder.");
         _status[job.StationId] = new("Importing", null, null);
-        Directory.CreateDirectory(root.Path);
+        var writable = IsPrivateFolder(root.Path);
+        if (writable)
+        {
+            // Reject junction/symlink ancestors before creating or writing any destination.
+            for (DirectoryInfo? parent = new(root.Path); parent is not null; parent = parent.Parent)
+                if (parent.Exists && (parent.Attributes & FileAttributes.ReparsePoint) != 0)
+                    throw new IOException("Choose a private music folder without folder links.");
+            Directory.CreateDirectory(root.Path);
+        }
+        else if (!Directory.Exists(root.Path)) throw new DirectoryNotFoundException("The external live folder is unavailable.");
         if ((File.GetAttributes(root.Path) & FileAttributes.ReparsePoint) != 0) throw new IOException("Choose a real folder, rather than a folder link.");
         var errors = new List<string>(); var imported = new List<string>();
         foreach (var source in job.Paths)
@@ -150,6 +174,7 @@ public sealed class StationLibrary : IAsyncDisposable
             var relative = Path.GetRelativePath(root.Path, source);
             if (!Path.IsPathRooted(relative) && relative != ".." && !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal))
             { imported.Add(relative); continue; }
+            if (!writable) throw new InvalidOperationException("External folders are watched read-only in this isolated build. Choose the managed music folder before copying files.");
             var temporary = Path.Combine(root.Path, ".onair-import-" + Guid.NewGuid().ToString("N") + ".partial");
             try
             {
@@ -231,6 +256,7 @@ public sealed class StationLibrary : IAsyncDisposable
                 asset = new(id, file.Relative, metadata.Artist, metadata.Title, metadata.Seconds, file.Bytes, file.Modified, "Ready");
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+            catch (LibraryValidationUnavailableException) { throw; }
             catch (Exception ex) { asset = new(id, file.Relative, "", Path.GetFileNameWithoutExtension(file.Relative), 0, file.Bytes, file.Modified, "Invalid", ex.Message); }
             await _journal.ApplyLibraryChangesAsync(root, [asset], []);
             _observed.Remove(file.Path);
@@ -274,13 +300,18 @@ public sealed class StationLibrary : IAsyncDisposable
 
     public ValueTask DisposeAsync()
     {
-        lock (_lifetime) return new(_disposal ??= DisposeCoreAsync());
+        lock (_lifetime)
+        {
+            if (_disposal is null || _disposal.IsFaulted) _disposal = DisposeCoreAsync();
+            return new(_disposal);
+        }
     }
     private async Task DisposeCoreAsync()
     {
         _disposed = true;
         await _stop.CancelAsync();
         if (_worker is not null) await _worker;
+        if (_audioProbe is not null) await _audioProbe.DisposeAsync();
         _stop.Dispose();
     }
 }

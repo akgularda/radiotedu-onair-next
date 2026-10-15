@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "sourceCommit": "f5e15a6cb64ec7e324b62a504624bdccbd3ba473",
+  "environment": "GitHub-hosted windows-latest; not the broadcasting PC",
+  "workflow": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38784384514",
+  "outcome": "success",
+  "unitTests": {
+    "total": "70",
+    "executed": "70",
+    "passed": "70",
+    "failed": "0",
+    "error": "0",
+    "timeout": "0",
+    "aborted": "0",
+    "inconclusive": "0",
+    "passedButRunAborted": "0",
+    "notRunnable": "0",
+    "notExecuted": "0",
+    "disconnected": "0",
+    "warning": "0",
+    "completed": "0",
+    "inProgress": "0",
+    "pending": "0"
+  },
+  "nonPassed": [],
+  "unitArtifactDigest": "sha256:e2803128c9dd31d3dda5f6f22744c16e37f3f56aa94d00a52523d25cc21a36e6",
+  "claims": {
+    "nativeDesktopCompiled": true,
+    "catalogAndWorkerUnitTestsPassed": true,
+    "nativeMouseAcceptance": false,
+    "realLibraryAudioProbeAcceptance": false,
+    "productionReadiness": false,
+    "productionChanged": false
+  },
+  "pending": "Follow-up bounded rotation and completion-race changes require a fresh run; target Windows 10 runtime, real audio and native mouse tests remain open."
+}

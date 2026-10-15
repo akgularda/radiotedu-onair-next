@@ -6,12 +6,16 @@ using System.Text.Json;
 namespace OnAirNext.Engine;
 
 public sealed record AudioMetadata(string Artist, string Title, double Seconds);
+public sealed class LibraryValidationUnavailableException(string message, Exception inner) : IOException(message, inner);
 
 // Import work is serialized by StationLibrary, outside the programme clock.
-public sealed class LibraryAudioProbe(string ffmpeg)
+public sealed class LibraryAudioProbe(string ffmpeg) : IAsyncDisposable
 {
+    private Process? _cleanupPending;
+    private bool _disposed;
     public async Task<AudioMetadata> VerifyAsync(string path, CancellationToken token)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         var ffprobe = Path.Combine(Path.GetDirectoryName(ffmpeg)!, "ffprobe.exe");
         var text = await CaptureAsync(ffprobe, ["-v", "error", "-select_streams", "a:0", "-show_entries",
             "format=duration:format_tags=artist,title:stream=codec_type,duration", "-of", "json", path], TimeSpan.FromSeconds(20), token);
@@ -40,9 +44,16 @@ public sealed class LibraryAudioProbe(string ffmpeg)
         && item.ValueKind == JsonValueKind.String ? item.GetString() ?? "" : "";
     private static string Clean(string value, int limit) => new(value.Where(c => !char.IsControl(c)).Take(limit).ToArray());
 
-    private static async Task<string> CaptureAsync(string executable, string[] arguments, TimeSpan timeout, CancellationToken token)
+    private async Task<string> CaptureAsync(string executable, string[] arguments, TimeSpan timeout, CancellationToken token)
     {
-        var process = ChildProcess.Start(executable, arguments, output: true, role: "library-validation");
+        if (_cleanupPending is { } pending)
+        {
+            try { await ChildProcess.StopAsync(pending); _cleanupPending = null; }
+            catch (Exception ex) { throw new LibraryValidationUnavailableException("Previous validation worker cleanup is pending.", ex); }
+        }
+        Process process;
+        try { process = ChildProcess.Start(executable, arguments, output: true, role: "library-validation"); }
+        catch (System.ComponentModel.Win32Exception ex) { throw new LibraryValidationUnavailableException("The audio validation tool is unavailable.", ex); }
         try
         {
             try { process.PriorityClass = ProcessPriorityClass.Idle; }
@@ -58,7 +69,15 @@ public sealed class LibraryAudioProbe(string ffmpeg)
             if (process.ExitCode != 0) throw new InvalidDataException("Audio validation failed: " + diagnostic[..Math.Min(500, diagnostic.Length)]);
             return await output;
         }
-        finally { await ChildProcess.StopAsync(process); }
+        finally
+        {
+            try { await ChildProcess.StopAsync(process); }
+            catch (Exception ex)
+            {
+                _cleanupPending = process;
+                throw new LibraryValidationUnavailableException("Audio validation worker cleanup is pending; another worker will not be started.", ex);
+            }
+        }
     }
 
     private static async Task<string> ReadBoundedAsync(StreamReader reader, CancellationToken token)
@@ -70,5 +89,12 @@ public sealed class LibraryAudioProbe(string ffmpeg)
             result.Append(buffer, 0, read);
         }
         return result.ToString();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        if (_cleanupPending is not { } pending) return;
+        await ChildProcess.StopAsync(pending); _cleanupPending = null;
     }
 }

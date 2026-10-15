@@ -18,6 +18,94 @@ public sealed class StationLibraryTests
     }
 
     [Fact]
+    public async Task ShuffledCyclesConsumeEverySongOnceAndAvoidABoundaryRepeat()
+    {
+        var root = Root(); var music = Path.Combine(root, "music"); Directory.CreateDirectory(music);
+        for (var i = 0; i < 6; i++) await File.WriteAllTextAsync(Path.Combine(music, "song-" + i + ".wav"), "fixture");
+        await using var journal = new EventJournal(Path.Combine(root, "catalog.db"));
+        await journal.InitializeDesiredStateAsync(Settings);
+        await using var library = new StationLibrary(journal, "unused", root, ["a"], (path, _) => Task.FromResult(new AudioMetadata("Artist", Path.GetFileNameWithoutExtension(path), 10)));
+        await library.InitializeAsync(); await library.SetRootAsync("a", music, "folder");
+        var planner = library.Planner(Settings)!;
+        await WaitAsync(library, () => planner.AvailableItems == 6);
+        var first = Enumerable.Range(0, 6).Select(i => planner.Select(i).Item.Id).ToArray();
+        var second = Enumerable.Range(6, 6).Select(i => planner.Select(i).Item.Id).ToArray();
+        Assert.Equal(6, first.Distinct().Count()); Assert.Equal(6, second.Distinct().Count());
+        Assert.Equal(first.Order(), second.Order());
+        Assert.NotEqual(first.Last(), second.First());
+        Assert.False(first.SequenceEqual(second));
+    }
+
+    [Fact]
+    public async Task RescanRetriesARejectedFileWithoutRequiringAFileEdit()
+    {
+        var root = Root(); var music = Path.Combine(root, "music"); Directory.CreateDirectory(music);
+        await File.WriteAllTextAsync(Path.Combine(music, "song.wav"), "fixture");
+        await using var journal = new EventJournal(Path.Combine(root, "catalog.db"));
+        await journal.InitializeDesiredStateAsync(Settings);
+        var valid = false; var probes = 0;
+        await using var library = new StationLibrary(journal, "unused", root, ["a"], (_, _) =>
+        {
+            Interlocked.Increment(ref probes);
+            return Volatile.Read(ref valid) ? Task.FromResult(new AudioMetadata("Artist", "Song", 10))
+                : Task.FromException<AudioMetadata>(new InvalidDataException("Injected invalid audio"));
+        });
+        await library.InitializeAsync(); await library.SetRootAsync("a", music, "folder");
+        await WaitAsync(library, () => library.Page("a", "", 0).Items.SingleOrDefault()?.State == "Invalid");
+        Volatile.Write(ref valid, true); await library.RescanAsync("a", "rescan");
+        await WaitAsync(library, () => library.Planner(Settings)!.AvailableItems == 1);
+        var count = probes; await library.RescanAsync("a", "rescan");
+        library.Wake(); await Task.Delay(150);
+        Assert.Equal(count, probes);
+        Assert.Equal("Ready", Assert.Single(library.Page("a", "", 0).Items).State);
+    }
+
+    [Fact]
+    public async Task ValidationToolFailureKeepsPreviouslyReadyMusicAvailable()
+    {
+        var root = Root(); var music = Path.Combine(root, "music"); Directory.CreateDirectory(music);
+        await File.WriteAllTextAsync(Path.Combine(music, "healthy.wav"), "fixture");
+        await using var journal = new EventJournal(Path.Combine(root, "catalog.db"));
+        await journal.InitializeDesiredStateAsync(Settings);
+        var unavailable = true;
+        await using var library = new StationLibrary(journal, "unused", root, ["a"], (path, _) =>
+            Path.GetFileName(path) == "new.wav" && Volatile.Read(ref unavailable)
+                ? Task.FromException<AudioMetadata>(new LibraryValidationUnavailableException("Injected unavailable worker", new IOException()))
+                : Task.FromResult(new AudioMetadata("Artist", Path.GetFileName(path), 10)));
+        await library.InitializeAsync(); await library.SetRootAsync("a", music, "folder");
+        var planner = library.Planner(Settings)!;
+        await WaitAsync(library, () => planner.AvailableItems == 1);
+        await File.WriteAllTextAsync(Path.Combine(music, "new.wav"), "new fixture");
+        await WaitAsync(library, () => library.Status("a").State == "Validation paused");
+        Assert.Equal(1, planner.AvailableItems);
+        Assert.Equal("healthy.wav", planner.Select(0).Item.Title);
+        Volatile.Write(ref unavailable, false); await library.RescanAsync("a", "rescan");
+        await WaitAsync(library, () => planner.AvailableItems == 2);
+    }
+
+    [Fact]
+    public async Task IsolatedImportNeverWritesIntoAnExternalLiveFolderAndUiCanChooseManagedStorage()
+    {
+        var root = Root(); var external = Path.Combine(root, "external"); Directory.CreateDirectory(external);
+        var source = Path.Combine(root, "source.wav"); await File.WriteAllTextAsync(source, "original");
+        await using var journal = new EventJournal(Path.Combine(root, "catalog.db"));
+        await journal.InitializeDesiredStateAsync(Settings);
+        await using var library = new StationLibrary(journal, "unused", Path.Combine(root, "private"), ["a"], (_, _) => Task.FromResult(new AudioMetadata("Artist", "Song", 10)));
+        await library.InitializeAsync(); await library.SetRootAsync("a", external, "folder");
+        Assert.False(library.CanImportFiles(library.Page("a", "", 0).Root));
+        await library.ImportAsync("a", [source], "external-import");
+        await WaitAsync(library, () => library.Page("a", "", 0).Import?.State == "Failed");
+        Assert.Empty(Directory.GetFileSystemEntries(external));
+        await library.UseManagedRootAsync("a", "managed");
+        Assert.True(library.CanImportFiles(library.Page("a", "", 0).Root));
+        await library.ImportAsync("a", [source], "managed-import");
+        await WaitAsync(library, () => library.Page("a", "", 0).Import?.State == "Completed");
+        Assert.Single(library.Page("a", "", 0).Items);
+        Assert.Empty(Directory.GetFileSystemEntries(external));
+        Assert.Equal("original", await File.ReadAllTextAsync(source));
+    }
+
+    [Fact]
     public async Task StableAddChangeAndRemovalUpdateThePlannerWithoutDeletingHistory()
     {
         var root = Root(); var music = Path.Combine(root, "music"); Directory.CreateDirectory(Path.Combine(music, "subfolder"));

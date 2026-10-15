@@ -104,4 +104,16 @@ public sealed class LibraryCatalogTests
         Assert.Empty(journal.LibraryRoots());
         Assert.True(await journal.QueueLibraryImportAsync("a", [Path.Combine(root, "song.wav")], root, "import"));
     }
+
+    [Fact]
+    public async Task AFullImportQueueRejectsNewWorkWithoutConsumingItsCommandId()
+    {
+        var root = Root(); await using var journal = new EventJournal(Path.Combine(root, "catalog.db"));
+        await Initialize(journal); var files = new[] { Path.Combine(root, "song.wav") };
+        for (var i = 0; i < 16; i++) await journal.QueueLibraryImportAsync("a", files, root, "job-" + i);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => journal.QueueLibraryImportAsync("a", files, root, "overflow"));
+        Assert.False(await journal.QueueLibraryImportAsync("a", files, root, "job-0"));
+        await journal.FinishLibraryImportAsync("job-0", null);
+        Assert.True(await journal.QueueLibraryImportAsync("a", files, root, "overflow"));
+    }
 }

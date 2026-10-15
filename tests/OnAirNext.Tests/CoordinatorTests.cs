@@ -114,6 +114,27 @@ public sealed class CoordinatorTests
     }
 
     [Fact]
+    public async Task FolderReturnSignalSurvivesEofAndCannotUndoAnExplicitStop()
+    {
+        await using var journal = new EventJournal(Database());
+        var sessions = new ConcurrentQueue<Session>();
+        await using var coordinator = new StationCoordinator("unused", [Station("a", autoStart: true)], journal,
+            settings => { var session = new Session(settings.Id, journal); sessions.Enqueue(session); return session; });
+        await coordinator.InitializeAsync();
+        await Until(() => sessions.TryPeek(out var current) && current.Starts == 1);
+        coordinator.RefreshLibrary("a", true);
+        await Task.Delay(100); // worker sees the signal before the old session reaches EOF
+        Assert.True(sessions.TryPeek(out var original)); original!.Finish();
+        await Until(() => sessions.Count == 2 && coordinator.Snapshot().Single().State == "Running");
+        await coordinator.RequestRunningAsync("a", false, "stop-a");
+        await Until(() => coordinator.Snapshot().Single().State == "Stopped");
+        coordinator.RefreshLibrary("a", true);
+        await Task.Delay(100);
+        Assert.Equal(2, sessions.Count);
+        Assert.False(coordinator.Snapshot().Single().RequestedRunning);
+    }
+
+    [Fact]
     public async Task DisabledUnknownAndConflictingRequestsNeverAcquireAStationSession()
     {
         await using var journal = new EventJournal(Database());

@@ -21,7 +21,7 @@ This repository does not launch, modify, import, or replace the current RadioTED
 - Istanbul daily CSV, all 24 hourly count rows, checksums, incomplete-play flags, and streamed arbitrary-period export without a 10,000-row cap.
 - Durable restart-from-beginning attempts, persistent enabled/running intent, atomic stop receipts and Skip command-ID/payload checks across process death.
 - Distinct durable jingle/sweeper completion counters; legacy behavior import and planner integration remain pending.
-- Initial native WPF On air/System window in an original dark theme, isolated-engine discovery/status and selected-station Skip. Start/Stop and the station coordinator are being qualified; connected mouse operations and the complete operator interface are not qualified.
+- Native WPF On air/Library/System window in an original dark theme, isolated-engine discovery/status and selected-station Skip. Start/Stop and the station coordinator are being qualified; Windows CI has compiled the Library file/folder controls and passed 70 unit cases; connected mouse operations, real library audio validation and the complete operator interface are not qualified.
 
 The default laboratory playlist is a developer-provided sequence. Durable queue primitives exist; complete operator queue editing, schedules, campaign ownership, migration and production credential workflows are not delivered. See the delivery ledger for the exact acceptance gaps.
 
