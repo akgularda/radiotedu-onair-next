@@ -51,6 +51,20 @@ internal static class EngineHost
         await using var library = new StationLibrary(journal, config.Ffmpeg, config.DataRoot, config.Stations.Where(x => x.Repeat).Select(x => x.Id));
         await using var coordinator = new StationCoordinator(config.Ffmpeg, config.Stations, journal,
             settings => new StationEngine(config.Ffmpeg, settings, journal, planner: library.Planner(settings)));
+        await using var sourceChecks = new SourceAccessChecks(async path =>
+        {
+            if (ChildProcess.ActiveProcesses.Values.Any(role => role.Contains("cleanup pending", StringComparison.Ordinal)))
+                throw new InvalidOperationException("An owned worker still needs confirmed cleanup.");
+            var executable = Environment.ProcessPath ?? throw new InvalidOperationException("Engine executable is unavailable.");
+            var arguments = new List<string>();
+            if (Path.GetFileNameWithoutExtension(executable).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
+                arguments.Add(typeof(EngineHost).Assembly.Location);
+            arguments.AddRange(["--probe-media-source", path]);
+            var output = await ChildProcess.CaptureAsync(executable, arguments.ToArray());
+            var result = JsonSerializer.Deserialize<SourceAccessResult>(output) ?? throw new InvalidDataException("Source check returned no result.");
+            if (serviceMode && result.IdentitySid != "S-1-5-19") throw new UnauthorizedAccessException("The source check did not run under the service identity.");
+            return result;
+        });
         library.Changed += coordinator.RefreshLibrary;
         try
         {
@@ -99,8 +113,14 @@ internal static class EngineHost
                             case "library-managed" when request.StationId is { } managedStation:
                                 await library.UseManagedRootAsync(managedStation, request.Id);
                                 result = "{\"accepted\":true}"; break;
+                            case "library-source-check" when request.StationId is { } sourceStation && request.Path is { } sourcePath:
+                                if (!config.Stations.Any(station => station.Id == sourceStation)) throw new ArgumentException("Unknown station.");
+                                result = JsonSerializer.Serialize(new { accepted = true, check = sourceChecks.Start(sourceStation, sourcePath, request.Id) }); break;
+                            case "library-source-status" when request.StationId is { } checkedStation && request.SourceCheckId is { } sourceId:
+                                result = JsonSerializer.Serialize(new { check = sourceChecks.Get(checkedStation, sourceId) }); break;
                             case "library-root" when request.StationId is { } rootStation && request.Path is { } rootPath:
-                                await library.SetRootAsync(rootStation, rootPath, request.Id);
+                                await library.SetRootAsync(rootStation, rootPath, request.Id, serviceMode
+                                    ? () => sourceChecks.RequireReady(rootStation, rootPath, request.SourceCheckId) : null);
                                 result = "{\"accepted\":true}"; break;
                             case "library-import" when request.StationId is { } importStation && request.Paths is { } importPaths:
                                 await library.ImportAsync(importStation, importPaths, request.Id);
@@ -162,4 +182,4 @@ internal static class EngineHost
 internal sealed record HostSettings(string Ffmpeg, string DataRoot, string PipeName, List<StationSettings> Stations, string? OperatorSid = null);
 internal sealed record EngineCommand(string Id, string Action, string? StationId, string? Path = null,
     string[]? Paths = null, string? Query = null, int Offset = 0, string? AssetId = null,
-    long Revision = 0, long ExpectedVersion = 0, string? Artist = null, string? Title = null);
+    long Revision = 0, long ExpectedVersion = 0, string? Artist = null, string? Title = null, string? SourceCheckId = null);

@@ -32,9 +32,15 @@ function Protect([string]$path,[bool]$writable){
 }
 function Invoke-OwnedSc([string[]]$values){$output=& "$env:SystemRoot/System32/sc.exe" @values 2>&1;if($LASTEXITCODE -ne 0){throw ('Service fixture operation failed: '+($output -join ' '))}}
 function Probe([string]$action){$output=& $labExe --service-probe $action 2>&1;if($LASTEXITCODE -ne 0){throw ('Authenticated service probe failed: '+($output -join ' '))};return ($output -join [Environment]::NewLine)|ConvertFrom-Json}
+function SourceProbe([string]$action){$output=& $labExe --service-source-probe $action 2>&1;if($LASTEXITCODE -ne 0){throw ('Service source probe failed: '+($output -join ' '))};return ($output -join [Environment]::NewLine)|ConvertFrom-Json}
+function SourceReady([string]$id){
+ $deadline=[DateTime]::UtcNow.AddSeconds(25)
+ do{$result=SourceProbe ('status:'+$id);if($result.check.State -ne 'Checking'){return $result.check};Start-Sleep -Milliseconds 100}while([DateTime]::UtcNow -lt $deadline)
+ throw 'Owned source access child did not finish within its deadline'
+}
 function Ready([Nullable[bool]]$wanted){
  $deadline=[DateTime]::UtcNow.AddSeconds(50);$last='not ready'
- do{try{$state=Probe 'status';if($state.controller.mode -eq 'windows-service' -and $state.stations.Count -eq 1 -and ($null -eq $wanted -or $state.stations[0].RequestedRunning -eq $wanted)){return $state}}catch{$last=$_.Exception.Message};Start-Sleep -Milliseconds 200}while([DateTime]::UtcNow -lt $deadline)
+ do{try{$state=Probe 'status';if($state.controller.mode -eq 'windows-service' -and $state.stations.Count -eq 2 -and ($null -eq $wanted -or ($state.stations|Where-Object Id -eq 'service-fixture').RequestedRunning -eq $wanted)){return $state}}catch{$last=$_.Exception.Message};Start-Sleep -Milliseconds 200}while([DateTime]::UtcNow -lt $deadline)
  throw ('Service did not reach authenticated readiness: '+$last.Substring(0,[Math]::Min($last.Length,700)))
 }
 function Stopped(){
@@ -65,7 +71,11 @@ try{
  foreach($entry in Get-ChildItem -LiteralPath $labBuild -Force){Copy-Item -LiteralPath $entry.FullName -Destination $tools -Recurse}
  Copy-Item -LiteralPath (Join-Path $tools 'OnAirNext.Lab.exe') -Destination $fakeExe
  foreach($item in Get-ChildItem -LiteralPath $installRoot -Recurse -Force){Protect $item.FullName $false}
- $settings=@{Ffmpeg=$fakeExe;DataRoot=$engineData;PipeName='onair-next-dev-service';OperatorSid=$operatorSid.Value;Stations=@(@{Id='service-fixture';Playlist=@();Outputs=@();Repeat=$true;Enabled=$true;AutoStart=$false})}
+ $readableSource=Join-Path $engineData 'probe-source';$null=New-Item -ItemType Directory -Path $readableSource;Protect $readableSource $true
+ [IO.File]::WriteAllText((Join-Path $readableSource 'fixture.wav'),'read-only access fixture; not decoded audio');Protect (Join-Path $readableSource 'fixture.wav') $true
+ $deniedSource=Join-Path $dataRoot 'operator-only-source';$null=New-Item -ItemType Directory -Path $deniedSource;Protect $deniedSource $false
+ $deniedAcl=Get-Acl -LiteralPath $deniedSource;$deniedAcl.PurgeAccessRules($localServiceSid);Set-Acl -LiteralPath $deniedSource -AclObject $deniedAcl
+ $settings=@{Ffmpeg=$fakeExe;DataRoot=$engineData;PipeName='onair-next-dev-service';OperatorSid=$operatorSid.Value;Stations=@(@{Id='service-fixture';Playlist=@();Outputs=@();Repeat=$true;Enabled=$true;AutoStart=$false},@{Id='source-fixture';Playlist=@();Outputs=@();Repeat=$true;Enabled=$true;AutoStart=$false})}
  $settings|ConvertTo-Json -Depth 8|Set-Content -LiteralPath $config -Encoding UTF8;Protect $config $false
  $command='"'+$hostExe+'" --windows-service --config "'+$config+'"'
  Invoke-OwnedSc -values @('create',$serviceName,'binPath=',$command,'start=','auto','obj=','NT AUTHORITY\LocalService');$ownedService=$true
@@ -84,6 +94,20 @@ try{
  Check 'Rejected client does not restart or kill the service' ($afterRejected.ProcessId -eq $verifiedProcess)
  Check 'No browser console is required for service readiness' (-not (Get-Process -Name 'OnAirNext.Web' -ErrorAction SilentlyContinue))
  Check 'Developer global stop is not a service command' ((Probe 'stop').accepted -eq $false)
+ Check 'Browser-visible folder cannot be assigned without service proof' ((SourceProbe 'assign-unchecked').accepted -eq $false)
+ $sourceRequest=SourceProbe 'readable';$sourceResult=SourceReady $sourceRequest.check.Id
+ Check 'Source read runs under LocalService rather than the browser operator' ($sourceResult.State -eq 'Accessible' -and $sourceResult.Result.IdentitySid -eq 'S-1-5-19' -and $sourceResult.Result.SampleReadable -eq $true)
+ Check 'A source proof cannot authorize another station' ((SourceProbe ('assign-wrong-station:'+$sourceResult.Id)).accepted -eq $false)
+ Check 'A source proof cannot authorize another folder' ((SourceProbe ('assign-mismatch:'+$sourceResult.Id)).accepted -eq $false)
+ Check 'Matching source proof permits a disarmed station folder assignment' ((SourceProbe ('assign:'+$sourceResult.Id)).accepted -eq $true)
+ $sourcePage=SourceProbe 'library'
+ Check 'Assigned source is read back from the service journal' ($sourcePage.page.Root.Path -eq $readableSource -and $sourcePage.page.Root.Revision -eq 1)
+ Check 'Committed source assignment replay needs no transient proof' ((SourceProbe 'replay').accepted -eq $true)
+ $sourcePage=SourceProbe 'library';Check 'Source replay does not create a new revision' ($sourcePage.page.Root.Revision -eq 1)
+ Check 'Operator can enumerate the source denied to the service' (@(Get-ChildItem -LiteralPath $deniedSource -Force).Count -eq 0)
+ $deniedRequest=SourceProbe 'denied';$deniedResult=SourceReady $deniedRequest.check.Id
+ Check 'Operator-visible folder denied to LocalService is reported unavailable' ($deniedResult.State -eq 'Unavailable' -and $deniedResult.Result.IdentitySid -eq 'S-1-5-19')
+
  Check 'Start intent is durably acknowledged' ((Probe 'start-station').accepted -eq $true)
  $null=Ready $true;$oldChildren=Children
  Stop-Service -Name $serviceName;Stopped

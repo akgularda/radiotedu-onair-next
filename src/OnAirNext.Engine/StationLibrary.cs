@@ -52,10 +52,10 @@ public sealed class StationLibrary : IAsyncDisposable
 
     public LibraryWorkerStatus Status(string station) => _status.GetValueOrDefault(station) ?? new("Not configured", null, null);
     public LibraryPage Page(string station, string query, int offset) { RequireStation(station); return _journal.LibraryPage(station, query, offset); }
-    public async Task SetRootAsync(string station, string root, string command)
+    public async Task SetRootAsync(string station, string root, string command, Action? authorizeNewAssignment = null)
     {
         RequireStation(station);
-        if (await _journal.SetLibraryRootAsync(station, root, command))
+        if (await _journal.SetLibraryRootAsync(station, root, command, authorizeNewAssignment))
         { lock (_publication) { _playback[station] = new(true, [], Interlocked.Increment(ref _version)); Changed?.Invoke(station, false); } Wake(); }
     }
     public async Task ImportAsync(string station, string[] paths, string command)

@@ -4,7 +4,7 @@ This describes the current development workflow. Connected browser mouse accepta
 
 ## Choose the station folder
 
-In Library, select the channel first, then Choose live folder. Browse to that station’s music directory and choose Use this folder. Read back the channel and full saved path in Library. Wait for the engine’s validation result; a visible path in the browser’s folder picker does not prove that the Windows service can read it.
+In Library, select the channel first, then Choose live folder. Browse to that station’s music directory, choose Check engine access, and read the returned engine identity and result. Use this folder becomes available after a matching, recent folder access result. Read back the channel and full saved path in Library. This limited source check does not decode every track or prove access before logon; see [source access checks](SOURCE_ACCESS_CHECKS.md). Wait for the engine’s validation result; a visible path in the browser’s folder picker does not prove that the Windows service can read it.
 
 For a parent containing Rock, Jazz and Ads, select Rock for the Rock station. Do not choose the shared parent: all supported audio in subfolders belongs to the selected station. Jingles, sweepers, advertisements, archives and other station folders need their own verified assignments. Existing filenames alone do not establish which branding is active.
 

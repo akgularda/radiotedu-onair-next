@@ -39,7 +39,7 @@ public sealed partial class EventJournal
     // Pure path normalization; checking a removable/network drive belongs to the background worker.
     public static string NormalizeLibraryPath(string path) => LocalMediaPath.Normalize(path);
 
-    public Task<bool> SetLibraryRootAsync(string station, string path, string id)
+    public Task<bool> SetLibraryRootAsync(string station, string path, string id, Action? authorizeNewAssignment = null)
     {
         path = NormalizeLibraryPath(path);
         if (Path.TrimEndingDirectorySeparator(Path.GetPathRoot(path)!).Equals(path, StringComparison.OrdinalIgnoreCase))
@@ -48,6 +48,7 @@ public sealed partial class EventJournal
         {
             if (ReadDesired(c, t, station) is null) throw new ArgumentException("Unknown station.");
             if (!AdmitControl(c, t, station, "library-root", path, id)) return false;
+            authorizeNewAssignment?.Invoke(); // Fast in-memory gate only; durable retries do not need a fresh transient proof.
             using var cmd = LibraryCommand(c, t, """
                 INSERT INTO library_roots VALUES($station,$path,1)
                 ON CONFLICT(station_id) DO UPDATE SET path=excluded.path,revision=revision+1

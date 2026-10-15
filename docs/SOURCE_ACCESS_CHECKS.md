@@ -1,0 +1,15 @@
+# Engine-account source access checks
+
+Implemented in development; remote compilation, unit and real-service fixture results must be inspected for this update. Target-PC installation, guided setup and connected mouse acceptance remain incomplete. No existing media, source permissions or legacy configuration are changed by the check.
+
+Library → Choose live folder now requires Check engine access before Use this folder. The displayed result identifies the engine account and SID, local drive type, entries examined and whether sampled audio could be opened. The browser folder navigator runs as the operator; this separate check runs as an owned child of the engine. Windows service results must identify LocalService. An operator-visible folder can therefore return Unavailable.
+
+The check examines at most 32 top-level entries, opens at most four supported audio candidates and reads only one byte from each. It skips links/offline files, rejects linked roots/ancestors and remote/unavailable drive types, and makes no permission or media changes. No media bytes or filenames are returned. Volume identity may be obtained when Windows supports it. Folder enumeration and a sampled file read do not prove that every subfolder/file is readable, decodable or loudness-compliant. Audio validation remains a separate catalog stage. It also does not prove access after a cold boot or before logon.
+
+The controller immediately acknowledges the asynchronous request. Only one probe runs at a time across the host; up to 64 recent results are retained. The existing owned-child path imposes a 15-second execution deadline and confirmed cleanup. Cleanup-pending ownership blocks launching another check. Shutdown retains ownership until the active check exits. No scan, decode or drive I/O occurs in the playout callback or the journal writer.
+
+A successful proof binds the request, station and exact normalized folder. It expires after one monotonic minute; clock correction cannot extend it. A new service-mode library-root mutation validates the proof in the same transaction that admits and saves the command. Rejected proof rolls back command admission. An already committed command replay returns its durable receipt without requiring an expired proof or reverting a newer folder assignment.
+
+The folder dialog binds to the selected engine/channel, discards stale folder responses, preserves the same access-check request after an uncertain acknowledgement and offers the same saved assignment retry. An authoritative missing result after engine restart permits a new check. Timeout alone does not invent completion or launch another worker.
+
+The disposable Windows fixture additionally gives the test operator access to a folder that LocalService cannot enumerate. It verifies the real service identity, permission failure, station/folder fencing, durable readback and assignment replay. These checks are engineering fixtures, not operator UI acceptance or audio proof.
