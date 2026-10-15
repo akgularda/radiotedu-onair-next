@@ -10,7 +10,7 @@ $hostExe=Join-Path $bin 'OnAirNext.Host.exe'; $fakeExe=Join-Path $tools 'ffmpeg.
 $labExe=Join-Path ([IO.Path]::GetFullPath($BuildRoot)) 'OnAirNext.Lab/release/OnAirNext.Lab.exe'
 $hostBuild=Join-Path ([IO.Path]::GetFullPath($BuildRoot)) 'OnAirNext.Host/release'
 $labBuild=Split-Path -Parent $labExe
-$checks=[Collections.Generic.List[string]]::new();$ownedInstall=$false;$ownedData=$false;$ownedService=$false;$failure=$null;$diagnostics=@{}
+$checks=[Collections.Generic.List[string]]::new();$ownedInstall=$false;$ownedData=$false;$ownedService=$false;$completed=$false;$failure=$null;$diagnostics=@{}
 $operatorSid=[Security.Principal.WindowsIdentity]::GetCurrent().User
 $adminSid=[Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')
 $systemSid=[Security.Principal.SecurityIdentifier]::new('S-1-5-18')
@@ -140,6 +140,7 @@ try{
  Stop-Service -Name $serviceName;Stopped;ClearMarker;Start-Service -Name $serviceName;$null=Ready $false
  Check 'Explicit stopped intent survives service restart' $true
  Stop-Service -Name $serviceName;Stopped
+ $completed=$true
 }catch{
  $failure=$_.Exception.Message
  try{$failedService=Get-CimInstance -ClassName Win32_Service -Filter ("Name='"+$serviceName+"'");$diagnostics.Service=@{State=$failedService.State;ExitCode=$failedService.ExitCode;SpecificExit=$failedService.ServiceSpecificExitCode;ProcessId=$failedService.ProcessId}}catch{}
@@ -147,12 +148,13 @@ try{
  throw
 }
 finally{
+ if(-not $completed -and -not $failure){$failure='Fixture interrupted before all checks completed.'}
  if($ownedService){try{if((Get-Service -Name $serviceName).Status -ne 'Stopped'){Stop-Service -Name $serviceName;Stopped};Invoke-OwnedSc -values @('delete',$serviceName)}catch{if(-not $failure){$failure=$_.Exception.Message}}}
  # Retain fixture data on CI failure for runner-local diagnosis; upload only this sanitized summary.
  foreach($target in @(@{Path=$installRoot;Expected=$expectedInstall;Owned=$ownedInstall},@{Path=$dataRoot;Expected=$expectedData;Owned=$ownedData})){
   if($target.Owned -and -not $failure){$full=[IO.Path]::GetFullPath($target.Path);if($full -ne $target.Expected -or (Get-Item -LiteralPath $full).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Cleanup target validation failed'};Remove-Item -LiteralPath $full -Recurse -Force}
  }
  $null=New-Item -ItemType Directory -Path (Split-Path -Parent $summary) -Force
- @{Source=$env:GITHUB_SHA;Scope='Isolated Windows CI fixture; no real audio or target-PC commissioning';Passed=(-not $failure);Checks=$checks.ToArray();Error=$failure;ProductionChanged=$false;Diagnostics=$diagnostics}|ConvertTo-Json -Depth 10|Set-Content -LiteralPath $summary -Encoding UTF8
+ @{Source=$env:GITHUB_SHA;Scope='Isolated Windows CI fixture; no real audio or target-PC commissioning';Completed=$completed;Passed=($completed -and -not $failure);Checks=$checks.ToArray();Error=$failure;ProductionChanged=$false;Diagnostics=$diagnostics}|ConvertTo-Json -Depth 10|Set-Content -LiteralPath $summary -Encoding UTF8
  if($failure){Write-Error $failure}
 }
