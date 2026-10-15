@@ -2,7 +2,7 @@
 
 # Handoff snapshot status
 
-Broadcast-PC continuation: see the [delivery ledger](BROADCAST_PC_DELIVERY_LEDGER.md) for current 42-unit/13-check isolated recovery evidence and incomplete release gates. The native UI is being developed in the requested dark Palantir-like direction; production has not been migrated.
+Broadcast-PC continuation: see the [delivery ledger](BROADCAST_PC_DELIVERY_LEDGER.md) for current 42-unit/13-check isolated recovery evidence and incomplete release gates. The active UI is now the dark browser console; the native prototype is historical. Windows build and 77 tests passed at 22cc4538. Connected UI acceptance remains pending after a protective resource stop; production has not been migrated. See [browser validation](../artifacts/browser-ui-validation-20261015.json).
 
 Prepared 15 October 2026. This is a development snapshot for the broadcasting-PC agent, not a production-ready release.
 

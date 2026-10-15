@@ -10,4 +10,6 @@ The separate unconnected visual preview is on loopback port 18120. The new ASP.N
 
 UI direction: solid dark charcoal/navy, readable aligned tables, channel strip, broadcast desk and a clear library. No decorative gradients, glass, fake waveforms or fabricated live status. Enterprise guidance is adapted to these user constraints.
 
-Browser mouse checks passed for On Air/Library/System navigation and channel changes in the unconnected preview. Real file upload, live-folder readback and connected lifecycle acceptance still require the built browser backend and isolated engine.
+Browser mouse checks passed for On Air/Library/System navigation, channel changes and the channel details disclosure in the unconnected preview. The actual target scale equivalent (911 × 512 CSS pixels) was checked: transport controls remain visible, with longer library content available by scrolling. Real file upload, live-folder readback and connected lifecycle acceptance still require the built browser backend and isolated engine.
+
+The browser links only bounded pipe framing and local path validation source, without loading the engine database/audio assemblies. Its static HTML/CSS/JavaScript are approximately 62 KB. This excludes the .NET runtime, engine, encoders and music; it is not a claim about the complete installed program size. Current/next item metadata and duration are engine snapshots, never decorative mock data. Stop and folder confirmation bind to the station and engine selected when the dialog opens.
