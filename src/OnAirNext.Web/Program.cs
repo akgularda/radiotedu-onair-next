@@ -72,7 +72,7 @@ app.MapGet("/api/folders", (string? path) =>
             .Concat(DriveInfo.GetDrives().Where(d => d.IsReady).Select(d => new FolderChoice(d.Name + " drive", d.RootDirectory.FullName))).ToArray();
         return Results.Json(new { path = (string?)null, parent = (string?)null, folders });
     }
-    var root = OnAirNext.Engine.EventJournal.NormalizeLibraryPath(path);
+    var root = OnAirNext.Engine.LocalMediaPath.Normalize(path);
     var directory = new DirectoryInfo(root);
     if (!directory.Exists || (directory.Attributes & FileAttributes.ReparsePoint) != 0) throw new ArgumentException("Choose an accessible folder without folder links.");
     var children = directory.EnumerateDirectories().Where(d => (d.Attributes & (FileAttributes.ReparsePoint | FileAttributes.System | FileAttributes.Hidden)) == 0)
