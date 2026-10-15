@@ -2,7 +2,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const roster = [{id:'1',name:'Classic'},{id:'2',name:'Lofi'},{id:'4',name:'Radio'},{id:'5',name:'Cazz'},{id:'8',name:'Rock'},{id:'9',name:'Energize'},{id:'10',name:'Situation'},{id:'11',name:'Main Character'}];
-  const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null,folderTarget:null,editTarget:null,assetStateTarget:null};
+  const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null,folderTarget:null,editTarget:null,assetStateTarget:null,controller:null};
   try { const saved=JSON.parse(localStorage.getItem('studio-pending-commands')??'[]');if(Array.isArray(saved))state.pending=saved.filter(p=>typeof p.engine==='string'&&p.request?.Id&&p.request?.StationId).slice(0,32); } catch { }
   const pending = () => state.pending.find(p=>p.engine===state.engine&&p.request.StationId===state.station);
   const savePending = () => {try{localStorage.setItem('studio-pending-commands',JSON.stringify(state.pending));}catch{}};
@@ -62,6 +62,7 @@
     text('footer-status',connected?'Engine connected':state.engine?'Reconnecting':'Disconnected');
     text('sample-age',state.sampleAt?`Sample age ${Math.max(0,Math.floor((Date.now()-state.sampleAt)/1000))}s`:'No engine sample');
     text('system-connection',connected?'Connected':'Not connected');
+    text('engine-runtime',!connected?'No engine sample':state.engine==='onair-next-dev-service'&&state.controller?.mode==='windows-service'?'Windows service':state.controller?.mode==='developer'?'Developer host':'Not reported');
     $('footer-dot').classList.toggle('connected',connected);$('engine-dot').classList.toggle('connected',connected);
     $('engine-label').replaceChildren(document.createTextNode(connected?'Engine connected':'Engine not connected'),element('small','',connected?'Isolated development engine':'Existing broadcasts unchanged'));
     $('disconnect-engine').disabled=!state.engine;
@@ -75,7 +76,7 @@
   }
   async function poll(){
     if(state.polling||!state.engine||document.hidden)return;state.polling=true;const engine=state.engine;
-    try{const result=await api('/api/status?engine='+encodeURIComponent(engine));if(engine!==state.engine)return;const previous=state.stations.map(s=>s.Id).join(',');state.stations=result.stations??[];state.sampleAt=Date.now();if(!state.stations.some(s=>s.Id===state.station)&&state.stations.length)state.station=state.stations[0].Id;if(previous!==state.stations.map(s=>s.Id).join(','))stationTabs();text('audit-pending',String(result.audit?.PendingEvents??'—'));text('audit-rejected',String(result.audit?.RejectedEvents??'—'));text('audit-error',result.audit?.Error??'None reported');}
+    try{const result=await api('/api/status?engine='+encodeURIComponent(engine));if(engine!==state.engine)return;const previous=state.stations.map(s=>s.Id).join(',');state.stations=result.stations??[];state.controller=result.controller??null;state.sampleAt=Date.now();if(!state.stations.some(s=>s.Id===state.station)&&state.stations.length)state.station=state.stations[0].Id;if(previous!==state.stations.map(s=>s.Id).join(','))stationTabs();text('audit-pending',String(result.audit?.PendingEvents??'—'));text('audit-rejected',String(result.audit?.RejectedEvents??'—'));text('audit-error',result.audit?.Error??'None reported');}
     catch(error){message('Status unavailable: '+error.message);state.sampleAt=0;}
     finally{state.polling=false;renderStatus();}
   }

@@ -2,6 +2,7 @@ using System.IO.Pipes;
 using System.Text;
 using System.Text.Json;
 using OnAirNext.Engine;
+using OnAirNext.ServiceControl;
 
 namespace OnAirNext.Web;
 
@@ -18,8 +19,9 @@ internal static class EngineRpc
         var request = JsonSerializer.SerializeToUtf8Bytes(command);
         if (request.Length > 65500) throw new ArgumentException("The command exceeds the local message limit.");
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token); deadline.CancelAfter(TimeSpan.FromSeconds(4));
-        await using var pipe = new NamedPipeClientStream(".", engine, PipeDirection.InOut, PipeOptions.Asynchronous);
+        await using var pipe = ServicePipeClient.Create(engine);
         await pipe.ConnectAsync(deadline.Token);
+        ServicePipeClient.AuthenticateServer(pipe, engine);
         await pipe.WriteAsync(request, deadline.Token); await pipe.WriteAsync("\n"u8.ToArray(), deadline.Token);
         var response = await PipeFrames.ReadAsync(pipe, 524288, deadline.Token) ?? throw new EndOfStreamException("Engine closed before acknowledging the request.");
         using var document = JsonDocument.Parse(response); return document.RootElement.Clone();

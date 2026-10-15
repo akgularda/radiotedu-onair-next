@@ -36,11 +36,11 @@ app.Use(async (context, next) =>
     }
     try { await next(); }
     catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested) { }
-    catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException or UnauthorizedAccessException or JsonException or ArgumentException or InvalidOperationException or BadHttpRequestException)
+    catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException or UnauthorizedAccessException or JsonException or ArgumentException or InvalidOperationException or BadHttpRequestException or System.ComponentModel.Win32Exception)
     {
         if (context.Response.HasStarted) throw;
         context.Response.StatusCode = ex is ArgumentException or JsonException or InvalidOperationException ? 400 : 503;
-        await context.Response.WriteAsJsonAsync(new { error = ex.Message });
+        await context.Response.WriteAsJsonAsync(new { error = ex is System.ComponentModel.Win32Exception ? "Windows service connection is unavailable. Check the service and operator permissions." : ex.Message });
     }
 });
 app.UseDefaultFiles(); app.UseStaticFiles();

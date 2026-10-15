@@ -5,6 +5,11 @@ using System.IO.Pipes;
 using OnAirNext.Engine;
 using OnAirNext.Lab;
 
+if (args.Length == 2 && args[0] == "--service-probe") return await ServiceProbe.CommandAsync(args[1]);
+if (args.Length == 2 && args[0] == "--service-child" && args[1] == "leaf") return await ServiceProbe.OwnedChildFixtureAsync(true);
+if (args.SequenceEqual(new[] { "-hide_banner", "-encoders" }) && Path.GetFileName(Environment.ProcessPath)=="ffmpeg.exe")
+    return await ServiceProbe.OwnedChildFixtureAsync(false);
+
 var arguments = args.Chunk(2).ToDictionary(x => x[0], x => x.Length == 2 ? x[1] : throw new ArgumentException("Arguments require values."));
 var localRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadioTEDU", "OnAirNext-Dev");
 var ffmpeg = arguments.GetValueOrDefault("--ffmpeg") ?? "ffmpeg";

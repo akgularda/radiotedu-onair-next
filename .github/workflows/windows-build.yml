@@ -37,6 +37,15 @@ jobs:
           if-no-files-found: warn
       - name: Locate compiled binaries
         run: '"ONAIR_BUILD_BIN=$env:LOCALAPPDATA/RadioTEDU/OnAirNext-Dev/build/bin" >> $env:GITHUB_ENV'
+      - name: Qualify isolated Windows service lifecycle
+        run: ./scripts/Test-WindowsService.ps1 -BuildRoot "$env:ONAIR_BUILD_BIN"
+      - name: Retain isolated service qualification
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-service-qualification
+          path: artifacts/service-smoke/summary.json
+          if-no-files-found: warn
       - name: Retain compiled development binaries
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

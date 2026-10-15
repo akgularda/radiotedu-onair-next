@@ -6,4 +6,9 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.1"><PrivateAssets>all</PrivateAssets></PackageReference>
     <ProjectReference Include="../../src/OnAirNext.Engine/OnAirNext.Engine.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../src/OnAirNext.Host/ServiceEndpoint.cs" Link="ServiceControl/ServiceEndpoint.cs" />
+    <Compile Include="../../src/OnAirNext.Host/ServicePipeClient.cs" Link="ServiceControl/ServicePipeClient.cs" />
+    <Compile Include="../../src/OnAirNext.Host/ServicePipePolicy.cs" Link="ServiceControl/ServicePipePolicy.cs" />
+  </ItemGroup>
 </Project>
