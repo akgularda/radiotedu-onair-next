@@ -39,6 +39,8 @@ Updated 15 October 2026. This records the complete commissioning scope; it is no
 
 The 85-case run passed all tests, with zero failed/errored/aborted cases. Browser source initialization and the Library action column were checked in the unconnected preview; no JavaScript errors were reported. This does not claim the edit dialogs were exercised against a running engine. Source edits and generated fixtures are development work, not operational configuration of the production application.
 
+The later strict preflight passed without changing thresholds: median CPU 67.1%, minimum available RAM 1,944,920,064 bytes, disk queue below 0.064 and all eight workers healthy at admission. The protected 126f772a browser/host attempt then stopped after Situation transport=false in two samples, before application readiness. No legacy PID/generation changed during that guard interval, and zero owned job processes remained. This is a failed connected acceptance attempt, not proof of a listener outage or its cause. The preview cannot replace it.
+
 ## Historical development entries
 
 The entries below preserve prior successful/failed attempts and their evidence locations. Their native-UI direction, old counts and pending-build wording describe the source at that time and are superseded by the current decisions/evidence above. They do not narrow the full release scope.

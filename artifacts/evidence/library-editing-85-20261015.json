@@ -31,5 +31,17 @@
   ],
   "connectedBrowserAcceptance": false,
   "productionChanged": false,
-  "productionQualified": false
+  "productionQualified": false,
+  "connectedBrowserAttempt": {
+    "preflightPassed": true,
+    "medianCpuPercent": 67.1,
+    "minimumAvailableRamBytes": 1944920064,
+    "allEightLegacyWorkersHealthyAtStart": true,
+    "result": "stopped-resource-guard",
+    "reason": "legacy-health-change",
+    "transportUnhealthySamples": 2,
+    "ownedProcessesRemaining": 0,
+    "applicationReadinessReached": false,
+    "localAcceptancePassed": false
+  }
 }
