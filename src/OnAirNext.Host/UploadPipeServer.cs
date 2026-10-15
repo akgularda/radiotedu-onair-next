@@ -30,9 +30,10 @@ internal sealed class UploadPipeServer : IAsyncDisposable
     {
         while(!_stop.IsCancellationRequested)
         {
+            var connected=false;
             try
             {
-                await _pipe.WaitForConnectionAsync(_stop.Token);
+                await _pipe.WaitForConnectionAsync(_stop.Token);connected=true;
                 using var deadline=CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);
                 deadline.CancelAfter(TimeSpan.FromMinutes(2));
                 var frame=await PipeFrames.ReadAsync(_pipe,131072,deadline.Token);
@@ -86,7 +87,7 @@ internal sealed class UploadPipeServer : IAsyncDisposable
             }
             finally
             {
-                if(_pipe.IsConnected)try{_pipe.Disconnect();}catch(IOException){}
+                if(connected)try{_pipe.Disconnect();}catch(IOException){}
             }
         }
     }

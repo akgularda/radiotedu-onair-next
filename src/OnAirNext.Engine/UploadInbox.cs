@@ -38,15 +38,16 @@ public sealed class UploadInbox
         batch=Id(batch);files=Validate(files);var payload=JsonSerializer.Serialize(files);
         await CleanupCompletedAsync();
         var previous=_journal.LibraryUpload(batch);
+        var currentRoot=_library.Page(station,"",0).Root;
         if(previous is null)
         {
-            if(!_library.CanImportFiles(_library.Page(station,"",0).Root))
+            if(!_library.CanImportFiles(currentRoot))
                 throw new InvalidOperationException("External live folders are read-only. Choose managed storage before uploading files.");
             var reserved=_journal.ActiveLibraryUploads().Sum(receipt=>Files(receipt).Sum(file=>file.Bytes));
             if(new DriveInfo(Path.GetPathRoot(_root)!).AvailableFreeSpace < reserved+files.Sum(file=>file.Bytes)+2L*1024*1024*1024)
                 throw new IOException("The engine upload drive needs at least 2 GiB of space after retained uploads.");
         }
-        var result=await _journal.RegisterLibraryUploadAsync(station,batch,payload);
+        var result=await _journal.RegisterLibraryUploadAsync(station,batch,payload,currentRoot?.Revision??0);
         if((result.State is "Cancelled" or "Cancelling") && _journal.LibraryImportState(batch) is null)
             throw new InvalidOperationException("This transfer was cancelled. Start a new upload.");
         return result;

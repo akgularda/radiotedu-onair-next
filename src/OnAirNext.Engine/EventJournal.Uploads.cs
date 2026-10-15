@@ -6,7 +6,7 @@ namespace OnAirNext.Engine;
 public sealed record LibraryUpload(string Id, string StationId, long Revision, string Payload, string State);
 public sealed partial class EventJournal
 {
-    public Task<LibraryUpload> RegisterLibraryUploadAsync(string station, string id, string payload) => TransactionAsync((c, t) =>
+    public Task<LibraryUpload> RegisterLibraryUploadAsync(string station, string id, string payload, long expectedRevision) => TransactionAsync((c, t) =>
     {
         if (payload.Length > 100000) throw new ArgumentException("The upload manifest exceeds its size limit.");
         if (ReadDesired(c, t, station) is null) throw new ArgumentException("Unknown station.");
@@ -21,6 +21,7 @@ public sealed partial class EventJournal
             if (Convert.ToInt64(count.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture) >= 4)
                 throw new InvalidOperationException("Four uploads are already retained. Finish or cancel an upload in Library.");
         var revision = ReadLibraryRoot(c, t, station)?.Revision ?? 0;
+        if (revision != expectedRevision) throw new InvalidOperationException("The live folder changed while preparing the transfer. Select the files again.");
         using var insert = LibraryCommand(c, t, "INSERT INTO library_uploads VALUES($id,$station,$revision,$payload,'Receiving')",
             ("$id", id), ("$station", station), ("$revision", revision), ("$payload", payload));
         insert.ExecuteNonQuery(); return new LibraryUpload(id, station, revision, payload, "Receiving");

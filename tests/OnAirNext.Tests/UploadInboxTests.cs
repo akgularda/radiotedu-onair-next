@@ -90,6 +90,16 @@ public sealed class UploadInboxTests
         Assert.False(await f.Journal.QueueLibraryImportAsync("a",paths,root,second,uploaded:true));
     }
     [Fact]
+    public async Task AdmissionCannotCaptureARootChangedAfterManagedStorageWasChecked()
+    {
+        await using var f=new Fixture();await f.InitializeAsync();var id=Id();var payload=System.Text.Json.JsonSerializer.Serialize(new[]{Spec()});
+        await f.Journal.SetLibraryRootAsync("a",Path.Combine(f.Root,"music"),"changed");
+        await Assert.ThrowsAsync<InvalidOperationException>(()=>f.Journal.RegisterLibraryUploadAsync("a",id,payload,expectedRevision:0));
+        Assert.Null(f.Journal.LibraryUpload(id));
+        await f.Journal.RegisterLibraryUploadAsync("a",id,payload,expectedRevision:1);
+        Assert.Equal(1,f.Journal.LibraryUpload(id)!.Revision);
+    }
+    [Fact]
     public async Task ExternalLiveFoldersRejectUploadAdmission()
     {
         await using var f=new Fixture();await f.InitializeAsync();
