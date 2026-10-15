@@ -315,7 +315,7 @@ Many daily tasks already have UI entry points. Some capabilities above are servi
 
 ## What exists in the new program today
 
-The committed engine milestone provides independent continuous PCM playout, bounded next-item decoding, persistent AAC-LC/FLAC output sessions, independent output recovery, synthetic live mixing, local event history, Istanbul-time report export and isolated Icecast tests. Private source and synthetic-report repositories exist under **akgularda**.
+The committed engine milestone provides independent continuous PCM playout, bounded next-item decoding, persistent AAC-LC/FLAC output sessions, independent output recovery, synthetic live mixing, local event history, Istanbul-time report export and isolated Icecast tests. A public source repository and a private synthetic-report repository exist under **akgularda**.
 
 The recorded baseline passed 24 unit tests and eight integration scenarios. A short eight-station/sixteen-output run was performed on this newer development PC. It did not reproduce the six HE-AACv2 production branches, establish HP Z220 capacity, or prove 24/72-hour continuity.
 

@@ -1,6 +1,6 @@
 # Broadcasting PC build and staged migration handoff
 
-User-authorized handoff dated 15 October 2026. Use the **akgularda** GitHub account. New private source: https://github.com/akgularda/radiotedu-onair-next. Private report archive: https://github.com/akgularda/radiotedu-broadcast-reports.
+User-authorized handoff dated 15 October 2026. Use the **akgularda** GitHub account. Public application source: https://github.com/akgularda/radiotedu-onair-next. Private report archive: https://github.com/akgularda/radiotedu-broadcast-reports.
 
 ## Objective and authorization
 

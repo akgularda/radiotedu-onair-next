@@ -148,7 +148,7 @@ Keep the existing 8 GB HP Z220 as the capacity target: preferably no more than 2
 
 Use local SSD for active database/WAL/state, not the Google Drive source checkout. Allow UI-selected media and recording roots; account for H:'s limited free space. Recording is conditional, but capacity reserves still apply. Test builds keep literal-loopback destinations and `/next-` mounts. Production destination support belongs to the explicit installer/commissioning mode, not an accidental relaxation of laboratory validation.
 
-The private source repository remains **akgularda/radiotedu-onair-next**. Keep the current program, source archives, legacy reference, service names, databases, folders, mounts and credentials untouched. A later cutover requires its own controlled handover; planning and isolated implementation do not switch any live broadcast.
+The public source repository is **akgularda/radiotedu-onair-next**. Keep the current program, source archives, legacy reference, service names, databases, folders, mounts and credentials untouched. A later cutover requires its own controlled handover; planning and isolated implementation do not switch any live broadcast.
 
 ## Technical references
 

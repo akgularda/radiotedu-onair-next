@@ -19,7 +19,7 @@ Prepared 15 October 2026. This is a development snapshot for the broadcasting-PC
 | Real loopback baseline | Passed, 22 checks, AAC-LC and Ogg FLAC listener decoding. |
 | Separate `dotnet build src/OnAirNext.Application/OnAirNext.Application.csproj -c Release` | Passed; zero warnings/errors. |
 | New baseline evidence | `artifacts/evidence/20261015-144431-0d1a4fc9.json`, generated at 14:44 UTC / 17:44 Europe/Istanbul. |
-| Active GitHub identity and source repository | akgularda; akgularda/radiotedu-onair-next confirmed private before push. |
+| Active GitHub identity and source repository | akgularda; akgularda/radiotedu-onair-next is public following the user's visibility correction. The report repository remains private. |
 
 These checks were run on the Windows 11 development host using the private SDK and isolated local Icecast. The Application build is compilation evidence only. No new crash-policy, service, UI, 18-output HE-AAC or production migration acceptance is claimed. The older eight-scenario and fleet evidence describes the earlier engine milestone, not complete acceptance of these unfinished changes.
 

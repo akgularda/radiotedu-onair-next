@@ -21,7 +21,7 @@ This repository does not launch, modify, import, or replace the current RadioTED
 
 The current playlist is a developer-provided immutable sequence. Persisted queue editing, crash checkpoint resume, schedules, campaign ownership, native UI workflows, and production credentials are not implemented in this milestone.
 
-The private source repository is [akgularda/radiotedu-onair-next](https://github.com/akgularda/radiotedu-onair-next). Synthetic report fixtures are archived separately in [akgularda/radiotedu-broadcast-reports](https://github.com/akgularda/radiotedu-broadcast-reports). The development publisher verifies remote commits and repeat publication; the scheduled application publisher remains a later milestone.
+The public source repository is [akgularda/radiotedu-onair-next](https://github.com/akgularda/radiotedu-onair-next). Synthetic report fixtures are archived separately in [akgularda/radiotedu-broadcast-reports](https://github.com/akgularda/radiotedu-broadcast-reports). The development publisher verifies remote commits and repeat publication; the scheduled application publisher remains a later milestone.
 
 ## Build and test
 
@@ -84,4 +84,4 @@ Production release still requires Windows 10 Pro and device testing, the exact p
 | `scripts` | Reproducible developer setup and checks |
 | `artifacts/evidence` | Sanitized test summaries; no credentials, database or audio files |
 
-Windows audio I/O and WPF are intentional platform choices. The runtime and decoder dependencies require a documented update path. This private project does not change the existing application's licensing or publish its media.
+Windows audio I/O and WPF are intentional platform choices. The runtime and decoder dependencies require a documented update path. This project does not change the existing application's licensing or publish its media.

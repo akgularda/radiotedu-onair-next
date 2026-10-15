@@ -136,7 +136,7 @@ Annual reporting can consolidate daily events and totals through the UI. Keep a 
 
 The active authenticated account is `akgularda`. It remains the account used for repository work. `radiotedu` is a personal user account, not an organization. The inspected OnAir source repository grants `akgularda` read-only access, while several other RadioTEDU repositories grant write access. No dedicated play-report repository was visible in the accessible inventory. The old script's default checkout name does not prove that a corresponding accessible repository exists.
 
-The dedicated private `akgularda/radiotedu-broadcast-reports` repository and separate private application repository `akgularda/radiotedu-onair-next` now exist. The report repository currently contains labeled synthetic test archives. Do not repurpose unrelated RadioTEDU repositories and do not switch the active account to create repositories under `radiotedu`.
+The dedicated private `akgularda/radiotedu-broadcast-reports` repository and separate public application repository `akgularda/radiotedu-onair-next` now exist. The report repository currently contains labeled synthetic test archives. Do not repurpose unrelated RadioTEDU repositories and do not switch the active account to create repositories under `radiotedu`.
 
 Archive reports under `reports/YYYY/MM/YYYY-MM-DD/`, with detailed plays, hourly summary, and a manifest containing schema version, timezone, event count, checksum, completeness, and revision. Upload only reports and manifests; omit audio, credentials, database backups, absolute media paths, and unnecessary personal information.
 
@@ -210,7 +210,7 @@ Keep a documented module map, state transitions, database schema, media ownershi
 
 Every release must document changes, compatibility, backup/migration behavior, rollback, test evidence, and resource results. Give operators a built-in quick guide and an actionable diagnostic export that redacts credentials. Schedule runtime/dependency review as a maintenance practice; no unattended runtime or application update may interrupt a broadcast.
 
-An isolated engine milestone and local Icecast laboratory now exist, with private source and synthetic-report repositories under akgularda. Durable recovery/application storage remain unfinished working changes; native UI, service installation, full HE-AAC testing and production cutover are not complete. See README.md for the committed milestone and docs/OPERATING_PLAN.md for the next delivery gates. The current installation remains untouched.
+An isolated engine milestone and local Icecast laboratory now exist, with a public source repository and a private synthetic-report repository under akgularda. Durable recovery/application storage remain unfinished working changes; native UI, service installation, full HE-AAC testing and production cutover are not complete. See README.md for the committed milestone and docs/OPERATING_PLAN.md for the next delivery gates. The current installation remains untouched.
 
 ## Technical references
 
