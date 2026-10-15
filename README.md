@@ -1,10 +1,10 @@
 # RadioTEDU OnAir Next
 
-Broadcast-PC continuation: see the [delivery ledger](docs/BROADCAST_PC_DELIVERY_LEDGER.md) for current 42-unit/13-check isolated recovery evidence and incomplete release gates. The native UI is being developed in the requested dark Palantir-like direction; production has not been migrated.
+Broadcast-PC continuation: see the [delivery ledger](docs/BROADCAST_PC_DELIVERY_LEDGER.md) for current 49-unit/14-check isolated recovery evidence and incomplete release gates. The native UI is being developed in the requested dark Palantir-like direction; production has not been migrated.
 
 Independent Windows broadcast application under development. The first engine milestone implements continuous program audio, isolated Icecast outputs, an audio-agent input boundary, local play history, and reproducible loopback tests. The operator interface, installer, production migration, and full automation features follow the [development plan](DEVELOPMENT_PLAN.md).
 
-**Broadcasting-PC handoff:** read [the handoff instructions](docs/BROADCAST_PC_HANDOFF.md), [approved operating plan](docs/OPERATING_PLAN.md) and [current handoff status](docs/HANDOFF_STATUS.md) before continuing. This snapshot includes unfinished recovery/application source, not a production-ready installer. Unfinished items now restart from the beginning as linked attempts; 42 unit cases and a 13-check real hard-kill/stop-intent scenario passed on the broadcasting PC. Full recovery and automation acceptance remains open. The new required roster is eight AAC-LC + eight libfdk_aac HE-AACv2 + two FLAC outputs. Configure/operate through the native UI and migrate one station group at a time; retire the old service only after the verified handover gates pass.
+**Broadcasting-PC handoff:** read [the handoff instructions](docs/BROADCAST_PC_HANDOFF.md), [approved operating plan](docs/OPERATING_PLAN.md) and [current handoff status](docs/HANDOFF_STATUS.md) before continuing. This snapshot includes unfinished recovery/application source, not a production-ready installer. Unfinished items now restart from the beginning as linked attempts; 49 unit cases and a 14-check real hard-kill/stop-intent scenario passed on the broadcasting PC. Full recovery and automation acceptance remains open. The new required roster is eight AAC-LC + eight libfdk_aac HE-AACv2 + two FLAC outputs. Configure/operate through the native UI and migrate one station group at a time; retire the old service only after the verified handover gates pass.
 
 This repository does not launch, modify, import, or replace the current RadioTEDU installation. The development host rejects production destinations: only literal loopback IPs, unprivileged test ports, `/next-` mounts, a private development data root, and new named-pipe identities are accepted.
 
@@ -21,7 +21,7 @@ This repository does not launch, modify, import, or replace the current RadioTED
 - Istanbul daily CSV, all 24 hourly count rows, checksums, incomplete-play flags, and streamed arbitrary-period export without a 10,000-row cap.
 - Durable restart-from-beginning attempts, persistent enabled/running intent, atomic stop receipts and Skip command-ID/payload checks across process death.
 - Distinct durable jingle/sweeper completion counters; legacy behavior import and planner integration remain pending.
-- Initial native WPF On air/System window in an original dark theme, isolated-engine discovery/status and selected-station Skip. It builds; connected mouse operations and the complete operator interface are not qualified.
+- Initial native WPF On air/System window in an original dark theme, isolated-engine discovery/status and selected-station Skip. Start/Stop and the station coordinator are being qualified; connected mouse operations and the complete operator interface are not qualified.
 
 The default laboratory playlist is a developer-provided sequence. Durable queue primitives exist; complete operator queue editing, schedules, campaign ownership, migration and production credential workflows are not delivered. See the delivery ledger for the exact acceptance gaps.
 

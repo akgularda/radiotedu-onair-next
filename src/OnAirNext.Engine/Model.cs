@@ -75,7 +75,16 @@ public sealed record OutputSnapshot(string Id, string State, long EncoderStarts,
     long DroppedBlocks, int QueuedBlocks, int? EncoderPid, string? LastError);
 public sealed record StationSnapshot(string Id, string State, long Samples, long CompletedItems, long SkippedItems,
     string? CurrentTitle, long LateBlocks, long AuditRejectedEvents, IReadOnlyList<OutputSnapshot> Outputs,
-    string? CurrentAssetId = null, long CurrentItemSamples = 0, bool Recovered = false);
+    string? CurrentAssetId = null, long CurrentItemSamples = 0, bool Recovered = false,
+    bool Enabled = true, bool RequestedRunning = true, string? LastError = null, DateTimeOffset? RetryAtUtc = null);
+
+public interface IStationSession : IAsyncDisposable
+{
+    Task StartAsync();
+    Task Completion { get; }
+    StationSnapshot Snapshot();
+    Task SkipAsync(string commandId);
+}
 
 public interface IProgramOutput : IAsyncDisposable
 {

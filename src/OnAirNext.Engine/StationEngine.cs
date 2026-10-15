@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace OnAirNext.Engine;
 
-public sealed class StationEngine : IAsyncDisposable
+public sealed class StationEngine : IStationSession
 {
     private readonly string _ffmpeg;
     private readonly StationSettings _settings;
@@ -26,6 +26,9 @@ public sealed class StationEngine : IAsyncDisposable
     private string? _currentTitle;
     private long _samples, _completed, _skipped, _late, _auditRejected;
     private DateTimeOffset _anchor;
+    private readonly SemaphoreSlim _disposeGate = new(1, 1);
+    private readonly bool[] _releasedOutputs;
+    private bool _disposed, _exhausted;
     public LiveInput Live { get; } = new();
     public Task Completion => _run ?? Task.CompletedTask;
 
@@ -39,10 +42,12 @@ public sealed class StationEngine : IAsyncDisposable
             throw new ArgumentException("Duplicate source ownership is prohibited.");
         _ffmpeg = ffmpeg; _settings = settings; _journal = journal; _planner = planner;
         _outputs = outputs ?? settings.Outputs.Select(x => (IProgramOutput)new IcecastOutput(ffmpeg, x)).ToArray();
+        _releasedOutputs = new bool[_outputs.Count];
     }
 
     public async Task StartAsync()
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if (_run is not null) throw new InvalidOperationException("Station already started; construct a new session to resume.");
         await EncoderCapabilities.ValidateAsync(_ffmpeg, _settings.Outputs);
         _state = "Preparing";
@@ -50,8 +55,11 @@ public sealed class StationEngine : IAsyncDisposable
     }
 
     public void Skip(string? commandId = null)
+        => SkipAsync(commandId ?? Guid.NewGuid().ToString("N")).GetAwaiter().GetResult();
+
+    public async Task SkipAsync(string commandId)
     {
-        if (_journal.RequestObservedSkipAsync(_settings.Id, commandId ?? Guid.NewGuid().ToString("N"), _occurrence).GetAwaiter().GetResult()) Interlocked.Exchange(ref _skip, 1);
+        if (await _journal.RequestObservedSkipAsync(_settings.Id, commandId, _occurrence)) Interlocked.Exchange(ref _skip, 1);
     }
     public void RefreshNext() => Interlocked.Exchange(ref _refreshNext, 1);
     public StationSnapshot Snapshot() => new(_settings.Id, _state, Interlocked.Read(ref _samples),
@@ -75,6 +83,8 @@ public sealed class StationEngine : IAsyncDisposable
                     _itemSamples = 0; _announced = false; _recovered = true;
                 }
             }
+            if (_selection is null && _planner is null && !_settings.Repeat && _index >= _settings.Playlist.Count)
+            { _exhausted = true; return; }
             _selection ??= Select(_index);
             _decoder = new MediaDecoder(_ffmpeg, _selection.Item, _itemSamples);
             PrepareNext();
@@ -116,6 +126,7 @@ public sealed class StationEngine : IAsyncDisposable
                 }
                 if (filled < AudioFormat.BlockBytes) break;
             }
+            _exhausted = !_stop.IsCancellationRequested && _decoder is null;
         }
         catch (OperationCanceledException) when (_stop.IsCancellationRequested) { }
         catch (Exception ex)
@@ -125,12 +136,14 @@ public sealed class StationEngine : IAsyncDisposable
         }
         finally
         {
-            if (fault is null && _announced) Emit("interrupted", _samples, "Explicit stop preserves the current item; restart begins a new session.");
-            _decoded?.Dispose(); _decoded = null;
-            if (_decoder is not null) await _decoder.DisposeAsync();
-            if (_next is not null) await _next.DisposeAsync();
-            foreach (var output in _outputs) await output.DisposeAsync();
-            _state = fault is null ? "Stopped" : "Faulted";
+            try
+            {
+                if (fault is null && _announced) Emit("interrupted", _samples, "Explicit stop preserves the current item; restart begins a new session.");
+            }
+            catch (Exception ex) { fault ??= ex; }
+            try { await ReleaseResourcesAsync(); }
+            catch (Exception ex) { fault = fault is null ? ex : new AggregateException(fault, ex); }
+            _state = fault is not null ? "Faulted" : _exhausted ? "Completed" : "Stopped";
         }
         if (fault is not null) throw new InvalidOperationException("Station engine failed; inspect audit events.", fault);
     }
@@ -233,8 +246,40 @@ public sealed class StationEngine : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        await _stop.CancelAsync();
-        try { if (_run is not null) await _run; }
-        finally { Live.Dispose(); _stop.Dispose(); }
+        await _disposeGate.WaitAsync();
+        try
+        {
+            if (_disposed) return;
+            await _stop.CancelAsync();
+            // Runtime failure remains observable on Completion. Disposal succeeds only after
+            // every owned resource is released; it can be retried if cleanup itself failed.
+            if (_run is not null) { try { await _run; } catch (Exception) { } }
+            await ReleaseResourcesAsync();
+            Live.Dispose(); _stop.Dispose(); _disposed = true;
+        }
+        finally { _disposeGate.Release(); }
+    }
+
+    private async Task ReleaseResourcesAsync()
+    {
+        _decoded?.Dispose(); _decoded = null;
+        var pending = new List<Task>();
+        if (_decoder is not null) pending.Add(ReleaseDecoderAsync(_decoder, false));
+        if (_next is not null) pending.Add(ReleaseDecoderAsync(_next, true));
+        for (var i = 0; i < _outputs.Count; i++)
+            if (!_releasedOutputs[i]) pending.Add(ReleaseOutputAsync(i));
+        // One failed branch must not prevent the other outputs from closing.
+        await Task.WhenAll(pending);
+    }
+
+    private async Task ReleaseDecoderAsync(MediaDecoder decoder, bool next)
+    {
+        await decoder.DisposeAsync();
+        if (next) _next = null; else _decoder = null;
+    }
+
+    private async Task ReleaseOutputAsync(int index)
+    {
+        await _outputs[index].DisposeAsync(); _releasedOutputs[index] = true;
     }
 }

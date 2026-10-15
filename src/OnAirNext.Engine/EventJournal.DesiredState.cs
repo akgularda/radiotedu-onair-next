@@ -33,6 +33,17 @@ public sealed partial class EventJournal
         });
     }
 
+    public Task<bool> RequestRunningIntentAsync(string station, bool running, string commandId) => TransactionAsync((c, t) =>
+    {
+        // Fingerprint only the caller's payload. Enabled state is server-owned and may
+        // have changed since the original request; an old acknowledgement cannot re-enable it.
+        if (!AdmitControl(c, t, station, "running-intent", running ? "1" : "0", commandId)) return false;
+        var current = ReadDesired(c, t, station) ?? throw new InvalidOperationException("Station startup state is not initialized.");
+        if (running && !current.Enabled) throw new InvalidOperationException("This station is disabled. Enable it before starting.");
+        WriteDesired(c, t, station, current.Enabled, running);
+        return true;
+    });
+
     // Shutdown intent and its receipt share one commit for every configured station.
     // Replayed acknowledgements never overwrite a later operator decision.
     public Task<bool> RequestStopAllAsync(IEnumerable<string> configuredStations, string commandId)

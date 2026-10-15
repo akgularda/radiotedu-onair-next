@@ -5,6 +5,19 @@ namespace OnAirNext.Tests;
 
 public sealed class DesiredStateTests
 {
+    [Fact]
+    public async Task StartReceiptCannotReenableALaterDisabledStationAndRejectedAdmissionLeavesNoReceipt()
+    {
+        await using var journal = new EventJournal(Database());
+        await journal.InitializeDesiredStateAsync(Settings());
+        await journal.RequestRunningIntentAsync("station", true, "start-old");
+        await journal.SetDesiredStateAsync("station", false, false, "disable");
+        Assert.False(await journal.RequestRunningIntentAsync("station", true, "start-old"));
+        Assert.Equal(new DesiredStationState("station", false, false), await journal.DesiredStateAsync("station"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => journal.RequestRunningIntentAsync("station", true, "start-new"));
+        await journal.SetDesiredStateAsync("station", true, false, "enable");
+        Assert.True(await journal.RequestRunningIntentAsync("station", true, "start-new"));
+    }
     private static string Database()
     {
         var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

@@ -28,12 +28,21 @@ internal static class EngineConnection
         return status;
     }
 
-    internal static async Task SkipAsync(string name, string station, string id, CancellationToken token)
+    internal static async Task CommandAsync(string name, string action, string station, string id, CancellationToken token)
     {
-        var response = await SendAsync(name, new(id, "skip", station), token);
+        if (action is not ("skip" or "start-station" or "stop-station")) throw new ArgumentException("Unknown station action.");
+        byte[] response;
+        try { response = await SendAsync(name, new(id, action, station), token); }
+        catch (Exception ex) when ((ex is IOException or OperationCanceledException) && !token.IsCancellationRequested)
+        {
+            // The exact same ID/station/action is retried; a lost acknowledgement cannot
+            // turn one Skip into two or replay an old Start over a later Stop decision.
+            await Task.Delay(100, token);
+            response = await SendAsync(name, new(id, action, station), token);
+        }
         using var reply = JsonDocument.Parse(response);
         if (!reply.RootElement.TryGetProperty("accepted", out var accepted) || !accepted.GetBoolean())
-            throw new InvalidDataException(reply.RootElement.TryGetProperty("error", out var error)
+            throw new InvalidOperationException(reply.RootElement.TryGetProperty("error", out var error)
                 ? error.GetString() : "Engine did not acknowledge the command.");
     }
 
@@ -66,7 +75,8 @@ internal sealed record StatusReply(StationView[] Stations, AuditView Audit);
 internal sealed record AuditView(long PendingEvents, long RejectedEvents, string? Error);
 internal sealed record StationView(string Id, string State, long Samples, long CompletedItems, long SkippedItems,
     string? CurrentTitle, long LateBlocks, long AuditRejectedEvents, OutputView[] Outputs,
-    string? CurrentAssetId, long CurrentItemSamples, bool Recovered)
+    string? CurrentAssetId, long CurrentItemSamples, bool Recovered,
+    bool Enabled = true, bool RequestedRunning = true, string? LastError = null, DateTimeOffset? RetryAtUtc = null)
 {
     public string Elapsed => TimeSpan.FromSeconds(CurrentItemSamples / 48000d).ToString(@"hh\:mm\:ss");
     public string ProgrammeTime

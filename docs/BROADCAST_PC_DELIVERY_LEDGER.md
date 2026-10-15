@@ -55,3 +55,13 @@ Operational discovery and raw test/build logs are under the separate operations 
 - legacy-branding-discovery.json: private read-only capture, including actual media paths; not public source.
 
 Continue the delivery order in OPERATING_PLAN.md. Do not mark this task complete until every required gate is actually satisfied.
+
+## Current native lifecycle work — pending qualification
+
+Per-station coordinator workers, start/stop controls, bounded pipe frames, finite-playlist EOF handling and retryable resource cleanup are implemented in the working branch. Twelve additional unit cases (61 expected total), lifecycle/finite loopback scenarios and a Windows CI workflow have been added. These changes are not yet qualified on this PC. The first local build reported a nullable station argument; source was corrected, but the retry was deferred for disk pressure. Preserve that failed attempt.
+
+Read-only health snapshots showed legacy worker generation changes. Some legacy logs contain SQLite database-lock errors, including an error before the attempted new build; causation is not established. Production settings and processes were not changed. Local builds/audio tests are deferred while disk queue/latency exceed resource preflight limits. A private development-only Windows job guardian has a verified 12.5% total CPU hard cap, IDLE priority, 1 GiB committed-memory cap and owned-descendant cleanup; its version-only self-test passed with zero remaining job processes and unchanged legacy generations. This is not a disk I/O hard cap or production capacity proof.
+
+The Windows CI workflow compiles and runs unit tests away from the broadcasting PC. A remote pass will not replace Windows 10 runtime, audio, native mouse, full-roster or long-duration acceptance.
+
+The operator independence gate is mandatory: music import and live-folder assignment, setup, queue, schedule, microphone, reporting and recovery must work through native UI controls without Codex, SQL, scripts or hidden requests. Library/file chooser is not implemented yet. No routine task may be accepted from a developer API test alone.

@@ -180,6 +180,23 @@ public sealed partial class EventJournal : IAsyncDisposable
     {
         if (string.IsNullOrWhiteSpace(station) || string.IsNullOrWhiteSpace(id) || id.Length > 128)
             throw new ArgumentException("Skip commands require a station and a bounded command ID.");
+        if (ExistingSkipReceipt(connection, transaction, station, id, requestTarget)) return false;
+        using var command = connection.CreateCommand(); command.Transaction = transaction;
+        command.CommandText = "INSERT INTO engine_commands(id,station_id,kind,target_occurrence,request_target) VALUES($id,$station,'skip',$target,$request)";
+        command.Parameters.AddWithValue("$id", id); command.Parameters.AddWithValue("$station", station);
+        command.Parameters.AddWithValue("$target", (object?)targetOccurrence ?? DBNull.Value);
+        command.Parameters.AddWithValue("$request", (object?)requestTarget ?? DBNull.Value);
+        return command.ExecuteNonQuery() == 1;
+    });
+
+    internal Task<bool> HasObservedSkipReceiptAsync(string station, string id) => TransactionAsync((connection, transaction)
+        => ExistingSkipReceipt(connection, transaction, station, id, null));
+
+    private static bool ExistingSkipReceipt(SqliteConnection connection, SqliteTransaction transaction,
+        string station, string id, string? requestTarget)
+    {
+        if (string.IsNullOrWhiteSpace(station) || string.IsNullOrWhiteSpace(id) || id.Length > 128)
+            throw new ArgumentException("Skip commands require a station and a bounded command ID.");
         using (var prior = connection.CreateCommand())
         {
             prior.Transaction = transaction;
@@ -191,16 +208,11 @@ public sealed partial class EventJournal : IAsyncDisposable
                 var target = reader.IsDBNull(2) ? null : reader.GetString(2);
                 if (reader.GetString(0) != station || reader.GetString(1) != "skip" || target != requestTarget)
                     throw new InvalidOperationException("Command ID was already used for a different operation.");
-                return false;
+                return true;
             }
         }
-        using var command = connection.CreateCommand(); command.Transaction = transaction;
-        command.CommandText = "INSERT INTO engine_commands(id,station_id,kind,target_occurrence,request_target) VALUES($id,$station,'skip',$target,$request)";
-        command.Parameters.AddWithValue("$id", id); command.Parameters.AddWithValue("$station", station);
-        command.Parameters.AddWithValue("$target", (object?)targetOccurrence ?? DBNull.Value);
-        command.Parameters.AddWithValue("$request", (object?)requestTarget ?? DBNull.Value);
-        return command.ExecuteNonQuery() == 1;
-    });
+        return false;
+    }
 
     public Task<bool> HasPendingSkipAsync(string station, string? targetOccurrence = null) => TransactionAsync((connection, transaction)
         => HasPendingSkip(connection, transaction, station, targetOccurrence));

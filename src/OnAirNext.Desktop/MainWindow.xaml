@@ -40,7 +40,7 @@
                 <Grid.RowDefinitions><RowDefinition x:Name="NowRow" Height="146"/><RowDefinition Height="12"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <Border Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource DividerBrush}" BorderThickness="1" Padding="16">
                     <Grid>
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="160"/></Grid.ColumnDefinitions>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="220"/></Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock x:Name="StationHeading" Text="SELECT A STATION" Style="{StaticResource SecondaryLabel}" />
                             <TextBlock x:Name="CurrentTitle" Text="No engine connected" FontSize="21" FontWeight="SemiBold" Margin="0,8,14,6" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
@@ -50,9 +50,15 @@
                         <StackPanel Grid.Column="1" HorizontalAlignment="Right">
                             <TextBlock Text="ITEM ELAPSED" Style="{StaticResource SecondaryLabel}" />
                             <TextBlock x:Name="ElapsedClock" Text="—:—:—" Style="{StaticResource RemainingClock}" Margin="0,2,0,10" />
-                            <Button x:Name="SkipButton" Content="Skip current item" Click="SkipCurrent" IsEnabled="False"
-                                    AutomationProperties.Name="Skip current item on selected isolated station"
-                                    ToolTip="Advance only the selected isolated station. The engine records the command." />
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="StartButton" Content="Start" Click="StartStation" IsEnabled="False" Width="64" Margin="0,0,6,0"
+                                        AutomationProperties.Name="Start selected isolated station" />
+                                <Button x:Name="StopButton" Content="Stop" Click="StopStation" IsEnabled="False" Width="64" Margin="0,0,6,0"
+                                        AutomationProperties.Name="Stop selected isolated station" />
+                                <Button x:Name="SkipButton" Content="Skip" Click="SkipCurrent" IsEnabled="False" Width="64"
+                                        AutomationProperties.Name="Skip current item on selected isolated station"
+                                        ToolTip="Advance only the selected isolated station. The engine records the command." />
+                            </StackPanel>
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -126,9 +132,11 @@
         </Grid>
         <Border Grid.Row="3" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,1,0,0" Padding="16,0">
             <Grid>
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <TextBlock x:Name="ConnectionStatus" Text="DISCONNECTED" Foreground="{StaticResource SecondaryText}" FontSize="12" />
-                <TextBlock x:Name="SampleAge" Grid.Column="1" Text="No status sample" Style="{StaticResource SecondaryLabel}" />
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBlock x:Name="ConnectionStatus" Text="DISCONNECTED" Foreground="{StaticResource SecondaryText}" FontSize="12" MaxWidth="240" />
+                <TextBlock Grid.Column="1" Text="{Binding Text, ElementName=CommandStatus}" Margin="16,0" Style="{StaticResource SecondaryLabel}"
+                           ToolTip="{Binding Text, ElementName=CommandStatus}" AutomationProperties.Name="Last station command result" />
+                <TextBlock x:Name="SampleAge" Grid.Column="2" Text="No status sample" Style="{StaticResource SecondaryLabel}" />
             </Grid>
         </Border>
     </Grid>

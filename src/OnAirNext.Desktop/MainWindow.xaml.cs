@@ -155,7 +155,8 @@ public partial class MainWindow : Window
         StationHeading.Text = station?.Id.ToUpperInvariant() ?? "SELECT A STATION";
         CurrentTitle.Text = station?.DisplayTitle ?? "No station selected";
         StationState.Text = station is null ? "Waiting for engine status" : !HasFreshStatus ? "STALE · awaiting fresh engine status"
-            : $"{station.State}    Completed {station.CompletedItems}    Skipped {station.SkippedItems}";
+            : $"{station.State} · {(station.RequestedRunning ? "Run requested" : "Stopped by operator")}";
+        StationState.ToolTip = station?.LastError;
         ElapsedClock.Text = station?.Elapsed ?? "—:—:—";
         ProgrammeClock.Text = station is null ? "Programme clock —" : $"Programme clock {station.ProgrammeTime}    Late blocks {station.LateBlocks}";
         var outputs = HasFreshStatus ? station?.Outputs ?? [] : [];
@@ -172,23 +173,39 @@ public partial class MainWindow : Window
                 row.Update(outputs[i]);
             }
         }
-        SkipButton.IsEnabled = HasFreshStatus && !_commandBusy && station?.State == "Running";
+        SkipButton.IsEnabled = HasFreshStatus && !_commandBusy && station is { State: "Running", RequestedRunning: true };
+        StartButton.IsEnabled = HasFreshStatus && !_commandBusy && station is { Enabled: true, RequestedRunning: false, State: "Stopped" or "Completed" };
+        StopButton.IsEnabled = HasFreshStatus && !_commandBusy && station is { RequestedRunning: true };
     }
 
-    private async void SkipCurrent(object sender, RoutedEventArgs e)
+    private async void SkipCurrent(object sender, RoutedEventArgs e) => await SendStationCommandAsync("skip");
+    private async void StartStation(object sender, RoutedEventArgs e) => await SendStationCommandAsync("start-station");
+    private async void StopStation(object sender, RoutedEventArgs e)
+    {
+        var station = SelectedStation;
+        if (!HasFreshStatus || _commandBusy || station is null) return;
+        if (MessageBox.Show(this, $"Stop station '{station.Id}'? Its outputs will disconnect and it will stay stopped after restart.",
+            "Stop selected station", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes)
+            await SendStationCommandAsync("stop-station", station.Id);
+    }
+
+    private async Task SendStationCommandAsync(string action, string? confirmedStation = null)
     {
         if (!HasFreshStatus || _commandBusy || _pipe is null || SelectedStation is not { } station) return;
+        if (confirmedStation is not null && confirmedStation != station.Id) return;
         var pipe = _pipe;
         var token = _connection?.Token ?? CancellationToken.None;
+        var label = action switch { "start-station" => "Start", "stop-station" => "Stop", _ => "Skip" };
+        CommandStatus.Text = $"{label} requested for {station.Id}…";
         _commandBusy = true; RenderStation();
         try
         {
-            await EngineConnection.SkipAsync(pipe, station.Id, Guid.NewGuid().ToString("N"), token);
-            CommandStatus.Text = $"Skip acknowledged for {station.Id} at {TimeZoneInfo.ConvertTime(DateTimeOffset.Now, _istanbul):HH:mm:ss}.";
+            await EngineConnection.CommandAsync(pipe, action, station.Id, Guid.NewGuid().ToString("N"), token);
+            CommandStatus.Text = $"{label} accepted for {station.Id} at {TimeZoneInfo.ConvertTime(DateTimeOffset.Now, _istanbul):HH:mm:ss}.";
         }
         catch (Exception ex) when (ex is IOException or OperationCanceledException or JsonException or InvalidOperationException or ArgumentException)
         {
-            CommandStatus.Text = "Skip acknowledgement unavailable. Check current playback before sending another command. " + ex.Message;
+            CommandStatus.Text = "Command acknowledgement unavailable. Check actual station state before sending another command. " + ex.Message;
         }
         finally { _commandBusy = false; RenderStation(); }
     }
