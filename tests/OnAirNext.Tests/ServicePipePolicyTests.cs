@@ -70,6 +70,19 @@ public sealed class ServicePipePolicyTests
         Assert.Throws<UnauthorizedAccessException>(()=>ServicePipeClient.AuthenticateServer(client,ServiceEndpoint.Pipe));
     }
     [Fact]
+    public void OrdinaryOperatorCannotOpenTheIsolatedMachineJournal()
+    {
+        using var identity = WindowsIdentity.GetCurrent();
+        Assert.NotEqual("S-1-5-19", identity.User?.Value);
+        Assert.Throws<UnauthorizedAccessException>(() => OnAirNext.Engine.EventJournal.OpenIsolatedWindowsService());
+    }
+    [Fact]
+    public void DefaultJournalConstructorCannotBypassIsolationForServiceStorage()
+    {
+        var path = Path.Combine(ServiceEndpoint.EngineData, "playback.db");
+        Assert.Throws<ArgumentException>(() => new OnAirNext.Engine.EventJournal(path));
+    }
+    [Fact]
     public void LegacyPathsAndRenamedServiceRootsAreRejectedWithoutCreatingThem()
     {
         var legacy=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),"RadioTEDU","OnAir","cleanroom.db");

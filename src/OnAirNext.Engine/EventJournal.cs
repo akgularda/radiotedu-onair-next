@@ -23,11 +23,30 @@ public sealed partial class EventJournal : IAsyncDisposable
     public int PendingEvents => _pending.Reader.Count;
     public string? Error => _error;
 
-    public EventJournal(string path)
+    public EventJournal(string path) : this(path, false) { }
+
+    public static EventJournal OpenIsolatedWindowsService()
+    {
+        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("The isolated service journal requires Windows.");
+        using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+        if (identity.User?.Value != "S-1-5-19")
+            throw new UnauthorizedAccessException("The isolated machine journal requires the LocalService identity.");
+        var data = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "RadioTEDU-OnAirNext-Development", "data");
+        if (!Directory.Exists(data)) throw new DirectoryNotFoundException("The guided installer must create the protected service data directory.");
+        var path = Path.Combine(data, "playback.db");
+        for (DirectoryInfo? parent = new(data); parent is not null; parent = parent.Parent)
+            if ((parent.Attributes & FileAttributes.ReparsePoint) != 0)
+                throw new IOException("Service journal paths cannot traverse folder links.");
+        if (File.Exists(path) && (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+            throw new IOException("The service journal cannot be a file link.");
+        return new EventJournal(path, true);
+    }
+
+    private EventJournal(string path, bool isolatedMachineService)
     {
         DatabasePath = Path.GetFullPath(path);
         var localRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadioTEDU", "OnAirNext-Dev");
-        if (!DatabasePath.StartsWith(localRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+        if (!isolatedMachineService && !DatabasePath.StartsWith(localRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("Development databases must be under the local application data directory.");
         Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath)!);
         _ownership = AcquireWriterOwnership(DatabasePath);

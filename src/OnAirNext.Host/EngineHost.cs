@@ -45,7 +45,8 @@ internal static class EngineHost
             : new NamedPipeServerStream(config.PipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
                 PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly | PipeOptions.FirstPipeInstance);
         if (serviceMode) WindowsServiceDiagnostics.Stage("journal open");
-        await using var journal = new EventJournal(Path.Combine(config.DataRoot, "playback.db"));
+        await using var journal = serviceMode ? EventJournal.OpenIsolatedWindowsService()
+            : new EventJournal(Path.Combine(config.DataRoot, "playback.db"));
         if (serviceMode) WindowsServiceDiagnostics.Stage("library and coordinator construction");
         await using var library = new StationLibrary(journal, config.Ffmpeg, config.DataRoot, config.Stations.Where(x => x.Repeat).Select(x => x.Id));
         await using var coordinator = new StationCoordinator(config.Ffmpeg, config.Stations, journal,
