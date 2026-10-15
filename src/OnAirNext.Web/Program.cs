@@ -16,6 +16,7 @@ builder.WebHost.UseUrls("http://127.0.0.1:18121");
 builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 256L * 1024 * 1024);
 builder.Services.Configure<FormOptions>(options => { options.MultipartBodyLengthLimit = 256L * 1024 * 1024; options.MemoryBufferThreshold = 65536; });
 builder.Services.AddSingleton(_ => new SetupCoordinator(dataRoot));
+using var access = new ConsoleAccess();
 var app = builder.Build();
 var csrf = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 var cookie = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
@@ -30,6 +31,15 @@ app.Use(async (context, next) =>
     context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
     context.Response.Headers["Cache-Control"] = "no-store";
+    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    if (request.Path == "/api/session" && !access.Allows(request.Headers["X-Studio-Bootstrap"].ToString()))
+    { context.Response.StatusCode=403; await context.Response.WriteAsJsonAsync(new { error="Open the installed OnAir Next shortcut to sign into this Windows operator's console." }); return; }
+    if (request.Path.StartsWithSegments("/api") && request.Path != "/api/session" && request.Path != "/api/health")
+    {
+        var supplied=request.Headers["X-Studio-Token"].ToString();
+        if(request.Cookies["studio-session"]!=cookie||supplied.Length!=csrf.Length||!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(supplied),Encoding.UTF8.GetBytes(csrf)))
+        {context.Response.StatusCode=403;await context.Response.WriteAsJsonAsync(new { error="Open the installed shortcut or reload the authorized local console." });return;}
+    }
     if (request.Method != "GET" && request.Method != "HEAD")
     {
         var origin = request.Headers["Origin"].ToString();
@@ -49,7 +59,7 @@ app.Use(async (context, next) =>
 });
 app.UseDefaultFiles(); app.UseStaticFiles();
 app.MapPost("/api/console/close", (HttpResponse response) => { response.OnCompleted(() => { app.Lifetime.StopApplication(); return Task.CompletedTask; }); return Results.Json(new { accepted=true }); });
-app.MapGet("/api/health", () => Results.Json(new { product="RadioTEDU-OnAirNext", version=System.Reflection.Assembly.GetExecutingAssembly().GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()?.InformationalVersion }));
+app.MapGet("/api/health", () => Results.Json(new { product="RadioTEDU-OnAirNext", version=access.Version, processId=Environment.ProcessId }));
 app.MapPost("/api/setup/shortcuts", () => { ConsoleShortcuts.Create(); return Results.Json(new { accepted=true }); });
 app.MapGet("/api/setup", (SetupCoordinator setup) => Results.Json(setup.Status()));
 app.MapPost("/api/setup/prepare", (SetupRequest request, SetupCoordinator setup) => { setup.Prepare(request); return Results.Json(new { accepted=true }); });

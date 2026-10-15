@@ -64,8 +64,15 @@ try{
  $shortcutPaths=$shortcutCandidates
  $webStart=[Diagnostics.ProcessStartInfo]::new((Join-Path $install 'console/OnAirNext.Web.exe'));$webStart.UseShellExecute=$false;$webStart.CreateNoWindow=$true
  $webProcess=[Diagnostics.Process]::Start($webStart);$deadline=[DateTime]::UtcNow.AddSeconds(25);$session=$null
- do{try{$session=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/session' -SessionVariable setupWebSession -TimeoutSec 2;break}catch{};Start-Sleep -Milliseconds 200}while([DateTime]::UtcNow -lt $deadline)
+ do{try{$endpointPath=Join-Path $env:LOCALAPPDATA 'RadioTEDU/OnAirNext-Dev/browser-console/access/console.json';$endpoint=Get-Content -LiteralPath $endpointPath -Raw|ConvertFrom-Json;$session=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/session' -Headers @{'X-Studio-Bootstrap'=$endpoint.Token} -SessionVariable setupWebSession -TimeoutSec 2;break}catch{};Start-Sleep -Milliseconds 200}while([DateTime]::UtcNow -lt $deadline)
  Check 'Packaged console starts without Codex or a global SDK' ([bool]$session.token)
+ $anonymousRejected=$false;try{$null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/session' -TimeoutSec 3}catch{$anonymousRejected=([int]$_.Exception.Response.StatusCode -eq 403)}
+ Check 'Anonymous loopback callers cannot obtain an operator session' $anonymousRejected
+ $browseRejected=$false;try{$null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/folders' -TimeoutSec 3}catch{$browseRejected=([int]$_.Exception.Response.StatusCode -eq 403)}
+ Check 'Read-only folder browsing requires the authorized console session' $browseRejected
+ $allowed=@([Security.Principal.WindowsIdentity]::GetCurrent().User.Value,'S-1-5-18','S-1-5-32-544');$rules=(Get-Acl -LiteralPath $endpointPath).GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])
+ Check 'Startup capability is stored without unlisted account access' (@($rules|Where-Object {$_.AccessControlType -eq 'Allow' -and $_.IdentityReference.Value -notin $allowed}).Count -eq 0)
+
  $health=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/health' -TimeoutSec 3
  Check 'Console health exposes the exact compiled build identity' ($health.product -eq 'RadioTEDU-OnAirNext' -and $health.version.EndsWith($env:GITHUB_SHA))
  $headers=@{'X-Studio-Token'=$session.token;Origin='http://127.0.0.1:18121'}

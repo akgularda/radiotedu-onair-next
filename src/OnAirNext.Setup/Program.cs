@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using OnAirNext.Installation;
+using OnAirNext.ConsoleProtocol;
 using OnAirNext.ServiceControl;
 
 if(!OperatingSystem.IsWindows())return 2;
@@ -25,6 +26,7 @@ try
     var package=Directory.GetParent(Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory))!.FullName;
     var web=Path.Combine(package,"console","OnAirNext.Web.exe");SetupPaths.RequireNoLinks(web);
     using var http=new HttpClient{Timeout=TimeSpan.FromMilliseconds(800)};
+    var consoleProcessId=0;
     async Task<bool> ReadyAsync()
     {
         try
@@ -38,7 +40,7 @@ try
             using var json=JsonDocument.Parse(bytes.AsMemory(0,count));
             if(!json.RootElement.TryGetProperty("product",out var product)||product.GetString()!="RadioTEDU-OnAirNext")throw new InvalidOperationException("Another application occupies the console port.");
             var own=Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-            if(!json.RootElement.TryGetProperty("version",out var version)||version.GetString()!=own)throw new InvalidOperationException("A different console version is open. Use Close console in its System screen, then open this package again. Broadcasts continue in the service.");return true;
+            if(!json.RootElement.TryGetProperty("version",out var version)||version.GetString()!=own)throw new InvalidOperationException("A different console version is open. Use Close console in its System screen, then open this package again. Broadcasts continue in the service.");if(!json.RootElement.TryGetProperty("processId",out var processId)||!processId.TryGetInt32(out consoleProcessId))throw new InvalidOperationException("The console process identity is unavailable.");return true;
         }
         catch(HttpRequestException){return false;}catch(OperationCanceledException){return false;}
     }
@@ -55,7 +57,12 @@ try
             if(!child.HasExited){child.Kill(entireProcessTree:true);using var cleanup=new CancellationTokenSource(TimeSpan.FromSeconds(5));await child.WaitForExitAsync(cleanup.Token);}throw;
         }
     }
-    Process.Start(new ProcessStartInfo("http://127.0.0.1:18121/"){UseShellExecute=true});return 0;
+    ConsoleEndpoint endpoint;
+    try{endpoint=await SetupPaths.ReadAsync<ConsoleEndpoint>(ConsoleEndpointLocation.Descriptor,4096);}
+    catch(Exception error)when(error is IOException or UnauthorizedAccessException){throw new InvalidOperationException("Open the console from the Windows operator account that started it.",error);}
+    var expectedVersion=Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+    if(endpoint.ProcessId!=consoleProcessId||endpoint.Version!=expectedVersion||endpoint.Token.Length!=64||!endpoint.Token.All(Uri.IsHexDigit))throw new InvalidOperationException("The operator console session changed. Open the installed shortcut again.");
+    Process.Start(new ProcessStartInfo("http://127.0.0.1:18121/#access="+endpoint.Token){UseShellExecute=true});return 0;
 }
 catch(Exception error)
 {

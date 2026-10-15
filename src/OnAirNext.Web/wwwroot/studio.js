@@ -6,6 +6,8 @@
   try { const saved=JSON.parse(localStorage.getItem('studio-pending-commands')??'[]');if(Array.isArray(saved))state.pending=saved.filter(p=>typeof p.engine==='string'&&p.request?.Id&&p.request?.StationId).slice(0,32); } catch { }
   const pending = () => state.pending.find(p=>p.engine===state.engine&&p.request.StationId===state.station);
   const savePending = () => {try{localStorage.setItem('studio-pending-commands',JSON.stringify(state.pending));}catch{}};
+  let bootstrap='';
+  try{const fragment=new URLSearchParams(location.hash.slice(1));const supplied=fragment.get('access');if(supplied&&/^[0-9A-Fa-f]{64}$/.test(supplied)){sessionStorage.setItem('studio-bootstrap',supplied);history.replaceState(null,'',location.pathname+location.search);}bootstrap=sessionStorage.getItem('studio-bootstrap')??'';}catch{}
   const names = {air:'On Air',library:'Library',system:'System'};
   const clock = new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Istanbul',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
   const text = (id,value) => { $(id).textContent = value; };
@@ -18,7 +20,7 @@
   const duration = seconds => {if(!Number.isFinite(seconds)||seconds<0)return'--:--';const s=Math.floor(seconds);return s>=3600?`${Math.floor(s/3600)}:${String(Math.floor(s/60)%60).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`:`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;};
 
   async function api(path,{method='GET',body,timeout=5000}={}) {
-    const headers={};if(method!=='GET')headers['X-Studio-Token']=state.session?.token??'';
+    const headers={'X-Studio-Token':state.session?.token??''};if(path==='/api/session'&&bootstrap)headers['X-Studio-Bootstrap']=bootstrap;
     if(body && !(body instanceof FormData)) {headers['Content-Type']='application/json';body=JSON.stringify(body);}
     const response=await fetch(path,{method,headers,body,signal:AbortSignal.timeout(timeout),credentials:'same-origin'});
     const data=await response.json();if(!response.ok){const error=new Error(data.error??`Request failed (${response.status})`);error.status=response.status;throw error;}return data;
