@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http.Features;
 using OnAirNext.Web;
+using OnAirNext.UploadProtocol;
 
 var dataRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadioTEDU", "OnAirNext-Dev", "browser-console");
 Directory.CreateDirectory(Path.Combine(dataRoot, "http-temp"));
@@ -82,12 +83,18 @@ app.MapGet("/api/folders", (string? path) =>
     if (children.Length > 2000) throw new ArgumentException("This folder has more than 2,000 subfolders. Choose a smaller music location.");
     return Results.Json(new { path = directory.FullName, parent = directory.Parent?.FullName, folders = children.Select(d => new FolderChoice(d.Name, d.FullName)) });
 });
+app.MapPost("/api/upload-cancel", async (UploadCancellation request, CancellationToken token) =>
+{
+    if (!await uploads.WaitAsync(0, token)) return Results.Json(new { error = "A transfer is in progress. Wait for it to finish before cancelling." }, statusCode: 429);
+    try { await UploadRpc.SendAsync(request.Engine, new("cancel", request.Id, request.Station), null, token); return Results.Json(new { accepted=true }); }
+    finally { uploads.Release(); }
+});
 app.MapPost("/api/import", async (HttpRequest request, CancellationToken token) =>
 {
     if (!await uploads.WaitAsync(0, token)) return Results.Json(new { error = "Another upload is in progress. Wait for it to finish." }, statusCode: 429);
     try
     {
-        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token); deadline.CancelAfter(TimeSpan.FromMinutes(5));
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token); deadline.CancelAfter(TimeSpan.FromMinutes(10));
         var form = await request.ReadFormAsync(deadline.Token);
         var engine = form["engine"].ToString(); var station = form["station"].ToString(); var command = form["commandId"].ToString();
         if (!EngineRpc.IsIsolated(engine) || !Guid.TryParse(command, out var id) || station.Length is < 1 or > 100 || form.Files.Count is < 1 or > 64)
@@ -101,32 +108,22 @@ app.MapPost("/api/import", async (HttpRequest request, CancellationToken token) 
         if (total > 240L * 1024 * 1024) throw new ArgumentException("Use batches smaller than 240 MiB.");
         if (new DriveInfo(Path.GetPathRoot(dataRoot)!).AvailableFreeSpace < total + 2L * 1024 * 1024 * 1024)
             throw new IOException("The upload drive needs at least 2 GiB of free space after this batch.");
-        var staging = Path.Combine(dataRoot, "uploads", id.ToString("N")); Directory.CreateDirectory(staging);
-        var paths = new List<string>();
-        for (var i = 0; i < form.Files.Count; i++)
+        var batch=id.ToString("N");
+        var manifest=new List<UploadFileSpec>();
+        foreach(var file in form.Files)
         {
-            var file = form.Files[i]; var name = Path.GetFileName(file.FileName);
-            if (name.Length > 160 || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) throw new ArgumentException("An audio filename is too long or invalid.");
-            var destination = Path.Combine(staging, i.ToString("D2") + "-" + name);
-            var temporary = Path.Combine(staging, Guid.NewGuid().ToString("N") + ".partial");
-            try
-            {
-                await using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 65536, true))
-                { await file.CopyToAsync(output, deadline.Token); await output.FlushAsync(deadline.Token); output.Flush(flushToDisk: true); }
-                if (File.Exists(destination))
-                {
-                    await using var old = File.OpenRead(destination); await using var added = File.OpenRead(temporary);
-                    var oldHash = await SHA256.HashDataAsync(old, deadline.Token);
-                    var addedHash = await SHA256.HashDataAsync(added, deadline.Token);
-                    if (!CryptographicOperations.FixedTimeEquals(oldHash, addedHash))
-                        throw new ArgumentException("This upload ID already belongs to different audio. Start a new import.");
-                }
-                else File.Move(temporary, destination);
-                paths.Add(destination);
-            }
-            finally { if (File.Exists(temporary)) File.Delete(temporary); }
+            await using var input=file.OpenReadStream();
+            manifest.Add(new(file.FileName,file.Length,Convert.ToHexString(await SHA256.HashDataAsync(input,deadline.Token))));
         }
-        return Results.Json(await EngineRpc.SendAsync(engine, new { Id = command, Action = "library-import", StationId = station, Paths = paths }, deadline.Token));
+        var registered=await UploadRpc.SendAsync(engine,new("begin",batch,station,manifest.ToArray()),null,deadline.Token);
+        if(registered.State=="Receiving")
+            for(var i=0;i<form.Files.Count;i++)
+            {
+                await using var input=form.Files[i].OpenReadStream();
+                await UploadRpc.SendAsync(engine,new("put",batch,station,Index:i),input,deadline.Token);
+            }
+        await UploadRpc.SendAsync(engine,new("commit",batch,station),null,deadline.Token);
+        return Results.Json(new { accepted=true });
     }
     finally { uploads.Release(); }
 });
@@ -134,3 +131,5 @@ await app.RunAsync();
 
 internal sealed record ConsoleCommand(string Engine, JsonElement Request);
 internal sealed record FolderChoice(string Name, string Path);
+
+internal sealed record UploadCancellation(string Engine,string Station,string Id);

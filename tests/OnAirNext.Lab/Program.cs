@@ -5,6 +5,7 @@ using System.IO.Pipes;
 using OnAirNext.Engine;
 using OnAirNext.Lab;
 
+if (args.Length == 1 && args[0] == "--service-upload-probe") return await UploadProbe.RunAsync();
 if (args.Length == 2 && args[0] == "--service-source-probe") return await ServiceProbe.SourceAsync(args[1]);
 if (args.Length == 2 && args[0] == "--service-probe") return await ServiceProbe.CommandAsync(args[1]);
 if (args.Length == 2 && args[0] == "--service-child" && args[1] == "leaf") return await ServiceProbe.OwnedChildFixtureAsync(true);

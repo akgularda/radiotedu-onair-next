@@ -31,7 +31,7 @@ internal sealed class ServicePipePolicy
     }
     public NamedPipeServerStream CreateServer(string name = ServiceEndpoint.Pipe)
     {
-        if (!ServiceEndpoint.IsIsolated(name)) throw new ArgumentException("Use an isolated development pipe.");
+        if (!ServiceEndpoint.IsAllowedPipe(name)) throw new ArgumentException("Use an isolated development pipe.");
         return NamedPipeServerStreamAcl.Create(name, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
             PipeOptions.Asynchronous | PipeOptions.FirstPipeInstance, 65536, 65536, Security());
     }

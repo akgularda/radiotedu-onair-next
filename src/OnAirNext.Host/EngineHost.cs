@@ -29,7 +29,7 @@ internal static class EngineHost
             if (config.PipeName != ServiceEndpoint.Pipe) throw new ArgumentException("Use the reserved development service pipe.");
             ServiceFileProtection.ValidateSettings(config.DataRoot, config.Ffmpeg);
         }
-        else if (config.PipeName == ServiceEndpoint.Pipe) throw new ArgumentException("The reserved pipe belongs to the Windows service only.");
+        else if (ServiceEndpoint.IsReserved(config.PipeName) || config.PipeName.EndsWith("-files", StringComparison.Ordinal)) throw new ArgumentException("The reserved pipe belongs to the Windows service only.");
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(externalStop);
         if (serviceMode) WindowsServiceDiagnostics.Stage("pipe policy");
         ServicePipePolicy? servicePolicy = null;
@@ -72,6 +72,9 @@ internal static class EngineHost
             await library.InitializeAsync();
             if (serviceMode) WindowsServiceDiagnostics.Stage("coordinator initialization");
             await coordinator.InitializeAsync();
+            var inbox = new UploadInbox(journal, library);
+            await inbox.InitializeAsync();
+            await using var fileServer = new UploadPipeServer(config.PipeName, serviceMode, servicePolicy, inbox, stop.Token);
             if (serviceMode) WindowsServiceDiagnostics.Stage("controller ready");
             ready();
             Console.WriteLine(JsonSerializer.Serialize(new { state = "controller-ready", config.PipeName, stations = config.Stations.Count, loopbackOnly = true, mode = serviceMode ? "windows-service" : "developer" }));
@@ -108,7 +111,7 @@ internal static class EngineHost
                                 result = "{\"accepted\":true}"; break;
                             case "library-status" when request.StationId is { } libraryStation:
                                 var libraryPage = library.Page(libraryStation, request.Query ?? "", request.Offset);
-                                result = JsonSerializer.Serialize(new { page = libraryPage, worker = library.Status(libraryStation), canImportFiles = library.CanImportFiles(libraryPage.Root) });
+                                result = JsonSerializer.Serialize(new { page = libraryPage, worker = library.Status(libraryStation), canImportFiles = library.CanImportFiles(libraryPage.Root), uploads = inbox.Snapshot(libraryStation), uploadError = fileServer.Error });
                                 break;
                             case "library-managed" when request.StationId is { } managedStation:
                                 await library.UseManagedRootAsync(managedStation, request.Id);
@@ -123,6 +126,7 @@ internal static class EngineHost
                                     ? () => sourceChecks.RequireReady(rootStation, rootPath, request.SourceCheckId) : null);
                                 result = "{\"accepted\":true}"; break;
                             case "library-import" when request.StationId is { } importStation && request.Paths is { } importPaths:
+                                if (serviceMode) throw new InvalidOperationException("Use the Library file transfer controls to import into the service.");
                                 await library.ImportAsync(importStation, importPaths, request.Id);
                                 result = "{\"accepted\":true}"; break;
                             case "library-rescan" when request.StationId is { } rescanStation:

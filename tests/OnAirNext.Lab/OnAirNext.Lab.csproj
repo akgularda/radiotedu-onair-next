@@ -2,6 +2,8 @@
   <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
   <ItemGroup><ProjectReference Include="../../src/OnAirNext.Engine/OnAirNext.Engine.csproj" /></ItemGroup>
   <ItemGroup>
+    <Compile Include="../../src/OnAirNext.Web/EngineRpc.cs" Link="Protocol/EngineRpc.cs" />
+    <Compile Include="../../src/OnAirNext.Web/UploadRpc.cs" Link="Protocol/UploadRpc.cs" />
     <Compile Include="../../src/OnAirNext.Host/ServiceEndpoint.cs" Link="ServiceControl/ServiceEndpoint.cs" />
     <Compile Include="../../src/OnAirNext.Host/ServicePipeClient.cs" Link="ServiceControl/ServicePipeClient.cs" />
   </ItemGroup>

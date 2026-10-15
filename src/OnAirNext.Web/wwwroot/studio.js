@@ -2,7 +2,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const roster = [{id:'1',name:'Classic'},{id:'2',name:'Lofi'},{id:'4',name:'Radio'},{id:'5',name:'Cazz'},{id:'8',name:'Rock'},{id:'9',name:'Energize'},{id:'10',name:'Situation'},{id:'11',name:'Main Character'}];
-  const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null,folderTarget:null,folderSource:null,editTarget:null,assetStateTarget:null,controller:null};
+  const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null,folderTarget:null,folderSource:null,editTarget:null,assetStateTarget:null,controller:null,upload:null,uploadSelection:null};
   try { const saved=JSON.parse(localStorage.getItem('studio-pending-commands')??'[]');if(Array.isArray(saved))state.pending=saved.filter(p=>typeof p.engine==='string'&&p.request?.Id&&p.request?.StationId).slice(0,32); } catch { }
   const pending = () => state.pending.find(p=>p.engine===state.engine&&p.request.StationId===state.station);
   const savePending = () => {try{localStorage.setItem('studio-pending-commands',JSON.stringify(state.pending));}catch{}};
@@ -69,7 +69,7 @@
     $('retry-command').hidden=!pending();$('retry-command').disabled=!connected||state.busy;
     libraryControls();
   }
-  function libraryControls(){const enabled=fresh()&&!state.busy&&!pending();$('choose-folder').disabled=!enabled;$('add-files').disabled=!enabled||!state.library?.canImportFiles;$('managed-folder').disabled=!enabled;$('rescan').disabled=!enabled||!state.library?.page?.Root;$('library-prev').disabled=!fresh()||state.offset===0;$('library-next').disabled=!fresh()||state.library?.page?.Items?.length!==50;document.querySelectorAll('.asset-action').forEach(button=>button.disabled=!enabled);assetDialogControls();folderControls();}
+  function libraryControls(){const enabled=fresh()&&!state.busy&&!pending();$('choose-folder').disabled=!enabled;$('add-files').disabled=!enabled||!state.library?.canImportFiles;$('managed-folder').disabled=!enabled;$('rescan').disabled=!enabled||!state.library?.page?.Root;$('library-prev').disabled=!fresh()||state.offset===0;$('library-next').disabled=!fresh()||state.library?.page?.Items?.length!==50;document.querySelectorAll('.transfer-action').forEach(button=>button.disabled=!enabled);document.querySelectorAll('.asset-action').forEach(button=>button.disabled=!enabled);assetDialogControls();folderControls();}
   async function discover(){
     try{const result=await api('/api/engines');const options=result.engines??[];$('engine-select').replaceChildren(...(options.length?options.map(name=>{const option=element('option','',name);option.value=name;return option;}):[element('option','','No engines available')]));$('engine-select').disabled=!options.length;$('connect-engine').disabled=!options.length;text('engine-discovery',options.length?`${options.length} isolated engine${options.length===1?'':'s'} found on this computer.`:result.preview?'Visual preview. No broadcasting engine is connected.':'No isolated engine is running. The service setup workflow is still being built.');}
     catch(error){text('engine-discovery','Engine discovery unavailable: '+error.message);}
@@ -149,14 +149,57 @@
   async function loadLibrary(){
     if(!fresh())return;const engine=state.engine,station=state.station,query=state.query,offset=state.offset;
     try{const result=await api('/api/library?'+new URLSearchParams({engine,station,query,offset:String(offset)}));if(engine!==state.engine||station!==state.station||query!==state.query||offset!==state.offset)return;state.library=result;const page=result.page,root=page.Root;text('folder-name',root?'Live music folder':'No folder assigned');text('folder-path',root?.Path??'Add files to create a managed folder, or choose an existing live folder.');$('folder-path').title=root?.Path??'';text('folder-state',result.worker?.State??'Unknown');text('library-count',`${page.Ready??0} validated · ${page.Retired??0} removed · ${page.Total??0} indexed`);text('library-page',page.Items?.length?`${offset+1}–${offset+page.Items.length}`:'0');$('managed-folder').hidden=result.canImportFiles||!root;
-      const rows=(page.Items??[]).map(asset=>{const row=element('tr');row.title=asset.Error??'';const item=element('td');item.append(icon('music'));const title=element('td');title.append(element('span','asset-title',asset.Title),element('span','asset-artist',asset.Artist||'Unknown artist'));const file=element('td','quiet',asset.RelativePath);file.title=asset.RelativePath;const status=element('td');status.append(element('span','asset-state '+asset.State.toLowerCase(),asset.State));const actions=element('td');const group=element('div','asset-actions');const edit=element('button','button asset-action','Edit');edit.setAttribute('aria-label','Edit metadata for '+asset.Title);edit.addEventListener('click',()=>openAssetEditor(asset));const toggle=element('button','button asset-action',asset.State==='Retired'?'Restore':'Remove');toggle.setAttribute('aria-label',(asset.State==='Retired'?'Restore ':'Remove from rotation: ')+asset.Title);toggle.addEventListener('click',()=>openAssetState(asset));group.append(edit,toggle);actions.append(group);row.append(item,title,file,status,element('td','align-right mono',duration(asset.Seconds)),actions);return row;});$('library-rows').replaceChildren(...(rows.length?rows:[emptyLibrary()]));text('library-progress',[result.worker?.State,result.worker?.Error,page.Import?`Latest import: ${page.Import.State}`:null,page.Import?.Error].filter(Boolean).join(' · '));libraryControls();
+      const rows=(page.Items??[]).map(asset=>{const row=element('tr');row.title=asset.Error??'';const item=element('td');item.append(icon('music'));const title=element('td');title.append(element('span','asset-title',asset.Title),element('span','asset-artist',asset.Artist||'Unknown artist'));const file=element('td','quiet',asset.RelativePath);file.title=asset.RelativePath;const status=element('td');status.append(element('span','asset-state '+asset.State.toLowerCase(),asset.State));const actions=element('td');const group=element('div','asset-actions');const edit=element('button','button asset-action','Edit');edit.setAttribute('aria-label','Edit metadata for '+asset.Title);edit.addEventListener('click',()=>openAssetEditor(asset));const toggle=element('button','button asset-action',asset.State==='Retired'?'Restore':'Remove');toggle.setAttribute('aria-label',(asset.State==='Retired'?'Restore ':'Remove from rotation: ')+asset.Title);toggle.addEventListener('click',()=>openAssetState(asset));group.append(edit,toggle);actions.append(group);row.append(item,title,file,status,element('td','align-right mono',duration(asset.Seconds)),actions);return row;});$('library-rows').replaceChildren(...(rows.length?rows:[emptyLibrary()]));text('library-progress',[result.worker?.State,result.worker?.Error,page.Import?`Latest import: ${page.Import.State}`:null,page.Import?.Error].filter(Boolean).join(' · '));renderUploads();libraryControls();
     }catch(error){text('library-progress','Library unavailable: '+error.message);}
   }
   let searchTimer; $('library-search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{state.query=$('library-search').value.trim();state.offset=0;void loadLibrary();},250);});
   $('library-prev').addEventListener('click',()=>{state.offset=Math.max(0,state.offset-50);void loadLibrary();});$('library-next').addEventListener('click',()=>{state.offset+=50;void loadLibrary();});
   $('rescan').addEventListener('click',()=>void command('library-rescan'));$('managed-folder').addEventListener('click',()=>void command('library-managed'));
-  $('add-files').addEventListener('click',()=>$('music-files').click());
-  $('music-files').addEventListener('change',async()=>{const files=Array.from($('music-files').files??[]);if(!files.length)return;if(files.length>64){message('Choose up to 64 files per import.');return;}const station=state.station,engine=state.engine;const data=new FormData();data.append('engine',engine);data.append('station',station);data.append('commandId',crypto.randomUUID());files.forEach(file=>data.append('files',file));state.busy=true;libraryControls();message(`Uploading ${files.length} file(s)…`);try{const result=await api('/api/import',{method:'POST',body:data,timeout:310000});if(!result.accepted)throw new Error(result.error??'Import was not accepted');message('Import accepted. Validation progress appears in Library.');await loadLibrary();}catch(error){message('Import not confirmed: '+error.message);}finally{state.busy=false;$('music-files').value='';libraryControls();}});
+  function renderUploads(){
+    const rows=[...(state.library?.uploads??[])];
+    const local=state.upload;
+    if(local&&local.engine===state.engine&&local.station===state.station&&!rows.some(row=>row.Id===local.id))
+      rows.unshift({Id:local.id,State:'Not confirmed',FileCount:local.files.length,ReceivedFiles:0,TotalBytes:local.files.reduce((sum,file)=>sum+file.size,0)});
+    $('upload-panel').hidden=!rows.length&&!state.library?.uploadError;
+    const nodes=rows.map(row=>{
+      const item=element('div','transfer-row'),details=element('div','transfer-details');
+      details.append(element('strong','',row.State+' · '+row.ReceivedFiles+'/'+row.FileCount+' files retained'),element('span','quiet',row.Id.slice(0,8)+' · '+(row.TotalBytes/1048576).toFixed(1)+' MiB'));
+      const actions=element('div','asset-actions');
+      if(row.State==='Receiving'||row.State==='Not confirmed'){
+        const retry=element('button','button transfer-action',local?.id===row.Id?'Retry transfer':'Select files to resume');
+        retry.addEventListener('click',()=>{if(state.busy||!fresh())return;if(local?.id===row.Id)void sendUpload(local);else{state.uploadSelection={id:row.Id,engine:state.engine,station:state.station};$('music-files').click();}});actions.append(retry);
+      }
+      if(row.State!=='Pending'){
+        const cancel=element('button','button transfer-action','Discard retained copies');
+        cancel.addEventListener('click',()=>void cancelUpload(row.Id));actions.append(cancel);
+      }
+      item.append(details,actions);return item;
+    });
+    if(state.library?.uploadError)nodes.unshift(element('p','transfer-error',state.library.uploadError));
+    $('upload-list').replaceChildren(...nodes);
+  }
+  async function cancelUpload(id){
+    if(state.busy||!fresh())return;const engine=state.engine,station=state.station;state.busy=true;libraryControls();
+    try{await api('/api/upload-cancel',{method:'POST',body:{Engine:engine,Station:station,Id:id},timeout:125000});if(state.upload?.id===id)state.upload=null;message('Retained transfer copies discarded. Library imports and original files stay unchanged.');}
+    catch(error){message('Discard not confirmed. Refresh Library and retry: '+error.message);}
+    finally{state.busy=false;await loadLibrary();libraryControls();}
+  }
+  async function sendUpload(target){
+    if(state.busy||!fresh()||target.engine!==state.engine||target.station!==state.station)return;
+    const data=new FormData();data.append('engine',target.engine);data.append('station',target.station);data.append('commandId',target.id);target.files.forEach(file=>data.append('files',file));
+    state.busy=true;state.upload=target;renderUploads();libraryControls();message('Transferring '+target.files.length+' file(s) to '+stationName(target.station)+'…');
+    try{const result=await api('/api/import',{method:'POST',body:data,timeout:610000});if(!result.accepted)throw new Error(result.error??'Import was not accepted');state.upload=null;message('Transfer saved. Audio validation must finish before files join rotation.');}
+    catch(error){message('Transfer not confirmed. Retry the same files or discard retained copies in Library. '+error.message);}
+    finally{state.busy=false;$('music-files').value='';await loadLibrary();renderUploads();libraryControls();}
+  }
+  $('add-files').addEventListener('click',()=>{state.uploadSelection=null;$('music-files').click();});
+  $('music-files').addEventListener('change',()=>{
+    const files=Array.from($('music-files').files??[]);if(!files.length)return;
+    if(files.length>64||files.some(file=>!file.size)||files.reduce((sum,file)=>sum+file.size,0)>240*1048576){message('Choose 1–64 non-empty audio files, up to 240 MiB per batch.');$('music-files').value='';return;}
+    const target=state.uploadSelection??{id:crypto.randomUUID(),engine:state.engine,station:state.station};state.uploadSelection=null;
+    if(target.engine!==state.engine||target.station!==state.station){message('Channel changed. Select the files again.');return;}
+    void sendUpload({...target,files});
+  });
   function folderContext(){const target=state.folderTarget;return !!target&&target.station===state.station&&target.engine===state.engine;}
   function folderControls(){
     if(!$('folder-dialog').open)return;

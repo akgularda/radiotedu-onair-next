@@ -108,6 +108,17 @@ try{
  $deniedRequest=SourceProbe 'denied';$deniedResult=SourceReady $deniedRequest.check.Id
  Check 'Operator-visible folder denied to LocalService is reported unavailable' ($deniedResult.State -eq 'Unavailable' -and $deniedResult.Result.IdentitySid -eq 'S-1-5-19')
 
+ [IO.File]::WriteAllText((Join-Path $deniedSource 'selected.wav'),'operator-owned upload fixture; not decoded audio')
+ $aclBefore=(Get-Acl -LiteralPath $deniedSource).Sddl
+ $uploadOutput=& $labExe --service-upload-probe 2>&1
+ if($LASTEXITCODE -ne 0){throw ('Service upload probe failed: '+($uploadOutput -join ' '))}
+ $upload=($uploadOutput -join [Environment]::NewLine)|ConvertFrom-Json
+ Check 'Authenticated file transport crosses the LocalService boundary with matching SHA-256' $upload.verified
+ Check 'Retry reuses one retained file rather than duplicating it' $upload.retained
+ Check 'Service rejects browser-operator filesystem import paths' $upload.rawPathsRejected
+ Check 'Discard removes staged copies and preserves operator originals' ($upload.discarded -and $upload.preserved)
+ Check 'Cross-account transfer does not broaden source folder permissions' ((Get-Acl -LiteralPath $deniedSource).Sddl -eq $aclBefore)
+
  Check 'Start intent is durably acknowledged' ((Probe 'start-station').accepted -eq $true)
  $null=Ready $true;$oldChildren=Children
  Stop-Service -Name $serviceName;Stopped

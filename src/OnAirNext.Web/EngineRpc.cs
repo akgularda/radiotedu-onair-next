@@ -9,7 +9,7 @@ namespace OnAirNext.Web;
 internal static class EngineRpc
 {
     public static bool IsIsolated(string? name) => name is not null && name.StartsWith("onair-next-dev-", StringComparison.Ordinal)
-        && name.Length <= 100 && name.All(c => char.IsAsciiLetterOrDigit(c) || c == '-');
+        && !name.EndsWith("-files", StringComparison.Ordinal) && name.Length <= 100 && name.All(c => char.IsAsciiLetterOrDigit(c) || c == '-');
     public static string[] Discover() => Directory.GetFiles(@"\\.\pipe\").Select(Path.GetFileName)
         .OfType<string>().Where(IsIsolated).Order(StringComparer.Ordinal).ToArray();
 

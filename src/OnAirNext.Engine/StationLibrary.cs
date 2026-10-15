@@ -58,10 +58,10 @@ public sealed class StationLibrary : IAsyncDisposable
         if (await _journal.SetLibraryRootAsync(station, root, command, authorizeNewAssignment))
         { lock (_publication) { _playback[station] = new(true, [], Interlocked.Increment(ref _version)); Changed?.Invoke(station, false); } Wake(); }
     }
-    public async Task ImportAsync(string station, string[] paths, string command)
+    public async Task ImportAsync(string station, string[] paths, string command, bool uploaded = false)
     {
         RequireStation(station);
-        if (await _journal.QueueLibraryImportAsync(station, paths, ManagedRoot(station), command)) Wake();
+        if (await _journal.QueueLibraryImportAsync(station, paths, ManagedRoot(station), command, uploaded)) Wake();
     }
     public Task UseManagedRootAsync(string station, string command) => SetRootAsync(station, ManagedRoot(station), command);
     private string ManagedRoot(string station) => Path.Combine(_dataRoot, "music", Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(station)))[..16]);

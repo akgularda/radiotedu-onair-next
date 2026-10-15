@@ -11,10 +11,10 @@ internal static class ServicePipeClient
 {
     public static NamedPipeClientStream Create(string name)
     {
-        if (!ServiceEndpoint.IsIsolated(name)) throw new ArgumentException("Use an isolated development engine.");
+        if (!ServiceEndpoint.IsAllowedPipe(name)) throw new ArgumentException("Use an isolated development engine.");
         if (OperatingSystem.IsWindows())
         {
-            if (name == ServiceEndpoint.Pipe)
+            if (ServiceEndpoint.IsReserved(name))
                 return new NamedPipeClientStream(".", name, PipeAccessRights.ReadWrite | PipeAccessRights.Synchronize,
                     PipeOptions.Asynchronous, TokenImpersonationLevel.Identification, HandleInheritability.None);
             return new NamedPipeClientStream(".", name, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly,
@@ -24,7 +24,7 @@ internal static class ServicePipeClient
     }
     public static void AuthenticateServer(NamedPipeClientStream pipe, string name)
     {
-        if (name != ServiceEndpoint.Pipe) return;
+        if (!ServiceEndpoint.IsReserved(name)) return;
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("The Windows service is available on Windows only.");
         VerifyWindowsServer(pipe);
     }

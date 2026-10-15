@@ -30,6 +30,7 @@ public sealed partial class EventJournal
             INSERT OR IGNORE INTO library_asset_edits(station_id,revision,id,retired,version)
               SELECT station_id,revision,id,1,1 FROM library_assets WHERE state='Retired';
             UPDATE library_assets SET state='Invalid',modified_ticks=-1,error='Restored catalog requires validation.' WHERE state='Retired';
+            CREATE TABLE IF NOT EXISTS library_uploads(id TEXT PRIMARY KEY,station_id TEXT NOT NULL,revision INTEGER NOT NULL,payload TEXT NOT NULL,state TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS library_imports(id TEXT PRIMARY KEY,station_id TEXT NOT NULL,revision INTEGER NOT NULL,
               payload TEXT NOT NULL,state TEXT NOT NULL,error TEXT,created_utc TEXT NOT NULL);
             """;
@@ -57,7 +58,7 @@ public sealed partial class EventJournal
         });
     }
 
-    public Task<bool> QueueLibraryImportAsync(string station, IReadOnlyList<string> paths, string defaultRoot, string id)
+    public Task<bool> QueueLibraryImportAsync(string station, IReadOnlyList<string> paths, string defaultRoot, string id, bool uploaded = false)
     {
         if (paths.Count is < 1 or > 64) throw new ArgumentException("Choose between 1 and 64 files per import.");
         var normalized = paths.Select(NormalizeLibraryPath).ToArray();
@@ -67,6 +68,12 @@ public sealed partial class EventJournal
         {
             if (ReadDesired(c, t, station) is null) throw new ArgumentException("Unknown station.");
             if (!AdmitControl(c, t, station, "library-import", payload, id)) return false;
+            if (uploaded)
+            {
+                var batch = ReadUpload(c,t,id) ?? throw new InvalidOperationException("Upload is unavailable.");
+                if (batch.StationId != station || batch.State != "Receiving" || (ReadLibraryRoot(c,t,station)?.Revision ?? 0) != batch.Revision)
+                    throw new InvalidOperationException("The upload or live folder changed. Start a new import for the current folder.");
+            }
             using (var queued = LibraryCommand(c, t, "SELECT COUNT(*) FROM library_imports WHERE state='Pending'"))
                 if (Convert.ToInt64(queued.ExecuteScalar(), CultureInfo.InvariantCulture) >= 16)
                     throw new InvalidOperationException("The import queue is full. Wait for an import to finish before adding another batch.");
@@ -76,7 +83,9 @@ public sealed partial class EventJournal
             using var job = LibraryCommand(c, t, "INSERT INTO library_imports VALUES($id,$station,$revision,$payload,'Pending',NULL,$at)",
                 ("$id", id), ("$station", station), ("$revision", current.Revision), ("$payload", payload),
                 ("$at", DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture)));
-            job.ExecuteNonQuery(); return true;
+            job.ExecuteNonQuery();
+            if (uploaded) { using var mark = LibraryCommand(c,t,"UPDATE library_uploads SET state='Queued' WHERE id=$id",("$id",id));mark.ExecuteNonQuery(); }
+            return true;
         });
     }
 

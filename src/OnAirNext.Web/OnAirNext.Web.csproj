@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
     <Content Update="wwwroot/**" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="../OnAirNext.Engine/UploadProtocol.cs" Link="Protocol/UploadProtocol.cs" />
     <Compile Include="../OnAirNext.Engine/PipeFrames.cs" Link="Protocol/PipeFrames.cs" />
     <Compile Include="../OnAirNext.Engine/LocalMediaPath.cs" Link="Protocol/LocalMediaPath.cs" />
   </ItemGroup>
