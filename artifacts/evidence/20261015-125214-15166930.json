@@ -1,0 +1,25 @@
+{
+  "SchemaVersion": 1,
+  "CreatedAtUtc": "2026-10-15T12:52:27.0129996+00:00",
+  "Machine": "ARDA",
+  "OS": "Microsoft Windows 10.0.29683",
+  "Runtime": ".NET 10.0.13",
+  "Icecast": "2.5.0",
+  "TestProfiles": [
+    "AAC-LC 192 kbps",
+    "Ogg FLAC"
+  ],
+  "HeAacTested": false,
+  "Source": "New independent implementation; no production configuration or services accessed.",
+  "Results": [
+    {
+      "Name": "baseline",
+      "Passed": false,
+      "DurationSeconds": 12.8743126,
+      "Checks": [],
+      "Details": {},
+      "Error": "System.TimeoutException: Both source sessions must connect.\r\n   at Program.\u003C\u003CMain\u003E$\u003Eg__WaitAsync|0_3(Func\u00601 condition, String description, Int32 seconds) in G:\\My Drive\\Life OS\\Work\\RadioTEDU\\Projects\\RadioTEDU OnAIr\\RadioTEDU-OnAir-Next\\tests\\OnAirNext.Lab\\Program.cs:line 57\r\n   at Program.\u003C\u003Ec__DisplayClass0_0.\u003C\u003C\u003CMain\u003E$\u003Eg__BaselineAsync|7\u003Ed.MoveNext() in G:\\My Drive\\Life OS\\Work\\RadioTEDU\\Projects\\RadioTEDU OnAIr\\RadioTEDU-OnAir-Next\\tests\\OnAirNext.Lab\\Program.cs:line 122\r\n--- End of stack trace from previous location ---\r\n   at Program.\u003C\u003Ec__DisplayClass0_0.\u003C\u003C\u003CMain\u003E$\u003Eg__BaselineAsync|7\u003Ed.MoveNext() in G:\\My Drive\\Life OS\\Work\\RadioTEDU\\Projects\\RadioTEDU OnAIr\\RadioTEDU-OnAir-Next\\tests\\OnAirNext.Lab\\Program.cs:line 132\r\n--- End of stack trace from previous location ---\r\n   at Program.\u003C\u003Ec__DisplayClass0_0.\u003C\u003C\u003CMain\u003E$\u003Eg__BaselineAsync|7\u003Ed.MoveNext() in G:\\My Drive\\Life OS\\Work\\RadioTEDU\\Projects\\RadioTEDU OnAIr\\RadioTEDU-OnAir-Next\\tests\\OnAirNext.Lab\\Program.cs:line 133\r\n--- End of stack trace from previous location ---\r\n   at Program.\u003C\u003Ec__DisplayClass0_0.\u003C\u003C\u003CMain\u003E$\u003Eg__BaselineAsync|7\u003Ed.MoveNext() in G:\\My Drive\\Life OS\\Work\\RadioTEDU\\Projects\\RadioTEDU OnAIr\\RadioTEDU-OnAir-Next\\tests\\OnAirNext.Lab\\Program.cs:line 134\r\n--- End of stack trace from previous location ---\r\n   at Program.\u003CMain\u003E$(String[] args) in G:\\My Drive\\Life OS\\Work\\RadioTEDU\\Projects\\RadioTEDU OnAIr\\RadioTEDU-OnAir-Next\\tests\\OnAirNext.Lab\\Program.cs:line 28"
+    }
+  ],
+  "RemainingOwnedChildren": {}
+}

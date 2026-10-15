@@ -1,0 +1,19 @@
+{
+  "SchemaVersion": 1,
+  "Date": "2026-10-15",
+  "ActiveAccount": "akgularda",
+  "UnitTestsPassed": 24,
+  "IntegrationScenariosPassed": 8,
+  "FullSuiteAssertionsPassed": 211,
+  "FullSuiteRun": "20261015-130801-81b2f895",
+  "FleetObservationSeconds": 60,
+  "FleetRun": "20261015-130523-0430752b",
+  "ReportUploadVerified": true,
+  "IdenticalReportUploadKeptSameCommit": true,
+  "ReferenceFilesVerified": 852,
+  "ReferenceChanged": false,
+  "ProductionDestinationsAllowed": false,
+  "ProductionInstallationModified": false,
+  "SourceRepository": "https://github.com/akgularda/radiotedu-onair-next",
+  "ReportRepository": "https://github.com/akgularda/radiotedu-broadcast-reports"
+}

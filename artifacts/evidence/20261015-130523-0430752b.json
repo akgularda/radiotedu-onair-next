@@ -1,0 +1,1579 @@
+{
+  "SchemaVersion": 1,
+  "CreatedAtUtc": "2026-10-15T13:06:29.4767791+00:00",
+  "Machine": "ARDA",
+  "OS": "Microsoft Windows 10.0.29683",
+  "Runtime": ".NET 10.0.13",
+  "Icecast": "2.5.0",
+  "TestProfiles": [
+    "AAC-LC 192 kbps",
+    "Ogg FLAC"
+  ],
+  "HeAacTested": false,
+  "Source": "New independent implementation; no production configuration or services accessed.",
+  "Results": [
+    {
+      "Name": "soak",
+      "Passed": true,
+      "DurationSeconds": 65.8269092,
+      "Checks": [
+        {
+          "Description": "All eight station programs remain active.",
+          "Passed": true
+        },
+        {
+          "Description": "All sixteen healthy outputs retain one encoder/session with zero PCM drops.",
+          "Passed": true
+        },
+        {
+          "Description": "Concurrent station histories remain writable.",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-fleet-1-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 55 seconds on /next-fleet-1-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-fleet-1-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-fleet-1-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-fleet-1-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-fleet-1-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 55 seconds on /next-fleet-1-flac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-fleet-1-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-fleet-1-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-fleet-1-flac",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-fleet-2-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 55 seconds on /next-fleet-2-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-fleet-2-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-fleet-2-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-fleet-2-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-fleet-2-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 55 seconds on /next-fleet-2-flac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-fleet-2-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-fleet-2-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-fleet-2-flac",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-fleet-3-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 55 seconds on /next-fleet-3-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-fleet-3-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-fleet-3-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-fleet-3-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-fleet-3-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 55 seconds on /next-fleet-3-flac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-fleet-3-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-fleet-3-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-fleet-3-flac",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-fleet-4-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 55 seconds on /next-fleet-4-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-fleet-4-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-fleet-4-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-fleet-4-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-fleet-4-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 55 seconds on /next-fleet-4-flac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-fleet-4-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-fleet-4-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-fleet-4-flac",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-fleet-5-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 55 seconds on /next-fleet-5-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-fleet-5-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-fleet-5-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-fleet-5-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-fleet-5-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 55 seconds on /next-fleet-5-flac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-fleet-5-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-fleet-5-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-fleet-5-flac",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-fleet-6-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 55 seconds on /next-fleet-6-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-fleet-6-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-fleet-6-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-fleet-6-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-fleet-6-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 55 seconds on /next-fleet-6-flac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-fleet-6-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-fleet-6-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-fleet-6-flac",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-fleet-7-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 55 seconds on /next-fleet-7-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-fleet-7-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-fleet-7-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-fleet-7-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-fleet-7-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 55 seconds on /next-fleet-7-flac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-fleet-7-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-fleet-7-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-fleet-7-flac",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-fleet-8-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 55 seconds on /next-fleet-8-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-fleet-8-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-fleet-8-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-fleet-8-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-fleet-8-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 55 seconds on /next-fleet-8-flac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-fleet-8-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-fleet-8-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-fleet-8-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Playback journal hash chain is valid.",
+          "Passed": true
+        },
+        {
+          "Description": "Event acknowledgements do not duplicate journal rows.",
+          "Passed": true
+        },
+        {
+          "Description": "Music, advertisements and sweepers produce separate occurrence records.",
+          "Passed": true
+        },
+        {
+          "Description": "Orderly stop leaves a terminal record for every started occurrence.",
+          "Passed": true
+        },
+        {
+          "Description": "Completed assets retain their exact sample counts, including boundaries inside a 20 ms block.",
+          "Passed": true
+        },
+        {
+          "Description": "Program sample positions never reset during output recovery: fleet-1",
+          "Passed": true
+        },
+        {
+          "Description": "No track is repeated or advanced by transport recovery: fleet-1",
+          "Passed": true
+        },
+        {
+          "Description": "Program sample positions never reset during output recovery: fleet-2",
+          "Passed": true
+        },
+        {
+          "Description": "No track is repeated or advanced by transport recovery: fleet-2",
+          "Passed": true
+        },
+        {
+          "Description": "Program sample positions never reset during output recovery: fleet-3",
+          "Passed": true
+        },
+        {
+          "Description": "No track is repeated or advanced by transport recovery: fleet-3",
+          "Passed": true
+        },
+        {
+          "Description": "Program sample positions never reset during output recovery: fleet-4",
+          "Passed": true
+        },
+        {
+          "Description": "No track is repeated or advanced by transport recovery: fleet-4",
+          "Passed": true
+        },
+        {
+          "Description": "Program sample positions never reset during output recovery: fleet-5",
+          "Passed": true
+        },
+        {
+          "Description": "No track is repeated or advanced by transport recovery: fleet-5",
+          "Passed": true
+        },
+        {
+          "Description": "Program sample positions never reset during output recovery: fleet-6",
+          "Passed": true
+        },
+        {
+          "Description": "No track is repeated or advanced by transport recovery: fleet-6",
+          "Passed": true
+        },
+        {
+          "Description": "Program sample positions never reset during output recovery: fleet-7",
+          "Passed": true
+        },
+        {
+          "Description": "No track is repeated or advanced by transport recovery: fleet-7",
+          "Passed": true
+        },
+        {
+          "Description": "Program sample positions never reset during output recovery: fleet-8",
+          "Passed": true
+        },
+        {
+          "Description": "No track is repeated or advanced by transport recovery: fleet-8",
+          "Passed": true
+        },
+        {
+          "Description": "Daily local report contains one record per station occurrence, independent of output variants.",
+          "Passed": true
+        }
+      ],
+      "Details": {
+        "stations": [
+          {
+            "Id": "fleet-1",
+            "State": "Running",
+            "Samples": 3010560,
+            "CompletedItems": 41,
+            "SkippedItems": 0,
+            "CurrentTitle": "advert",
+            "LateBlocks": 19,
+            "AuditRejectedEvents": 0,
+            "Outputs": [
+              {
+                "Id": "fleet-1-aac",
+                "State": "SourceConnected",
+                "EncoderStarts": 1,
+                "Connections": 1,
+                "FramesWritten": 3136,
+                "DroppedBlocks": 0,
+                "QueuedBlocks": 0,
+                "EncoderPid": 33228,
+                "LastError": null
+              },
+              {
+                "Id": "fleet-1-flac",
+                "State": "SourceConnected",
+                "EncoderStarts": 1,
+                "Connections": 1,
+                "FramesWritten": 3136,
+                "DroppedBlocks": 0,
+                "QueuedBlocks": 0,
+                "EncoderPid": 35792,
+                "LastError": null
+              }
+            ]
+          },
+          {
+            "Id": "fleet-2",
+            "State": "Running",
+            "Samples": 3001920,
+            "CompletedItems": 41,
+            "SkippedItems": 0,
+            "CurrentTitle": "advert",
+            "LateBlocks": 27,
+            "AuditRejectedEvents": 0,
+            "Outputs": [
+              {
+                "Id": "fleet-2-aac",
+                "State": "SourceConnected",
+                "EncoderStarts": 1,
+                "Connections": 1,
+                "FramesWritten": 3127,
+                "DroppedBlocks": 0,
+                "QueuedBlocks": 0,
+                "EncoderPid": 18604,
+                "LastError": null
+              },
+              {
+                "Id": "fleet-2-flac",
+                "State": "SourceConnected",
+                "EncoderStarts": 1,
+                "Connections": 1,
+                "FramesWritten": 3127,
+                "DroppedBlocks": 0,
+                "QueuedBlocks": 0,
+                "EncoderPid": 30312,
+                "LastError": null
+              }
+            ]
+          },
+          {
+            "Id": "fleet-3",
+            "State": "Running",
+            "Samples": 2995200,
+            "CompletedItems": 41,
+            "SkippedItems": 0,
+            "CurrentTitle": "advert",
+            "LateBlocks": 36,
+            "AuditRejectedEvents": 0,
+            "Outputs": [
+              {
+                "Id": "fleet-3-aac",
+                "State": "SourceConnected",
+                "EncoderStarts": 1,
+                "Connections": 1,
+                "FramesWritten": 3120,
+                "DroppedBlocks": 0,
+                "QueuedBlocks": 0,
+                "EncoderPid": 32212,
+                "LastError": null
+              },
+              {
+                "Id": "fleet-3-flac",
+                "State": "SourceConnected",
+                "EncoderStarts": 1,
+                "Connections": 1,
+                "FramesWritten": 3120,
+                "DroppedBlocks": 0,
+                "QueuedBlocks": 0,
+                "EncoderPid": 35416,
+                "LastError": null
+              }
+            ]
+          },
+          {
+            "Id": "fleet-4",
+            "State": "Running",
+            "Samples": 2982720,
+            "CompletedItems": 40,
+            "SkippedItems": 0,
+            "CurrentTitle": "song-a",
+            "LateBlocks": 26,
+            "AuditRejectedEvents": 0,
+            "Outputs": [
+              {
+                "Id": "fleet-4-aac",
+                "State": "SourceConnected",
+                "EncoderStarts": 1,
+                "Connections": 1,
+                "FramesWritten": 3107,
+                "DroppedBlocks": 0,
+                "QueuedBlocks": 0,
+                "EncoderPid": 37444,
+                "LastError": null
+              },
+              {
+                "Id": "fleet-4-flac",
+                "State": "SourceConnected",
+                "EncoderStarts": 1,
+                "Connections": 1,
+                "FramesWritten": 3107,
+                "DroppedBlocks": 0,
+                "QueuedBlocks": 0,
+                "EncoderPid": 31872,
+                "LastError": null
+              }
+            ]
+          },
+          {
+            "Id": "fleet-5",
+            "State": "Running",
+            "Samples": 2970240,
+            "CompletedItems": 40,
+            "SkippedItems": 0,
+            "CurrentTitle": "song-a",
+            "LateBlocks": 25,
+            "AuditRejectedEvents": 0,
+            "Outputs": [
+              {
+                "Id": "fleet-5-aac",
+                "State": "SourceConnected",
+                "EncoderStarts": 1,
+                "Connections": 1,
+                "FramesWritten": 3094,
+                "DroppedBlocks": 0,
+                "QueuedBlocks": 0,
+                "EncoderPid": 36296,
+                "LastError": null
+              },
+              {
+                "Id": "fleet-5-flac",
+                "State": "SourceConnected",
+                "EncoderStarts": 1,
+                "Connections": 1,
+                "FramesWritten": 3094,
+                "DroppedBlocks": 0,
+                "QueuedBlocks": 0,
+                "EncoderPid": 34304,
+                "LastError": null
+              }
+            ]
+          },
+          {
+            "Id": "fleet-6",
+            "State": "Running",
+            "Samples": 2961600,
+            "CompletedItems": 40,
+            "SkippedItems": 0,
+            "CurrentTitle": "song-a",
+            "LateBlocks": 61,
+            "AuditRejectedEvents": 0,
+            "Outputs": [
+              {
+                "Id": "fleet-6-aac",
+                "State": "SourceConnected",
+                "EncoderStarts": 1,
+                "Connections": 1,
+                "FramesWritten": 3085,
+                "DroppedBlocks": 0,
+                "QueuedBlocks": 0,
+                "EncoderPid": 31112,
+                "LastError": null
+              },
+              {
+                "Id": "fleet-6-flac",
+                "State": "SourceConnected",
+                "EncoderStarts": 1,
+                "Connections": 1,
+                "FramesWritten": 3085,
+                "DroppedBlocks": 0,
+                "QueuedBlocks": 0,
+                "EncoderPid": 36156,
+                "LastError": null
+              }
+            ]
+          },
+          {
+            "Id": "fleet-7",
+            "State": "Running",
+            "Samples": 2955840,
+            "CompletedItems": 40,
+            "SkippedItems": 0,
+            "CurrentTitle": "song-a",
+            "LateBlocks": 55,
+            "AuditRejectedEvents": 0,
+            "Outputs": [
+              {
+                "Id": "fleet-7-aac",
+                "State": "SourceConnected",
+                "EncoderStarts": 1,
+                "Connections": 1,
+                "FramesWritten": 3079,
+                "DroppedBlocks": 0,
+                "QueuedBlocks": 0,
+                "EncoderPid": 9492,
+                "LastError": null
+              },
+              {
+                "Id": "fleet-7-flac",
+                "State": "SourceConnected",
+                "EncoderStarts": 1,
+                "Connections": 1,
+                "FramesWritten": 3079,
+                "DroppedBlocks": 0,
+                "QueuedBlocks": 0,
+                "EncoderPid": 18136,
+                "LastError": null
+              }
+            ]
+          },
+          {
+            "Id": "fleet-8",
+            "State": "Running",
+            "Samples": 2948160,
+            "CompletedItems": 40,
+            "SkippedItems": 0,
+            "CurrentTitle": "song-a",
+            "LateBlocks": 57,
+            "AuditRejectedEvents": 0,
+            "Outputs": [
+              {
+                "Id": "fleet-8-aac",
+                "State": "SourceConnected",
+                "EncoderStarts": 1,
+                "Connections": 1,
+                "FramesWritten": 3071,
+                "DroppedBlocks": 0,
+                "QueuedBlocks": 0,
+                "EncoderPid": 36844,
+                "LastError": null
+              },
+              {
+                "Id": "fleet-8-flac",
+                "State": "SourceConnected",
+                "EncoderStarts": 1,
+                "Connections": 1,
+                "FramesWritten": 3071,
+                "DroppedBlocks": 0,
+                "QueuedBlocks": 0,
+                "EncoderPid": 36236,
+                "LastError": null
+              }
+            ]
+          }
+        ],
+        "resources": {
+          "HostPeakBytes": 85979136,
+          "CodecPeakBytes": 506216448,
+          "ListenerPeakBytes": 365686784,
+          "PeakCpuPercentOfMachine": 28.474994294555678,
+          "AverageCpuPercentOfMachine": 10.884239530341672,
+          "FirstSteadyWorkingSetBytes": 510881792,
+          "LastWorkingSetBytes": 487059456,
+          "LogicalProcessors": 8,
+          "Note": "Host includes lab instrumentation; listener processes and test Icecast are not counted as engine codecs. This is the development PC, not the HP Z220."
+        },
+        "decodedListeners": [
+          {
+            "Mount": "/next-fleet-1-aac",
+            "DecodedSeconds": 62.660000000000004,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 41,
+            "UnexpectedToneTransitions": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880
+            ],
+            "Error": null
+          },
+          {
+            "Mount": "/next-fleet-1-flac",
+            "DecodedSeconds": 61.82,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 40,
+            "UnexpectedToneTransitions": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440
+            ],
+            "Error": null
+          },
+          {
+            "Mount": "/next-fleet-2-aac",
+            "DecodedSeconds": 62.4,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 41,
+            "UnexpectedToneTransitions": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880
+            ],
+            "Error": null
+          },
+          {
+            "Mount": "/next-fleet-2-flac",
+            "DecodedSeconds": 61.52,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 40,
+            "UnexpectedToneTransitions": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440
+            ],
+            "Error": null
+          },
+          {
+            "Mount": "/next-fleet-3-aac",
+            "DecodedSeconds": 62.32,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 41,
+            "UnexpectedToneTransitions": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880
+            ],
+            "Error": null
+          },
+          {
+            "Mount": "/next-fleet-3-flac",
+            "DecodedSeconds": 61.44,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 40,
+            "UnexpectedToneTransitions": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440
+            ],
+            "Error": null
+          },
+          {
+            "Mount": "/next-fleet-4-aac",
+            "DecodedSeconds": 62.04,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 40,
+            "UnexpectedToneTransitions": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440
+            ],
+            "Error": null
+          },
+          {
+            "Mount": "/next-fleet-4-flac",
+            "DecodedSeconds": 61.24,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 40,
+            "UnexpectedToneTransitions": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440
+            ],
+            "Error": null
+          },
+          {
+            "Mount": "/next-fleet-5-aac",
+            "DecodedSeconds": 61.82,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 40,
+            "UnexpectedToneTransitions": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440
+            ],
+            "Error": null
+          },
+          {
+            "Mount": "/next-fleet-5-flac",
+            "DecodedSeconds": 60.96,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 40,
+            "UnexpectedToneTransitions": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440
+            ],
+            "Error": null
+          },
+          {
+            "Mount": "/next-fleet-6-aac",
+            "DecodedSeconds": 61.64,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 40,
+            "UnexpectedToneTransitions": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440
+            ],
+            "Error": null
+          },
+          {
+            "Mount": "/next-fleet-6-flac",
+            "DecodedSeconds": 60.76,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 40,
+            "UnexpectedToneTransitions": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440
+            ],
+            "Error": null
+          },
+          {
+            "Mount": "/next-fleet-7-aac",
+            "DecodedSeconds": 61.480000000000004,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 40,
+            "UnexpectedToneTransitions": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440
+            ],
+            "Error": null
+          },
+          {
+            "Mount": "/next-fleet-7-flac",
+            "DecodedSeconds": 60.56,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 40,
+            "UnexpectedToneTransitions": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440
+            ],
+            "Error": null
+          },
+          {
+            "Mount": "/next-fleet-8-aac",
+            "DecodedSeconds": 61.34,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 40,
+            "UnexpectedToneTransitions": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440
+            ],
+            "Error": null
+          },
+          {
+            "Mount": "/next-fleet-8-flac",
+            "DecodedSeconds": 60.56,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 40,
+            "UnexpectedToneTransitions": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440
+            ],
+            "Error": null
+          }
+        ],
+        "report": {
+          "SchemaVersion": 1,
+          "LocalDate": "2026-10-15",
+          "Timezone": "Europe/Istanbul",
+          "Records": 344,
+          "IncompleteRecords": 0,
+          "Sha256": "e1cbfd088d7c9ae9c078d0b5a81fe631eb064c08b7f45079ec37f5d31f6498bd",
+          "FileName": "2026-10-15.csv",
+          "GeneratedAtUtc": "2026-10-15T13:06:29.412358+00:00"
+        }
+      },
+      "Error": null
+    }
+  ],
+  "RemainingOwnedChildren": {}
+}

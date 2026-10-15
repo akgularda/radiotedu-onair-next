@@ -1,0 +1,133 @@
+{
+  "SchemaVersion": 1,
+  "CreatedAtUtc": "2026-10-15T13:11:53.6844203+00:00",
+  "Machine": "ARDA",
+  "OS": "Microsoft Windows 10.0.29683",
+  "Runtime": ".NET 10.0.13",
+  "Icecast": "2.5.0",
+  "TestProfiles": [
+    "AAC-LC 192 kbps",
+    "Ogg FLAC"
+  ],
+  "HeAacTested": false,
+  "Source": "New independent implementation; no production configuration or services accessed.",
+  "Results": [
+    {
+      "Name": "live",
+      "Passed": true,
+      "DurationSeconds": 9.238818,
+      "Checks": [
+        {
+          "Description": "Synthetic live PCM takeover, input loss and return keep one encoder/source session.",
+          "Passed": true
+        },
+        {
+          "Description": "The listener actually receives at least 600 ms of the distinct synthetic microphone tone.",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-live",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 4 seconds on /next-live",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-live",
+          "Passed": true
+        },
+        {
+          "Description": "Playback journal hash chain is valid.",
+          "Passed": true
+        },
+        {
+          "Description": "Event acknowledgements do not duplicate journal rows.",
+          "Passed": true
+        },
+        {
+          "Description": "Music, advertisements and sweepers produce separate occurrence records.",
+          "Passed": true
+        },
+        {
+          "Description": "Orderly stop leaves a terminal record for every started occurrence.",
+          "Passed": true
+        },
+        {
+          "Description": "Completed assets retain their exact sample counts, including boundaries inside a 20 ms block.",
+          "Passed": true
+        },
+        {
+          "Description": "Program sample positions never reset during output recovery: live",
+          "Passed": true
+        },
+        {
+          "Description": "No track is repeated or advanced by transport recovery: live",
+          "Passed": true
+        },
+        {
+          "Description": "Daily local report contains one record per station occurrence, independent of output variants.",
+          "Passed": true
+        }
+      ],
+      "Details": {
+        "station": {
+          "Id": "live",
+          "State": "Running",
+          "Samples": 407040,
+          "CompletedItems": 5,
+          "SkippedItems": 0,
+          "CurrentTitle": "advert",
+          "LateBlocks": 0,
+          "AuditRejectedEvents": 0,
+          "Outputs": [
+            {
+              "Id": "live",
+              "State": "SourceConnected",
+              "EncoderStarts": 1,
+              "Connections": 1,
+              "FramesWritten": 424,
+              "DroppedBlocks": 0,
+              "QueuedBlocks": 1,
+              "EncoderPid": 37656,
+              "LastError": null
+            }
+          ]
+        },
+        "decodedListeners": [
+          {
+            "Mount": "/next-live",
+            "DecodedSeconds": 8.38,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 5,
+            "UnexpectedToneTransitions": 0,
+            "LiveToneWindows": 75,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880
+            ],
+            "Error": null
+          }
+        ],
+        "limitation": "Synthetic audio-agent input only; physical WASAPI microphone capture and listening QA remain future work.",
+        "report": {
+          "SchemaVersion": 1,
+          "LocalDate": "2026-10-15",
+          "Timezone": "Europe/Istanbul",
+          "Records": 6,
+          "IncompleteRecords": 0,
+          "Sha256": "35d58140b19258ecb87cca3474aaabed4e9e98df2710fa273ae641e3138ea0da",
+          "FileName": "2026-10-15.csv",
+          "GeneratedAtUtc": "2026-10-15T13:11:53.6447576+00:00"
+        }
+      },
+      "Error": null
+    }
+  ],
+  "RemainingOwnedChildren": {}
+}

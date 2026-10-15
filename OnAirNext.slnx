@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/OnAirNext.Engine/OnAirNext.Engine.csproj" />
+    <Project Path="src/OnAirNext.Host/OnAirNext.Host.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OnAirNext.Tests/OnAirNext.Tests.csproj" />
+    <Project Path="tests/OnAirNext.Lab/OnAirNext.Lab.csproj" />
+  </Folder>
+</Solution>
