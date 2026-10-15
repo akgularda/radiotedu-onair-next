@@ -1,0 +1,88 @@
+{
+  "date": "2026-10-16",
+  "sourceCommit": "d7c3865b70c839958be4381ae90dfc4b3545322e",
+  "executionCommit": "d7c3865b70c839958be4381ae90dfc4b3545322e",
+  "runId": "38809531776",
+  "url": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38809531776",
+  "scope": "Disposable Windows CI runner; no real music, streams, credentials or broadcasting-PC service installation.",
+  "unit": {
+    "total": 107,
+    "executed": 107,
+    "passed": 107,
+    "failed": 0,
+    "error": 0,
+    "timeout": 0,
+    "aborted": 0,
+    "inconclusive": 0,
+    "passedButRunAborted": 0,
+    "notRunnable": 0,
+    "notExecuted": 0,
+    "disconnected": 0,
+    "warning": 0,
+    "completed": 0,
+    "inProgress": 0,
+    "pending": 0
+  },
+  "artifacts": [
+    {
+      "name": "windows-unit-results",
+      "digest": "sha256:2b67d0af51a9f61fe493707b33c4b5a0be39e7c0ff0f8af13aca7308c9f78377",
+      "bytes": 25220
+    },
+    {
+      "name": "windows-service-qualification",
+      "digest": "sha256:199982386a9d60aa85cfb4dd48dc350e6a5299f88752ecfe724a78838f7590e4",
+      "bytes": 969
+    }
+  ],
+  "service": {
+    "passed": true,
+    "checks": [
+      "Automatic delayed startup is persisted",
+      "Authenticated operator crosses the service identity boundary",
+      "Service uses its separate LocalService identity",
+      "Anonymous caller is disconnected without a response",
+      "Rejected client does not restart or kill the service",
+      "No browser console is required for service readiness",
+      "Developer global stop is not a service command",
+      "Browser-visible folder cannot be assigned without service proof",
+      "Source read runs under LocalService rather than the browser operator",
+      "A source proof cannot authorize another station",
+      "A source proof cannot authorize another folder",
+      "Matching source proof permits a disarmed station folder assignment",
+      "Assigned source is read back from the service journal",
+      "Committed source assignment replay needs no transient proof",
+      "Source replay does not create a new revision",
+      "Operator can enumerate the source denied to the service",
+      "Operator-visible folder denied to LocalService is reported unavailable",
+      "Start intent is durably acknowledged",
+      "Graceful service exit releases owned descendants",
+      "Graceful service exit releases owned descendants",
+      "SCM stop preserves requested-running intent",
+      "Only the verified held host handle is terminated",
+      "Kernel job releases descendants after parent-only crash",
+      "Kernel job releases descendants after parent-only crash",
+      "SCM recovers the host automatically without browser or manual start",
+      "Unexpected process death preserves requested-running intent",
+      "Explicit station stop is acknowledged",
+      "Explicit stopped intent survives service restart"
+    ]
+  },
+  "sourceChecks": {
+    "workerIdentity": "LocalService",
+    "topLevelEntryLimit": 32,
+    "audioSampleLimit": 4,
+    "bytesReadPerSample": 1,
+    "resultRetentionLimit": 64,
+    "monotonicProofLifetimeSeconds": 60,
+    "limitedReadOnlyProbe": true,
+    "notAudioDecodeOrColdBootProof": true
+  },
+  "connectedTargetMouseAcceptance": false,
+  "localQa": {
+    "launched": false,
+    "decision": "Deferred: insufficient measured memory headroom and incomplete disk latency result"
+  },
+  "productionChanged": false,
+  "uiFollowup": "Timestamp and visible expiry received script syntax, static DOM-reference and unconnected preview initialization/Library mouse checks (zero browser errors). The source-check dialog and connected assignment remain unpassed."
+}

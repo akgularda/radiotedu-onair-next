@@ -1,6 +1,6 @@
 # Engine-account source access checks
 
-Implemented in development; remote compilation, unit and real-service fixture results must be inspected for this update. Target-PC installation, guided setup and connected mouse acceptance remain incomplete. No existing media, source permissions or legacy configuration are changed by the check.
+Implemented in development. Exact source d7c3865b compiled, passed all 107 unit cases and the 28-check real-service fixture in Windows run 38809531776. Unit/service artifact digests were verified; see [scoped evidence](../artifacts/evidence/source-access-107-20261016.json). Target-PC installation, guided setup and connected mouse acceptance remain incomplete. No existing media, source permissions or legacy configuration are changed by the check.
 
 Library → Choose live folder now requires Check engine access before Use this folder. The displayed result identifies the engine account and SID, local drive type, entries examined and whether sampled audio could be opened. The browser folder navigator runs as the operator; this separate check runs as an owned child of the engine. Windows service results must identify LocalService. An operator-visible folder can therefore return Unavailable.
 
@@ -13,3 +13,5 @@ A successful proof binds the request, station and exact normalized folder. It ex
 The folder dialog binds to the selected engine/channel, discards stale folder responses, preserves the same access-check request after an uncertain acknowledgement and offers the same saved assignment retry. An authoritative missing result after engine restart permits a new check. Timeout alone does not invent completion or launch another worker.
 
 The disposable Windows fixture additionally gives the test operator access to a folder that LocalService cannot enumerate. It verifies the real service identity, permission failure, station/folder fencing, durable readback and assignment replay. These checks are engineering fixtures, not operator UI acceptance or audio proof.
+
+The target-PC resource check returned about 1.22 GiB minimum available RAM and a disk-sampling timeout. No connected local engine was launched; mouse acceptance of this source-check workflow remains unpassed. A later timestamp/visible-expiry UI refinement passed script syntax validation and remains subject to connected browser checks.

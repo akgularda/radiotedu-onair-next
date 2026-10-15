@@ -161,6 +161,7 @@
   function folderControls(){
     if(!$('folder-dialog').open)return;
     const context=folderContext()&&fresh(), source=state.folderSource, saved=pending();
+    if(source?.check?.State==='Accessible'&&Date.parse(source.check.ExpiresAt)<=Date.now()){source.check={...source.check,State:'Expired'};renderFolderCheck();}
     const matched=source?.check?.State==='Accessible'&&source.check.Path===state.folder&&Date.parse(source.check.ExpiresAt)>Date.now();
     $('check-folder-access').disabled=!context||!state.folder||state.busy||source?.submitting||source?.check?.State==='Checking';
     $('confirm-folder').disabled=!context||!matched||state.busy||!!saved;
@@ -175,7 +176,7 @@
     text('folder-access-info',[check.State, result?.Identity, result?.IdentitySid, result?.VolumeKind?result.VolumeKind+' drive':null,
       result?String(result.EntriesExamined)+' entries examined'+(result.LimitReached?' (limited)':''):null,
       result?.SampleReadable===true?'Sampled audio could be opened':result?.SampleReadable===false?'Sampled audio was unreadable or empty':'No audio sampled',
-      check.Error??result?.Detail, 'Current-process access only; full audio validation and before-logon access are separate checks.'].filter(Boolean).join(' · '));
+      check.Error??result?.Detail, check.CompletedAt?'Checked '+clock.format(new Date(check.CompletedAt))+' Istanbul; access proof lasts one minute':null, 'Current-process access only; full audio validation and before-logon access are separate checks.'].filter(Boolean).join(' · '));
   }
   async function checkFolderAccess(){
     if(!folderContext()||!fresh()||!state.folder||state.folderSource?.submitting)return;

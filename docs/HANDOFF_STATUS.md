@@ -2,7 +2,7 @@
 
 # Handoff snapshot status
 
-Current continuation, 16 October 2026: the active product is the dark browser console. Source bb87f4d compiled and passed 98 unit cases plus a real isolated SCM lifecycle fixture on a disposable Windows runner. See [scoped service evidence](../artifacts/evidence/service-foundation-98-20261016.json) and the [complete delivery ledger](BROADCAST_PC_DELIVERY_LEDGER.md). No new service is installed on the broadcast PC; actual source-volume access before logon, connected mouse workflows and production migration remain unpassed. The historical snapshot below retains earlier evidence and limitations; it is not the current release declaration.
+Current continuation, 16 October 2026: the active product is the dark browser console. Exact source d7c3865b compiled, passed 107 unit cases and the real isolated SCM/source-access fixture on a disposable Windows runner. See [source-access evidence](../artifacts/evidence/source-access-107-20261016.json) and the [complete delivery ledger](BROADCAST_PC_DELIVERY_LEDGER.md). No new service is installed on the broadcast PC. Guided setup, service/operator upload transfer, actual source access before logon and connected mouse acceptance remain incomplete; low measured memory and missing disk metrics prevented another local QA runtime. The historical snapshot below retains earlier evidence and limitations; it is not the current release declaration.
 
 Prepared 15 October 2026. This is a development snapshot for the broadcasting-PC agent, not a production-ready release.
 
