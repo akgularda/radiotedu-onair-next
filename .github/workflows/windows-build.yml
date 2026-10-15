@@ -55,6 +55,10 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: windows-isolated-host
-          path: ${{ env.ONAIR_BUILD_BIN }}/OnAirNext.Host/release
+          path: |
+            ${{ env.ONAIR_BUILD_BIN }}/OnAirNext.Host/release/*.dll
+            ${{ env.ONAIR_BUILD_BIN }}/OnAirNext.Host/release/*.exe
+            ${{ env.ONAIR_BUILD_BIN }}/OnAirNext.Host/release/*.json
+            ${{ env.ONAIR_BUILD_BIN }}/OnAirNext.Host/release/runtimes/win-x64/native/*.dll
           retention-days: 7
           if-no-files-found: error
