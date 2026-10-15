@@ -39,7 +39,7 @@ public sealed class PcmBlock : IDisposable
 [JsonConverter(typeof(JsonStringEnumConverter<ContentKind>))]
 public enum ContentKind { Music, Advertisement, Sweeper, Program, Jingle }
 
-public sealed record MediaItem(string Id, string Path, string Artist, string Title, ContentKind Kind = ContentKind.Music);
+public sealed record MediaItem(string Id, string Path, string Artist, string Title, ContentKind Kind = ContentKind.Music, double? DurationSeconds = null);
 
 [JsonConverter(typeof(JsonStringEnumConverter<CodecProfile>))]
 public enum CodecProfile { AacLc192, OggFlac, HeAacV2_64 }
@@ -77,10 +77,12 @@ public sealed record PlayoutCheckpoint(string StationId, string State, int Rotat
     string? QueueEntryId = null, string? SessionId = null, string? PreviousOccurrenceId = null);
 public sealed record OutputSnapshot(string Id, string State, long EncoderStarts, long Connections, long FramesWritten,
     long DroppedBlocks, int QueuedBlocks, int? EncoderPid, string? LastError);
+public sealed record PlayoutItemSnapshot(string Id, string Artist, string Title, ContentKind Kind, double? DurationSeconds);
 public sealed record StationSnapshot(string Id, string State, long Samples, long CompletedItems, long SkippedItems,
     string? CurrentTitle, long LateBlocks, long AuditRejectedEvents, IReadOnlyList<OutputSnapshot> Outputs,
     string? CurrentAssetId = null, long CurrentItemSamples = 0, bool Recovered = false,
-    bool Enabled = true, bool RequestedRunning = true, string? LastError = null, DateTimeOffset? RetryAtUtc = null);
+    bool Enabled = true, bool RequestedRunning = true, string? LastError = null, DateTimeOffset? RetryAtUtc = null,
+    string? CurrentArtist = null, double? CurrentDurationSeconds = null, PlayoutItemSnapshot? NextItem = null);
 
 public interface IStationSession : IAsyncDisposable
 {

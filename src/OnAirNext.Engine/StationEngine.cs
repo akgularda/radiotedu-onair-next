@@ -62,10 +62,17 @@ public sealed class StationEngine : IStationSession
         if (await _journal.RequestObservedSkipAsync(_settings.Id, commandId, _occurrence)) Interlocked.Exchange(ref _skip, 1);
     }
     public void RefreshNext() => Interlocked.Exchange(ref _refreshNext, 1);
-    public StationSnapshot Snapshot() => new(_settings.Id, _state, Interlocked.Read(ref _samples),
-        Interlocked.Read(ref _completed), Interlocked.Read(ref _skipped), _currentTitle,
-        Interlocked.Read(ref _late), Interlocked.Read(ref _auditRejected), _outputs.Select(x => x.Snapshot()).ToArray(),
-        _selection?.Item.Id, Interlocked.Read(ref _itemSamples), _recovered);
+    public StationSnapshot Snapshot()
+    {
+        var current = _selection?.Item;
+        var next = _nextSelection?.Item;
+        return new(_settings.Id, _state, Interlocked.Read(ref _samples),
+            Interlocked.Read(ref _completed), Interlocked.Read(ref _skipped), _currentTitle,
+            Interlocked.Read(ref _late), Interlocked.Read(ref _auditRejected), _outputs.Select(x => x.Snapshot()).ToArray(),
+            current?.Id, Interlocked.Read(ref _itemSamples), _recovered,
+            CurrentArtist: current?.Artist, CurrentDurationSeconds: current?.DurationSeconds,
+            NextItem: next is null ? null : new(next.Id, next.Artist, next.Title, next.Kind, next.DurationSeconds));
+    }
 
     private async Task RunAsync()
     {

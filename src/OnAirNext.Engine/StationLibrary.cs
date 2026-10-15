@@ -273,7 +273,7 @@ public sealed class StationLibrary : IAsyncDisposable
     {
         if (!_journal.LibraryRoots().Contains(root)) return;
         var items = _journal.LibraryAssets(root).Where(x => x.State == "Ready")
-            .Select(x => new MediaItem(x.Id, Path.Combine(root.Path, x.RelativePath), x.Artist, x.Title)).OrderBy(x => x.Id, StringComparer.Ordinal).ToArray();
+            .Select(x => new MediaItem(x.Id, Path.Combine(root.Path, x.RelativePath), x.Artist, x.Title, DurationSeconds: x.Seconds)).OrderBy(x => x.Id, StringComparer.Ordinal).ToArray();
         if (_playback.TryGetValue(root.StationId, out var prior) && prior.Configured && prior.Items.SequenceEqual(items)) return;
         _playback[root.StationId] = new(true, items, Interlocked.Increment(ref _version));
         Changed?.Invoke(root.StationId, items.Length > 0);

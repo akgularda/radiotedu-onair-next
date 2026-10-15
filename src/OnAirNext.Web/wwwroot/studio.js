@@ -37,19 +37,23 @@
     text('station-state',connected?(station?.State??'Station unavailable'):'Not connected');$('station-state').classList.toggle('running',connected&&station?.State==='Running');
     text('air-description',connected?'Programme and output transport from the connected engine.':'Connect the engine to load the current programme.');
     text('now-title',connected?(station?.CurrentTitle||'Nothing on air'):'Nothing on air');
-    text('now-artist',connected&&station?.CurrentTitle?'Programme item':'No programme loaded');
+    text('now-artist',connected&&station?.CurrentTitle?(station.CurrentArtist||'Unknown artist'):'No programme loaded');
     text('now-detail',connected?(station?.LastError??'Elapsed time follows the programme sample clock.'):'Playback status is unavailable until the engine connects.');
     text('elapsed',connected?duration((station?.CurrentItemSamples??0)/48000):'--:--');
     text('programme-time',connected?duration((station?.Samples??0)/48000):'--:--:--');
     text('inspector-engine',connected?'Connected':'Not connected');
     $('start-station').disabled=!connected||state.busy||!!pending()||!station||running||!station.Enabled||!station.Outputs?.length;
     $('stop-station').disabled=!connected||state.busy||!!pending()||!station||!running;
-    $('progress-fill').parentElement.hidden=true;
-    text('remaining','');text('duration-label',connected?'Elapsed programme time · duration unavailable':'Duration unavailable');
-    const queueCell=element('td','table-empty');queueCell.colSpan=4;
-    queueCell.append(icon('library'),element('strong','',connected?'Running order is not available in this build':'Your running order will appear here'),element('span','',connected?'The engine reports the current item. Upcoming items are not exposed yet.':'Connect the engine to view channel status.'));
-    if(!connected){const connect=element('button','button subtle','Connect engine');connect.addEventListener('click',()=>navigate('system'));queueCell.append(connect);}
-    const queueRow=element('tr');queueRow.append(queueCell);$('queue-rows').replaceChildren(queueRow);text('queue-count','—');text('queue-footer',connected?'Upcoming items unavailable':'Not loaded');
+    const seconds=station?.CurrentDurationSeconds, elapsed=(station?.CurrentItemSamples??0)/48000;
+    const knownDuration=connected&&station?.CurrentTitle&&Number.isFinite(seconds)&&seconds>0;
+    const progress=$('progress-fill').parentElement;progress.hidden=!knownDuration;
+    const percent=knownDuration?Math.min(100,Math.max(0,elapsed/seconds*100)):0;
+    progress.setAttribute('aria-valuenow',String(Math.round(percent)));$('progress-fill').style.width=percent+'%';
+    text('remaining',knownDuration?'−'+duration(Math.max(0,seconds-elapsed)):'');
+    text('duration-label',knownDuration?duration(seconds):connected?'Elapsed programme time · duration unavailable':'Duration unavailable');
+    const next=connected?station?.NextItem:null;
+    if(next){const row=element('tr');const title=element('td');title.append(element('span','asset-title',next.Title),element('span','asset-artist',next.Artist||'Unknown artist'));row.append(element('td','row-number','1'),title,element('td','',next.Kind),element('td','align-right',duration(next.DurationSeconds)));$('queue-rows').replaceChildren(row);text('queue-count','1');text('queue-footer','Prepared by the engine · order may change');}
+    else{const cell=element('td','table-empty');cell.colSpan=4;cell.append(icon('library'),element('strong','',connected?'No next item prepared':'Next item will appear here'),element('span','',connected?'Add music to the library. The engine will prepare the next item.':'Connect the engine to view channel status.'));if(!connected){const connect=element('button','button subtle','Connect engine');connect.addEventListener('click',()=>navigate('system'));cell.append(connect);}const row=element('tr');row.append(cell);$('queue-rows').replaceChildren(row);text('queue-count','—');text('queue-footer',connected?'Waiting for a prepared item':'Not loaded');}
     $('skip-item').disabled=!connected||state.busy||!!pending()||station?.State!=='Running';
     text('transport-note',connected?(station?.Outputs?.length?'Selected station only':'Configure outputs before starting'):'Controls unavailable');
     const outputs=connected?(station?.Outputs??[]):[];text('output-count',connected?String(outputs.length):'—');
