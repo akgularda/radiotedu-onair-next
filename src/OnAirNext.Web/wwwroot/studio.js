@@ -196,7 +196,7 @@
   $('music-files').addEventListener('change',()=>{
     const files=Array.from($('music-files').files??[]);if(!files.length)return;
     if(files.length>64||files.some(file=>!file.size)||files.reduce((sum,file)=>sum+file.size,0)>240*1048576){message('Choose 1–64 non-empty audio files, up to 240 MiB per batch.');$('music-files').value='';return;}
-    const target=state.uploadSelection??{id:crypto.randomUUID(),engine:state.engine,station:state.station};state.uploadSelection=null;
+    const target=state.uploadSelection??{id:crypto.randomUUID().replaceAll('-',''),engine:state.engine,station:state.station};state.uploadSelection=null;
     if(target.engine!==state.engine||target.station!==state.station){message('Channel changed. Select the files again.');return;}
     void sendUpload({...target,files});
   });
