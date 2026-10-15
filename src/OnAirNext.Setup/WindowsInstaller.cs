@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Security.AccessControl;
 using System.Security.Principal;
@@ -38,7 +39,8 @@ internal static class WindowsInstaller
         }
         CreateProtected(root,account,false);
         var lockPath=Path.Combine(root,"setup.lock");SetupPaths.RequireNoLinks(lockPath);
-        await using var held=new FileStream(lockPath,FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);
+        if(!File.Exists(lockPath)){await using(var created=new FileStream(lockPath,FileMode.CreateNew,FileAccess.Write,FileShare.None)){created.Flush(true);}SetOwner(lockPath);}
+        await using var held=new FileStream(lockPath,FileMode.Open,FileAccess.ReadWrite,FileShare.None);
         if(File.Exists(marker))
         {
             AssertProtected(marker);var owner=await SetupPaths.ReadAsync<Ownership>(marker);
@@ -58,10 +60,11 @@ internal static class WindowsInstaller
             await ReceiptAsync(new(plan.Id,"Installing","Copying the reviewed package. Existing broadcasts stay with the former installation.",bundle.Source));
             CreateProtected(install,account,false);
             var running=service is not null&&service.State!=1;
-            foreach(var file in bundle.Files)await CopyAsync(SetupPaths.Resolve(plan.BundleRoot,file.Path),SetupPaths.Resolve(install,file.Path),file,account,running);
+            var installed=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+            foreach(var file in bundle.Files)await CopyAsync(SetupPaths.Resolve(plan.BundleRoot,file.Path),SetupPaths.Resolve(install,file.Path),file,account,running,installed);
             stage="runtime copy";
-            foreach(var file in plan.RuntimeFiles)await CopyAsync(SetupPaths.Resolve(runtime,file.Path),SetupPaths.Resolve(install,"tools/"+file.Path),file,account,running);
-            await CopyAsync(SetupPaths.Resolve(plan.BundleRoot,"bundle.json"),Path.Combine(install,"bundle.json"),new("bundle.json",new FileInfo(Path.Combine(plan.BundleRoot,"bundle.json")).Length,plan.BundleSha256),account,running);
+            foreach(var file in plan.RuntimeFiles)await CopyAsync(SetupPaths.Resolve(runtime,file.Path),SetupPaths.Resolve(install,"tools/"+file.Path),file,account,running,installed);
+            await CopyAsync(SetupPaths.Resolve(plan.BundleRoot,"bundle.json"),Path.Combine(install,"bundle.json"),new("bundle.json",new FileInfo(Path.Combine(plan.BundleRoot,"bundle.json")).Length,plan.BundleSha256),account,running,installed);
             stage="initial stopped channels";
             CreateProtected(ServiceEndpoint.EngineData,account,true);
             var config=new{Ffmpeg=ServiceEndpoint.Ffmpeg,DataRoot=ServiceEndpoint.EngineData,PipeName=ServiceEndpoint.Pipe,OperatorSid=account.Value,
@@ -101,30 +104,46 @@ internal static class WindowsInstaller
         if(Directory.Exists(directory)){if(!data)AssertProtected(directory);return;}
         new DirectoryInfo(directory).Create(Security(account,data));
     }
-    private static async Task CopyAsync(string source,string destination,SetupFile file,SecurityIdentifier account,bool running)
+    private static async Task CopyAsync(string source,string destination,SetupFile file,SecurityIdentifier account,bool running,Dictionary<string,string> installed)
     {
         SetupPaths.RequireNoLinks(source);SetupPaths.RequireNoLinks(destination);
         if(File.Exists(destination))
         {
             AssertProtected(destination);
-            if(new FileInfo(destination).Length!=file.Bytes||!string.Equals(await SetupPaths.HashAsync(destination),file.Sha256,StringComparison.OrdinalIgnoreCase))throw new IOException("An installed file differs from this reviewed package. No file was overwritten.");return;
+            if(new FileInfo(destination).Length!=file.Bytes||!string.Equals(await SetupPaths.HashAsync(destination),file.Sha256,StringComparison.OrdinalIgnoreCase))throw new IOException("An installed file differs from this reviewed package. No file was overwritten.");installed[file.Sha256+":"+file.Bytes]=destination;return;
         }
         if(running)throw new InvalidOperationException("The isolated service is active and its installation is incomplete. No active program files were replaced.");
         var parent=Path.GetDirectoryName(destination)!;
         var missing=new Stack<string>();for(var item=parent;!Directory.Exists(item);item=Path.GetDirectoryName(item)!)missing.Push(item);
         while(missing.TryPop(out var folder))CreateProtected(folder,account,false);
+        var key=file.Sha256+":"+file.Bytes;
+        if(installed.TryGetValue(key,out var identical))
+        {
+            SetupPaths.RequireNoLinks(identical);AssertProtected(identical);
+            if(CreateHardLinkW(destination,identical,0))return;
+            // Unsupported filesystems retain the verified-copy behavior; audio quality is unaffected.
+        }
         var temporary=destination+".onair-installing";SetupPaths.RequireNoLinks(temporary);
         // Only this manifest-owned partial path is replaced; there is no recursive cleanup.
-        if(File.Exists(temporary)){AssertProtected(temporary);File.Delete(temporary);}
+        if(File.Exists(temporary)){AssertProtected(Path.GetDirectoryName(temporary)!);File.Delete(temporary);}
         try
         {
             await using(var input=new FileStream(source,FileMode.Open,FileAccess.Read,FileShare.Read,65536,FileOptions.Asynchronous|FileOptions.SequentialScan))
             await using(var output=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None,65536,true))
             {if(input.Length!=file.Bytes)throw new IOException("A source package file changed.");await input.CopyToAsync(output,65536);await output.FlushAsync();output.Flush(true);}
+            SetOwner(temporary);
             if(!string.Equals(await SetupPaths.HashAsync(temporary),file.Sha256,StringComparison.OrdinalIgnoreCase))throw new IOException("Copied package bytes do not match the reviewed file.");
-            File.Move(temporary,destination,false);
+            File.Move(temporary,destination,false);installed[key]=destination;
         }
         finally{SetupPaths.RequireNoLinks(temporary);if(File.Exists(temporary))File.Delete(temporary);}
+    }
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("kernel32.dll",CharSet=CharSet.Unicode,ExactSpelling=true,SetLastError=true)]
+    [return:MarshalAs(UnmanagedType.Bool)]private static extern bool CreateHardLinkW(string path,string existing,nint security);
+    private static void SetOwner(string path)
+    {
+        SetupPaths.RequireNoLinks(path);var file=new FileInfo(path);var security=file.GetAccessControl(AccessControlSections.Owner);
+        security.SetOwner(new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid,null));file.SetAccessControl(security);
     }
     private static async Task WriteNewAsync<T>(string path,T value)
     {
@@ -133,13 +152,13 @@ internal static class WindowsInstaller
         {
             AssertProtected(path);var existing=await File.ReadAllBytesAsync(path);if(!bytes.AsSpan().SequenceEqual(existing))throw new IOException("An existing setup file differs. No configuration was overwritten.");return;
         }
-        var temporary=path+".onair-installing";SetupPaths.RequireNoLinks(temporary);if(File.Exists(temporary)){AssertProtected(temporary);File.Delete(temporary);}
-        await using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None,65536,true)){await stream.WriteAsync(bytes);await stream.FlushAsync();stream.Flush(true);}File.Move(temporary,path,false);
+        var temporary=path+".onair-installing";SetupPaths.RequireNoLinks(temporary);if(File.Exists(temporary)){AssertProtected(Path.GetDirectoryName(temporary)!);File.Delete(temporary);}
+        await using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None,65536,true)){await stream.WriteAsync(bytes);await stream.FlushAsync();stream.Flush(true);}SetOwner(temporary);File.Move(temporary,path,false);
     }
     private static async Task ReceiptAsync(SetupReceipt receipt)
     {
         var path=Path.Combine(ServiceEndpoint.DataRoot,"setup-status.json");SetupPaths.RequireNoLinks(path);var temporary=path+".onair-installing";SetupPaths.RequireNoLinks(temporary);
-        if(File.Exists(temporary)){AssertProtected(temporary);File.Delete(temporary);}
-        await using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None,65536,true)){await JsonSerializer.SerializeAsync(stream,receipt);await stream.FlushAsync();stream.Flush(true);}File.Move(temporary,path,true);
+        if(File.Exists(temporary)){AssertProtected(Path.GetDirectoryName(temporary)!);File.Delete(temporary);}
+        await using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None,65536,true)){await JsonSerializer.SerializeAsync(stream,receipt);await stream.FlushAsync();stream.Flush(true);}SetOwner(temporary);File.Move(temporary,path,true);
     }
 }

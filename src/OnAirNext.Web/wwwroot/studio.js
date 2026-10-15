@@ -2,7 +2,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const roster = [{id:'1',name:'Classic'},{id:'2',name:'Lofi'},{id:'4',name:'Radio'},{id:'5',name:'Cazz'},{id:'8',name:'Rock'},{id:'9',name:'Energize'},{id:'10',name:'Situation'},{id:'11',name:'Main Character'}];
-  const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null,folderTarget:null,folderSource:null,editTarget:null,assetStateTarget:null,controller:null,upload:null,uploadSelection:null};
+  const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null,folderTarget:null,folderSource:null,editTarget:null,assetStateTarget:null,controller:null,consoleClosed:false,upload:null,uploadSelection:null};
   try { const saved=JSON.parse(localStorage.getItem('studio-pending-commands')??'[]');if(Array.isArray(saved))state.pending=saved.filter(p=>typeof p.engine==='string'&&p.request?.Id&&p.request?.StationId).slice(0,32); } catch { }
   const pending = () => state.pending.find(p=>p.engine===state.engine&&p.request.StationId===state.station);
   const savePending = () => {try{localStorage.setItem('studio-pending-commands',JSON.stringify(state.pending));}catch{}};
@@ -266,8 +266,8 @@
   function setupControls(){
     const available=!state.session?.preview&&setupState?.supported&&setupState.packageAvailable;
     const busy=setupState?.busy||setupLoading,installed=!!setupState?.receipt||!!setupState?.service;
-    $('setup-browse').disabled=!available||busy||installed;$('setup-check').disabled=!available||busy||installed||!$('setup-runtime').value;
-    $('setup-start').disabled=busy||installed;$('setup-install').disabled=!available||busy||!setupState?.plan||setupState.receipt?.phase==='Installed';
+    $('close-console').disabled=!!state.session?.preview||state.consoleClosed;$('setup-browse').disabled=!available||busy||installed;$('setup-check').disabled=!available||busy||installed||!$('setup-runtime').value;
+    $('setup-start').disabled=!available||busy||installed;$('setup-shortcuts').disabled=!available||busy||setupState?.receipt?.phase!=='Installed';$('setup-install').disabled=!available||busy||!setupState?.plan||setupState.receipt?.phase==='Installed';
   }
   async function loadSetup(){
     if(setupLoading)return;
@@ -295,7 +295,9 @@
   $('setup-folder-select').addEventListener('click',()=>{if(!setupPath)return;$('setup-runtime').value=setupPath;$('setup-folder-dialog').close();setupControls();});
   $('setup-check').addEventListener('click',async()=>{try{await api('/api/setup/prepare',{method:'POST',body:{RuntimeFolder:$('setup-runtime').value,StartService:$('setup-start').checked}});await loadSetup();}catch(error){text('setup-detail',error.message);}});
   $('setup-install').addEventListener('click',async()=>{if(!setupState?.plan)return;try{await api('/api/setup/install',{method:'POST',body:{Id:setupState.plan.id}});await loadSetup();}catch(error){text('setup-detail',error.message);}});
+  $('setup-shortcuts').addEventListener('click',async()=>{try{await api('/api/setup/shortcuts',{method:'POST'});text('setup-detail','Desktop and Start menu shortcuts are available. They open the local console without Codex; the service runs independently.');}catch(error){text('setup-detail',error.message);}});
+  $('close-console').addEventListener('click',async()=>{if(!confirm('Close this local console? The broadcast service keeps running.'))return;try{await api('/api/console/close',{method:'POST'});state.consoleClosed=true;state.engine=null;state.sampleAt=0;renderStatus();setupControls();message('Console closed. Broadcast service continues. Open the installed shortcut or new package to return.');}catch(error){message(error.message);}});
   $('setup-refresh').addEventListener('click',()=>void loadSetup());
   async function initialize(){stationTabs();renderStatus();try{state.session=await api('/api/session');text('build-label',state.session.preview?'UI PREVIEW':'DEVELOPMENT');}catch(error){message('Console connection unavailable: '+error.message);}await discover();}
-  let ticks=0;setInterval(()=>{if(document.hidden)return;text('clock',clock.format(new Date()));renderStatus();if(++ticks%2===0){void poll();void pollFolderCheck();}if(ticks%4===0&&state.page==='library')void loadLibrary();if(ticks%4===0&&state.page==='system')void loadSetup();},1000);text('clock',clock.format(new Date()));document.addEventListener('visibilitychange',()=>{if(!document.hidden){text('clock',clock.format(new Date()));void poll();}});void initialize();
+  let ticks=0;setInterval(()=>{if(document.hidden||state.consoleClosed)return;text('clock',clock.format(new Date()));renderStatus();if(++ticks%2===0){void poll();void pollFolderCheck();}if(ticks%4===0&&state.page==='library')void loadLibrary();if(ticks%4===0&&state.page==='system')void loadSetup();},1000);text('clock',clock.format(new Date()));document.addEventListener('visibilitychange',()=>{if(!document.hidden){text('clock',clock.format(new Date()));void poll();}});void initialize();
 })();

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using OnAirNext.Installation;
@@ -26,14 +27,33 @@ try
     using var http=new HttpClient{Timeout=TimeSpan.FromMilliseconds(800)};
     async Task<bool> ReadyAsync()
     {
-        try{using var result=await http.GetAsync("http://127.0.0.1:18121/api/health");if(!result.IsSuccessStatusCode)throw new InvalidOperationException("Another application occupies the console port.");var body=await result.Content.ReadAsStringAsync();if(body.Length>4096)throw new InvalidOperationException("Unexpected console response.");using var json=JsonDocument.Parse(body);if(!json.RootElement.TryGetProperty("product",out var product)||product.GetString()!="RadioTEDU-OnAirNext")throw new InvalidOperationException("Another application occupies the console port.");return true;}
-        catch(HttpRequestException){return false;}catch(TaskCanceledException){return false;}
+        try
+        {
+            using var deadline=new CancellationTokenSource(TimeSpan.FromMilliseconds(800));
+            using var result=await http.GetAsync("http://127.0.0.1:18121/api/health",HttpCompletionOption.ResponseHeadersRead,deadline.Token);
+            if(!result.IsSuccessStatusCode)throw new InvalidOperationException("Another application occupies the console port.");
+            await using var body=await result.Content.ReadAsStreamAsync(deadline.Token);var bytes=new byte[4097];var count=0;
+            while(count<bytes.Length){var read=await body.ReadAsync(bytes.AsMemory(count),deadline.Token);if(read==0)break;count+=read;}
+            if(count>4096)throw new InvalidOperationException("Unexpected console response.");
+            using var json=JsonDocument.Parse(bytes.AsMemory(0,count));
+            if(!json.RootElement.TryGetProperty("product",out var product)||product.GetString()!="RadioTEDU-OnAirNext")throw new InvalidOperationException("Another application occupies the console port.");
+            var own=Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if(!json.RootElement.TryGetProperty("version",out var version)||version.GetString()!=own)throw new InvalidOperationException("A different console version is open. Use Close console in its System screen, then open this package again. Broadcasts continue in the service.");return true;
+        }
+        catch(HttpRequestException){return false;}catch(OperationCanceledException){return false;}
     }
     if(!await ReadyAsync())
     {
         if(!File.Exists(web))throw new IOException("The browser console is missing from this installation package.");
         using var child=Process.Start(new ProcessStartInfo(web){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Path.GetDirectoryName(web)!})??throw new IOException("The browser console did not start.");
-        var deadline=DateTimeOffset.UtcNow.AddSeconds(15);while(!await ReadyAsync()){if(child.HasExited||DateTimeOffset.UtcNow>deadline)throw new IOException("The local console could not open. Check whether its port is already in use.");await Task.Delay(200);}
+        try
+        {
+            var timer=Stopwatch.StartNew();while(!await ReadyAsync()){if(child.HasExited||timer.Elapsed>TimeSpan.FromSeconds(15))throw new IOException("The local console could not open. Check whether its port is already in use.");await Task.Delay(200);}
+        }
+        catch
+        {
+            if(!child.HasExited){child.Kill(entireProcessTree:true);using var cleanup=new CancellationTokenSource(TimeSpan.FromSeconds(5));await child.WaitForExitAsync(cleanup.Token);}throw;
+        }
     }
     Process.Start(new ProcessStartInfo("http://127.0.0.1:18121/"){UseShellExecute=true});return 0;
 }

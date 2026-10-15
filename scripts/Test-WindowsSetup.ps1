@@ -7,7 +7,7 @@ $data=[IO.Path]::GetFullPath((Join-Path $env:ProgramData 'RadioTEDU-OnAirNext-De
 $fixture=[IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA ('RadioTEDU/OnAirNext-Dev/setup-fixture-'+[Guid]::NewGuid().ToString('N'))))
 $expectedFixture=$fixture
 $summary=Join-Path $PSScriptRoot '../artifacts/setup-smoke/summary.json'
-$checks=[Collections.Generic.List[string]]::new();$completed=$false;$failure=$null;$owned=$false;$plan=$null
+$checks=[Collections.Generic.List[string]]::new();$completed=$false;$failure=$null;$owned=$false;$plan=$null;$webProcess=$null;$shortcutPaths=@()
 function Check([string]$name,[bool]$value){if(-not $value){throw ('Setup check failed: '+$name)};$checks.Add($name)}
 function Run([string]$exe,[string[]]$arguments){
  $start=[Diagnostics.ProcessStartInfo]::new($exe);$start.UseShellExecute=$false;$start.CreateNoWindow=$true;$start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
@@ -51,12 +51,39 @@ try{
  $runtimeHash=(Get-FileHash -LiteralPath (Join-Path $runtime 'ffmpeg.exe') -Algorithm SHA256).Hash
  if($PackageRoot){$hostProcess=[Diagnostics.Process]::GetProcessById($service.ProcessId);try{Check 'Installed service uses its packaged runtime without global dotnet' (@($hostProcess.Modules|Where-Object {$_.ModuleName -eq 'coreclr.dll' -and $_.FileName.StartsWith((Join-Path $install 'bin')+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)}).Count -eq 1)}finally{$hostProcess.Dispose()}}
  Check 'Runtime copy preserves the selected bytes' ((Get-FileHash -LiteralPath (Join-Path $install 'tools/ffmpeg.exe') -Algorithm SHA256).Hash -eq $runtimeHash)
+ if($PackageRoot){
+  $ids=@(foreach($folder in @('bin','console','setup')){$result=& "$env:SystemRoot/System32/fsutil.exe" file queryfileid (Join-Path $install ($folder+'/coreclr.dll'));if($LASTEXITCODE -ne 0){throw 'Runtime file identity query failed'};[regex]::Match(($result -join ' '),'0x[0-9a-fA-F]+').Value})
+  Check 'Identical immutable runtimes share one installed file identity' ($ids.Count -eq 3 -and $ids[0] -ne '' -and @($ids|Select-Object -Unique).Count -eq 1)
+ }
  $before=(Get-FileHash -LiteralPath (Join-Path $data 'host.json') -Algorithm SHA256).Hash
  $null=Run $setup @('--install',$planPath,$hash)
  Check 'Same reviewed plan retries without replacing configuration or restarting service' ((Get-FileHash -LiteralPath (Join-Path $data 'host.json') -Algorithm SHA256).Hash -eq $before -and (Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")).ProcessId -eq $service.ProcessId)
+ # Exercise the actual packaged HTTP/CSRF route; this is engineering integration, not mouse acceptance.
+ $shortcutCandidates=@([Environment]::GetFolderPath('DesktopDirectory'),[Environment]::GetFolderPath('Programs'))|ForEach-Object {Join-Path $_ 'RadioTEDU OnAir Next.lnk'}
+ foreach($path in $shortcutCandidates){if(Test-Path -LiteralPath $path){throw 'Unexpected existing CI shortcut; fixture refuses to replace it'}}
+ $shortcutPaths=$shortcutCandidates
+ $webStart=[Diagnostics.ProcessStartInfo]::new((Join-Path $install 'console/OnAirNext.Web.exe'));$webStart.UseShellExecute=$false;$webStart.CreateNoWindow=$true
+ $webProcess=[Diagnostics.Process]::Start($webStart);$deadline=[DateTime]::UtcNow.AddSeconds(25);$session=$null
+ do{try{$session=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/session' -SessionVariable setupWebSession -TimeoutSec 2;break}catch{};Start-Sleep -Milliseconds 200}while([DateTime]::UtcNow -lt $deadline)
+ Check 'Packaged console starts without Codex or a global SDK' ([bool]$session.token)
+ $health=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/health' -TimeoutSec 3
+ Check 'Console health exposes the exact compiled build identity' ($health.product -eq 'RadioTEDU-OnAirNext' -and $health.version.EndsWith($env:GITHUB_SHA))
+ $headers=@{'X-Studio-Token'=$session.token;Origin='http://127.0.0.1:18121'}
+ $created=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/setup/shortcuts' -Method Post -WebSession $setupWebSession -Headers $headers -TimeoutSec 10
+ $shell=New-Object -ComObject WScript.Shell
+ try{foreach($path in $shortcutPaths){$shortcut=$shell.CreateShortcut($path);try{Check 'Per-user shortcut targets the installed launcher with console arguments' ($shortcut.TargetPath -eq [IO.Path]::GetFullPath((Join-Path $install 'setup/OnAirNext.Setup.exe')) -and $shortcut.Arguments -eq '--open-console')}finally{[Runtime.InteropServices.Marshal]::FinalReleaseComObject($shortcut)|Out-Null}}}finally{[Runtime.InteropServices.Marshal]::FinalReleaseComObject($shell)|Out-Null}
+ $shortcutHash=(Get-FileHash -LiteralPath $shortcutPaths[0] -Algorithm SHA256).Hash
+ $null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/setup/shortcuts' -Method Post -WebSession $setupWebSession -Headers $headers -TimeoutSec 10
+ Check 'Repeating shortcut creation preserves existing matching shortcut bytes' ((Get-FileHash -LiteralPath $shortcutPaths[0] -Algorithm SHA256).Hash -eq $shortcutHash)
+ $null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/console/close' -Method Post -WebSession $setupWebSession -Headers $headers -TimeoutSec 10
+ Check 'Visible console-close route releases its own web process' ($webProcess.WaitForExit(15000))
+ $afterConsole=Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")
+ Check 'Closing the console preserves the same running engine service' ($afterConsole.State -eq 'Running' -and $afterConsole.ProcessId -eq $service.ProcessId)
  $completed=$true
 }catch{$failure=$_.Exception.Message;throw}
 finally{
+ if($webProcess){try{if(-not $webProcess.HasExited){$webProcess.Kill($true);$webProcess.WaitForExit(10000)|Out-Null}}finally{$webProcess.Dispose()}}
+ foreach($path in $shortcutPaths){if(Test-Path -LiteralPath $path){$full=[IO.Path]::GetFullPath($path);if([IO.Path]::GetFileName($full) -ne 'RadioTEDU OnAir Next.lnk' -or (Get-Item -LiteralPath $full).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Shortcut cleanup validation failed'};Remove-Item -LiteralPath $full -Force}}
  $env:ONAIR_SETUP_TEST_RUNTIME=$null
  if(-not $completed -and -not $failure){$failure='Setup fixture interrupted before completion'}
  if($owned -and (Test-Path -LiteralPath (Join-Path $data 'setup-ownership.json'))){

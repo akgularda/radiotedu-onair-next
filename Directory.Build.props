@@ -10,5 +10,7 @@
     <ArtifactsPath Condition="'$(ArtifactsPath)' == ''">$(MSBuildThisFileDirectory)artifacts/build</ArtifactsPath>
     <UseArtifactsOutput>true</UseArtifactsOutput>
     <Deterministic>true</Deterministic>
+    <SourceRevisionId Condition="'$(GITHUB_SHA)' != ''">$(GITHUB_SHA)</SourceRevisionId>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_SHA)' != ''">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 </Project>

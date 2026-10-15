@@ -1,4 +1,5 @@
 using System.Net;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -47,7 +48,9 @@ app.Use(async (context, next) =>
     }
 });
 app.UseDefaultFiles(); app.UseStaticFiles();
-app.MapGet("/api/health", () => Results.Json(new { product="RadioTEDU-OnAirNext" }));
+app.MapPost("/api/console/close", (HttpResponse response) => { response.OnCompleted(() => { app.Lifetime.StopApplication(); return Task.CompletedTask; }); return Results.Json(new { accepted=true }); });
+app.MapGet("/api/health", () => Results.Json(new { product="RadioTEDU-OnAirNext", version=System.Reflection.Assembly.GetExecutingAssembly().GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()?.InformationalVersion }));
+app.MapPost("/api/setup/shortcuts", () => { ConsoleShortcuts.Create(); return Results.Json(new { accepted=true }); });
 app.MapGet("/api/setup", (SetupCoordinator setup) => Results.Json(setup.Status()));
 app.MapPost("/api/setup/prepare", (SetupRequest request, SetupCoordinator setup) => { setup.Prepare(request); return Results.Json(new { accepted=true }); });
 app.MapPost("/api/setup/install", (SetupInstall request, SetupCoordinator setup) => { setup.Install(request.Id); return Results.Json(new { accepted=true }); });
