@@ -26,11 +26,11 @@ The active solution now builds OnAirNext.Web. On Air, Library and System are the
 - Distinct durable jingle/sweeper counters; actual legacy behavior import/planner integration remain incomplete.
 - Per-station live-root revisions, stable recursive discovery, complete decode validation outside the programme loop, bounded import jobs and paged catalog reads.
 - Interrupted copy jobs resume without overwriting originals. Missing-drive history is retained. External folders are watched read-only in the isolated build; copying is confined to private managed storage.
-- Published in-memory library rotation uses bounded selection work. Metadata editing, retirement/restore, playlists, queue editing and resource-budgeted analysis remain unfinished.
+- Published in-memory library rotation uses bounded selection work. Versioned metadata editing, reset-to-file-tags and reversible removal/restore are implemented, with catalog/worker tests. Connected mouse acceptance remains pending; playlists, queue editing and resource-budgeted analysis remain unfinished.
 
 ## Evidence and release limits
 
-The preceding coordinator/Library foundation compiled in GitHub-hosted Windows CI and passed **76/76 unit cases** at commit 81049639963f65b63809ed48b30927d5a54f8fd7. The browser backend and whole-drive guard require a fresh build/test run. These are distinct from the broadcasting-PC baseline: 49 unit cases, 14 real durable checks and a 17-check output-recovery regression. Failed runs and resource deferrals remain retained.
+The current browser/engine source at 126f772a27e638de4bf3c29fe086528b3ac7f9f4 compiled in GitHub-hosted Windows CI and passed **85/85 unit cases** (run 38797896071), including eight new catalog-editing regressions. This is distinct from the broadcasting-PC baseline of 49 unit cases, 14 real durable checks and a 17-check output-recovery regression. Unit success and visual preview navigation do not qualify the connected browser application or production playout. Failed runs and resource deferrals remain retained. See [current delivery ledger](docs/BROADCAST_PC_DELIVERY_LEDGER.md) and [library editing evidence](artifacts/evidence/library-editing-85-20261015.json).
 
 A protected local build was stopped after an existing Classic transport-health flag changed. No legacy PID/generation changed, the guardian verified zero remaining test processes, and later snapshots recovered. That observation is not proof of a listener outage or its cause. Remote builds reduce load on the broadcasting PC.
 

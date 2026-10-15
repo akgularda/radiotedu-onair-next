@@ -1,49 +1,49 @@
-> **Current UI decision:** the user rejected the native prototype and requested a browser app. [Browser interface decision](./BROWSER_UI_DECISION.md) supersedes earlier native-only UI requirements. The new browser build is under qualification; production remains with the old application.
-
 # Broadcast-PC delivery ledger
 
-Updated 15 October 2026. This is an implementation and evidence ledger, not a release declaration.
+Updated 15 October 2026. This records the complete commissioning scope; it is not a release declaration. The legacy application remains the production owner. Nothing below authorizes skipping an unproven gate.
 
 ## Current user decisions
 
-- Deliver one integrated native Windows product with a broadcast-program interface and tray behavior. The latest clarification proposes a Windows service so broadcasting can start before logon; native WPF controls the same product engine. Windows session isolation requires service and interactive UI processes. An earlier same-process interpretation is superseded. All operation, installation, recovery, configuration and migration must be possible through the native UI with mouse and keyboard.
-- Research real radio automation interfaces. Actual official PlayIt Live and mAirList screen pixels have been inspected; RCS Zetta currently has documentation research. The latest visual direction is dark and Palantir-like; literal mAirList styling is rejected. Blueprint dark-theme pixels have also been inspected. Use original native WPF resources, explicit state text, a dominant running order and readable Now/Next clocks. Do not use a generic decorative dashboard or a browser wrapper.
-- Keep the application lightweight on low-spec PCs. Respect the measured broadcast PC's headroom. A preflight with 88.7% one-second CPU and about 1.22 GiB available RAM deferred the additional audio laboratory rather than starting a second production fleet.
-- Import jingle/sweeper assets and behavior from the actual current application. Do not apply one blanket cadence to all stations. Preserve disabled or missing collections in the import preview. Keep distinct content types and durable counters available; show any change from the imported legacy mapping explicitly. Earlier two/three-song defaults must not silently overwrite current per-station rules.
-- Keep every actual broadcast attempt locally, with honest timing/uncertainty and all stations represented. Daily private GitHub publication may use the current program's existing report repository; radiotedu-broadcast-repor is not mandatory. Publication failures require persistent retry/catch-up and verified commit readback.
-- Support Icecast source information and metadata according to official protocol/codec capabilities. Source handshake, metadata acceptance, server statistics and independent listener decoding are different evidence states. Never report all as green merely because a source socket connected.
-- No AI features. No production changes or retirement until the full qualification and migration gates pass.
+- The rejected WPF prototype is historical. The active product UI is the local dark browser console, OnAirNext.Web. All product UI, help, setup and errors use English. Original artist/title text is preserved.
+- The broadcast engine must run as an independent Windows service before logon, recover after power/network return, and keep playing when the browser closes. Service/client ACLs and interactive microphone/cue identity still need implementation.
+- All operator/configuration/import/installation/migration/rollback actions must work through visible UI controls and pass actual mouse/keyboard acceptance. Unit tests and visual previews are not substitutes.
+- Preserve the old installation, broadcasts, media, database and credentials. Keep new development/data/test destinations separate. Migrate one station codec group only after its verification gates pass; retire the old service last and retain rollback files.
+- Preserve actual legacy content, branding, output quality and station assignments. No AI features or external inference are active. No credentials, real databases, recordings or music belong in public source.
+- Keep Windows/Linux/macOS delivery and portable/archive requests in scope; no finished cross-platform installer for the new program is claimed.
 
-## Implementation and evidence
+## Current implementation and acceptance
 
-| Requirement | Status and remaining gate |
+| Requirement | Current authoritative evidence and remaining work |
 |---|---|
-| Preserve legacy broadcasts | No legacy source/config/database/service mutation performed. Eight worker heartbeat files remained fresh during development; transport/PCM fields are inspected separately. This is not listener/audio proof. |
-| Separate source and data | Fresh main clone in RadioTEDU-OnAir-Next-20261015; SDK, packages, lab origin and build output are separate under local application data. |
-| Reproducible build | Official .NET SDK 10.0.402 archive verified against official release metadata. Initial restore failed from missing tool-process APPDATA; failure retained. Corrected environment produced a zero-warning, zero-error solution build and 32 passing unit tests. Subsequent recovery/cadence refinements passed 37 unit cases; desired-state changes passed 42. The separate native WPF project also compiled with zero warnings/errors. |
-| Durable restart policy | Implemented new-attempt linkage, restart-from-zero selection, atomic interruption/checkpoint preparation, durable Skip recovery and duplicate-event payload checking. 42 unit cases now pass, including persistent stop intent and command receipt collisions. A real one-station hard-kill/decoded-listener scenario passed nine checks, including distinct restart linkage and a lost-response Skip retry after process death. First fixed-wait failure retained. A dedicated journal writer also passed 37 unit cases and 17 real reconnect/encoder-recovery checks. The extended end-to-end desired-state scenario passed 13 checks after correcting a client-side disposal/pipe-close race; the failed run remains retained. Stopped stations stay stopped after restart and receipt collisions do not shut down the command interface. Exclusive journal writer ownership and read-only schema preflight now pass six additional unit cases; owned-child rejection/cleanup adds another case. Latest validation: 49 unit cases and 14 real durable checks. Child tracking is retained on unconfirmed exit. Parent-only crash, full controller lifecycle and the remaining recovery matrix are not yet qualified. |
-| Completion and ownership | Terminal event/checkpoint/queue consumption share a transaction. Complete crash-boundary, ad/event ownership, desired state and corrupt/missing-checkpoint qualification still required. |
-| Command deduplication | Durable Skip binds the observed attempt separately from client payload; same-ID different-payload reuse is rejected. Durable enabled/running intent and atomic all-station stop receipts are implemented with five unit cases. Full lifecycle/controller routing and end-to-end verification remain. |
-| Windows service and native UI integration | A native WPF desktop builds and opens, discovers isolated local engines, reads status and offers a selected-station Skip. No service installed or production operator desktop shipped. Complete controller, installation, tray and remaining workflows are not delivered. |
-| Eighteen required outputs | Eight AAC-LC192, eight HE-AACv2 64 with libfdk_aac, two Ogg FLAC remain mandatory. Existing synthetic 16-output evidence is not this acceptance proof. |
-| Audio continuity | Continuous engine/named-pipe baseline exists. Newly changed recovery needs listener testing. Empty/corrupt/drive-loss emergency content, crossfades, transition ownership and full target-resource qualification remain. |
-| Loudness | BS.1770-5/R128 gated integrated loudness, genuine true peak and independently decoded measurements for all 18 outputs are not implemented/qualified. Sample limiting is not compliance. |
-| Legacy migration and branding | Read-only discovery captured actual channel settings and source function semantics. New per-station jingle/sweeper completion counters persist atomically and have boundary tests. Import wizard, verified backup, path/media validation, effective broadcast-plan overrides, legacy counter migration and saved-state readback remain. No media copied or tags edited. |
-| Live folders | Stable file discovery, decode validation, rename/change/remove/drive-loss, shuffled rotation and UI live-folder assignment remain. |
-| Special days/programs | Soft-boundary scheduling, metadata override, return preview and full event ownership/recovery UI remain. |
-| Microphone and private cue | Engine mixer proof exists; native device agent, enumeration/loss handling, private cue and UI workflows remain. |
-| Mic-only recording | Conditional actual-program recording, quiet pauses, segmentation, disk failures and crash repair remain. No ordinary music-only recording may be enabled. |
-| Complete reports | CSV restart linkage/timing-quality columns added. Midnight apportionment, full annual/roster coverage, outbox/publisher/credential UI and audit export still need completion and verification. |
-| Native UI research | Two UI research documents saved by user-requested agents. Actual PlayIt/mAirList observations recorded. An original solid dark WPF theme and compiled desktop now exist. The real native window exposes On air/System via accessibility; Alt+S opens System and Alt+F4 closed the previous build. Work-area sizing, compact panels, stale-status command gating and stable output rows are implemented and compile, but their full interactive qualification remains open; there are no invented library/schedule controls or simulated audio meters. Computer Use screenshot capture failed twice (FrameArrived/window capture timeout); its mouse action failed because coordinate input geometry was unavailable. Mouse operations, visual/DPI verification, real connected readback and the remaining screens are not qualified. |
-| Installer/update/repair | Native guided setup, separate service identity/ACLs, versioned installation, backup/restore and rollback remain. |
-| Optional non-AI scope | Original approved capability inventory remains applicable; no capability is declared delivered by a mock/placeholder control. |
-| GitHub identity and publication | Source must be published as akgularda. Account-specific credential/permission probe verified akgularda and push/admin access on the new repository; global account untouched. No production secrets/media/database may enter public source. |
-| Target capacity | Actual HP has 8 GiB RAM and active legacy workload. One-worker low-priority builds used. Disk I/O measurement, combined child-process footprint, p95 control latency and sustained full-roster comparison remain. |
-| Long qualification | Separate real 24-hour and 72-hour full-roster runs, injected failures, rollover and resource evidence remain. Short tests cannot substitute. |
-| Production migration | None started. Each station's codec group must transfer separately with no duplicate ownership, independent decoded quality checks, measured gap and native UI rollback. |
-| Legacy retirement | Not authorized by evidence yet. Only after all eight groups/18 outputs and complete observation gates pass; retain old installation/backups/media. |
+| Broadcast protection and capacity | No legacy start/stop/config/database/service mutation during this work. Latest local preflight measured 89.2% CPU, about 1.45 GiB available RAM and C: disk queue 4.58/read latency 66.8 ms; a Situation worker sample was unhealthy. These measurements defer new local load. A prior own-job guard stopped only QA descendants on legacy health changes and verified zero remaining children. Neither snapshots nor source-connected status prove continuous listener audio. |
+| Separate source/data and publication | Separate checkout RadioTEDU-OnAir-Next-20261015, private local runtime/data/build/test roots, isolated loopback mounts, public source akgularda/radiotedu-onair-next. Account-specific akgularda publication and draft-head readback are verified; global CLI identity is untouched. |
+| Build | Source 126f772a27e638de4bf3c29fe086528b3ac7f9f4 passed the Windows build and 85/85 unit tests in run 38797896071. Verified TRX digest and scope: [library editing evidence](../artifacts/evidence/library-editing-85-20261015.json). Real target runtime/service/audio-device qualification remains. |
+| Durable restart and ownership | Linked restart-from-beginning, completed-item consumption, desired enabled/running state, payload-bound command receipts, dedicated journal writer and owned-child cleanup are implemented. Earlier target evidence includes 49 unit cases/14 real durable checks and 17 real output-recovery checks. The full crash/commit/EOF/Skip/queue/ad/event matrix and current controller/lifecycle audio checks remain. |
+| Audio continuity and outputs | Independent bounded persistent-output recovery exists. Actual final eight AAC-LC192 + eight libfdk HE-AACv2 64 + two Ogg FLAC outputs, codec/stereo/metadata verification and sibling-continuity evidence remain. EN/FR remain externally owned. Synthetic 16-output evidence is not the 18-output gate. |
+| Loudness | BS.1770-5/R128 gated loudness, current tolerances, oversampled true peak, codec headroom, reference-signal calibration and independently decoded measurements for all 18 outputs remain unimplemented/unqualified. No compliance badge or release claim is justified. |
+| Browser UI | On Air, Library and System compile. Real current/next/duration snapshots, distinct Stop, channel-bound dialogs, compact transport and no fake live meters. Preview mouse navigation/channel changes/details and 911×512 layout were checked. The connected file chooser/folder/editor/playout workflow has not passed because local resources/legacy health are unsafe. Remaining screens are explicit unfinished controls. |
+| Live folders and imports | Stable recursive scanning, full decode checks, bounded imports, managed-copy protection, missing/return handling and in-memory shuffled selection are implemented and unit tested. External media are watched read-only. Real folder/upload/drive-loss UI and audio acceptance remain. |
+| Metadata and safe removal | Separate versioned manual metadata survives rescan/restart; reset uses latest file tags. Removal excludes future rotation without deleting files; restore forces validation. Station/root/version fences and exact-request retries are implemented. Eight new regressions cover persistence, races/isolation, immutable attempt metadata and unavailable-drive cache safety. Connected mouse/readback acceptance remains. |
+| Queues/playlists/program media | Complete operator queue order/editing, reusable lists, prerecorded import/audition/queueing and crash ownership remain. Initial Application source is not an integrated product. |
+| Branding and legacy import | Actual legacy discovery and durable distinct completion counters exist. Guided verified backup/import preview, mapping/gain/cadence validation, collision handling, content readback and real branding transitions remain. No production media have been imported into the new program. |
+| Special days/schedule/night preference | Soft boundary takeover/return, metadata override, durable event ownership, visible schedule preview and optional soft higher-BPM night preference remain. |
+| Microphone/private cue | Mixer proof exists; interactive device enumeration/capture, cue isolation, ducking, loss recovery and UI acceptance remain. |
+| Conditional recording | Final program mix only while mic is on air, retained quiet pauses, no music-only/private-test recording, segmentation/crash repair/storage handling remain. |
+| Reports | Immutable attempt events and streaming CSV foundation with restart linkage/timing quality exist. Complete daily Istanbul automation, full annual/roster UI export, authenticated private GitHub outbox/retry/catch-up and failure qualification remain. Report repository must stay private. |
+| Service/install/update/repair | No new production service or installer is delivered. Before-logon startup, protected service identity/data/credentials, authenticated client ACLs, guided setup, upgrade/repair/backup/rollback and Codex-free operation remain. |
+| Platform packages/archives | Retained CI development binaries are not finished installers. Windows/Linux/macOS packaging, compatibility tests and requested final desktop archives remain delivery gates. |
+| Long qualification | Real separate full-roster 24-hour and 72-hour runs with resource headroom, injected failures and rollover remain. Do not duplicate a full fleet on this 8 GiB broadcasting PC. |
+| Migration and retirement | Zero station groups migrated. Durable UI checklists/source fencing, imported data/branding, rollback and independently decoded quality checks remain. Only after all eight groups/18 outputs and observation gates pass may the old supervisor be stopped/disabled through UI; do not delete it. |
 
-## Local development evidence locations
+## Latest catalog-edit validation
+
+The 85-case run passed all tests, with zero failed/errored/aborted cases. Browser source initialization and the Library action column were checked in the unconnected preview; no JavaScript errors were reported. This does not claim the edit dialogs were exercised against a running engine. Source edits and generated fixtures are development work, not operational configuration of the production application.
+
+## Historical development entries
+
+The entries below preserve prior successful/failed attempts and their evidence locations. Their native-UI direction, old counts and pending-build wording describe the source at that time and are superseded by the current decisions/evidence above. They do not narrow the full release scope.
+
+### Local development evidence locations
 
 Operational discovery and raw test/build logs are under the separate operations folder next-development. Never commit private discovery files or local generated source credentials. Public evidence must contain synthetic content and redacted configuration only.
 
@@ -58,7 +58,7 @@ Operational discovery and raw test/build logs are under the separate operations 
 
 Continue the delivery order in OPERATING_PLAN.md. Do not mark this task complete until every required gate is actually satisfied.
 
-## Current native lifecycle work — pending qualification
+### Current native lifecycle work — pending qualification
 
 Per-station coordinator workers, start/stop controls, bounded pipe frames, finite-playlist EOF handling and retryable resource cleanup are implemented in the working branch. Twelve additional unit cases (61 expected total), lifecycle/finite loopback scenarios and a Windows CI workflow have been added. These changes are not yet qualified on this PC. The first local build reported a nullable station argument; source was corrected, but the retry was deferred for disk pressure. Preserve that failed attempt.
 
@@ -68,7 +68,7 @@ The Windows CI workflow compiles and runs unit tests away from the broadcasting 
 
 The operator independence gate is mandatory: music import and live-folder assignment, setup, queue, schedule, microphone, reporting and recovery must work through native UI controls without Codex, SQL, scripts or hidden requests. Native Library file/folder selectors, search, paged rows and persisted import progress are now implemented in source, with catalog and background-worker tests added; build/runtime/mouse qualification is still pending. No routine task may be accepted from a developer API test alone.
 
-## Native Library development update — not yet qualified
+### Native Library development update — not yet qualified
 
 Native Windows file/folder choosers now connect to persisted library commands in the isolated host. The catalog uses per-station root revisions, global command-ID/payload deduplication, bounded change batches and paged reads. Imports copy without changing originals, use content-addressed filenames, retain durable pending jobs on interruption, verify complete decode outside the programme loop and report failures. Recursive scanning excludes folder links; incomplete/unavailable scans retain catalog history. The planner reads a published in-memory set, and replacement/removal updates future selection. Empty-root successor refresh finishes the current item. A deterministic shuffled order is rebuilt per rotation cycle.
 
@@ -82,7 +82,7 @@ The protected local attempt at 18:22 UTC was stopped after Classic reported tran
 
 Follow-up validation scope now includes 76 expected unit cases: bounded shuffled cycles, folder-return/EOF signaling, explicit rescan of rejected files, a bounded pending-import queue, validation-worker failure isolation and read-only external-folder protection. The native Library offers a managed-folder control so copying can stay inside the isolated test installation; watching external folders does not authorize changing legacy media. The default probe retains cleanup ownership and pauses new validation until its previous child exit is confirmed. These follow-up changes are pending fresh CI/runtime acceptance.
 
-## Browser replacement — latest user direction
+### Browser replacement — latest user direction
 
 The native prototype was explicitly rejected and closed. OnAirNext.Web replaces it in the active solution; its source is retained as history. Browser decision notices supersede native-only requirements in the entry-point plans. The new frontend is dependency-free local HTML/CSS/JavaScript, with On Air/Library/System views and disabled unfinished features. Actual mouse navigation and channel changes passed in the separate visual preview. A loopback-only ASP.NET Core bridge, bounded file upload, server-side folder navigation and CSRF/session checks are now in source, awaiting a fresh build and connected runtime tests. No production engine was connected.
 

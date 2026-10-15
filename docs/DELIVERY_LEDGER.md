@@ -1,3 +1,6 @@
+# Browser validation notes
+
+The full, current product acceptance ledger is [Broadcast-PC delivery ledger](BROADCAST_PC_DELIVERY_LEDGER.md). The entries below retain earlier browser-stage observations.
 
 ### Browser UI revision and validation — 15 October 2026
 
