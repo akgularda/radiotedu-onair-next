@@ -123,7 +123,8 @@ internal static class EngineHost
                     {
                         await pipe.WriteAsync(Encoding.UTF8.GetBytes(result + "\n"), deadline.Token);
                         // Keep the sole pipe instance alive; wait for the client to consume the response and close.
-                        await pipe.ReadAsync(new byte[1], deadline.Token);
+                        var trailing = await pipe.ReadAsync(new byte[1], deadline.Token);
+                        if (trailing != 0) throw new IOException("Unexpected trailing command data.");
                     }
                     finally { if (shutdown) stop.Cancel(); }
                 }

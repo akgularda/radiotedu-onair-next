@@ -52,7 +52,7 @@ public sealed class ServicePipePolicyTests
         await using var client=new NamedPipeClientStream(".",name,PipeAccessRights.ReadWrite|PipeAccessRights.Synchronize,
             PipeOptions.Asynchronous,identify?TokenImpersonationLevel.Identification:TokenImpersonationLevel.Anonymous,HandleInheritability.None);
         await client.ConnectAsync(deadline.Token);await accepted;
-        await client.WriteAsync(new byte[]{1},deadline.Token);await server.ReadAsync(new byte[1],deadline.Token);
+        await client.WriteAsync(new byte[]{1},deadline.Token);await server.ReadExactlyAsync(new byte[1],deadline.Token);
         if(identify)policy.Authorize(server);
         else
         {
