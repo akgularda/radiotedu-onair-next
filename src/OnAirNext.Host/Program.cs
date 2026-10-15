@@ -71,6 +71,16 @@ try
                     case "library-rescan" when request.StationId is { } rescanStation:
                         await library.RescanAsync(rescanStation, request.Id);
                         result = "{\"accepted\":true}"; break;
+                    case "library-metadata" or "library-reset-metadata" or "library-retire" or "library-restore"
+                        when request.StationId is { } editStation && request.AssetId is { } assetId:
+                        var kind = request.Action switch
+                        {
+                            "library-metadata" => LibraryEditKind.Metadata, "library-reset-metadata" => LibraryEditKind.ResetMetadata,
+                            "library-retire" => LibraryEditKind.Retire, _ => LibraryEditKind.Restore
+                        };
+                        var edited = await library.EditAssetAsync(editStation, request.Revision, assetId, request.ExpectedVersion, kind,
+                            request.Id, request.Artist, request.Title);
+                        result = JsonSerializer.Serialize(new { accepted = true, asset = edited }); break;
                     case "stop":
                         shutdown = await coordinator.StopAllAsync(request.Id);
                         result = "{\"accepted\":true}"; break;
@@ -96,4 +106,5 @@ return 0;
 
 internal sealed record HostSettings(string Ffmpeg, string DataRoot, string PipeName, List<StationSettings> Stations);
 internal sealed record EngineCommand(string Id, string Action, string? StationId, string? Path = null,
-    string[]? Paths = null, string? Query = null, int Offset = 0);
+    string[]? Paths = null, string? Query = null, int Offset = 0, string? AssetId = null,
+    long Revision = 0, long ExpectedVersion = 0, string? Artist = null, string? Title = null);

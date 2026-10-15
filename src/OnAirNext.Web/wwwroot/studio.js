@@ -2,7 +2,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const roster = [{id:'1',name:'Classic'},{id:'2',name:'Lofi'},{id:'4',name:'Radio'},{id:'5',name:'Cazz'},{id:'8',name:'Rock'},{id:'9',name:'Energize'},{id:'10',name:'Situation'},{id:'11',name:'Main Character'}];
-  const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null,folderTarget:null};
+  const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null,folderTarget:null,editTarget:null,assetStateTarget:null};
   try { const saved=JSON.parse(localStorage.getItem('studio-pending-commands')??'[]');if(Array.isArray(saved))state.pending=saved.filter(p=>typeof p.engine==='string'&&p.request?.Id&&p.request?.StationId).slice(0,32); } catch { }
   const pending = () => state.pending.find(p=>p.engine===state.engine&&p.request.StationId===state.station);
   const savePending = () => {try{localStorage.setItem('studio-pending-commands',JSON.stringify(state.pending));}catch{}};
@@ -68,7 +68,7 @@
     $('retry-command').hidden=!pending();$('retry-command').disabled=!connected||state.busy;
     libraryControls();
   }
-  function libraryControls(){const enabled=fresh()&&!state.busy&&!pending();$('choose-folder').disabled=!enabled;$('add-files').disabled=!enabled||!state.library?.canImportFiles;$('managed-folder').disabled=!enabled;$('rescan').disabled=!enabled||!state.library?.page?.Root;$('library-prev').disabled=!fresh()||state.offset===0;$('library-next').disabled=!fresh()||state.library?.page?.Items?.length!==50;}
+  function libraryControls(){const enabled=fresh()&&!state.busy&&!pending();$('choose-folder').disabled=!enabled;$('add-files').disabled=!enabled||!state.library?.canImportFiles;$('managed-folder').disabled=!enabled;$('rescan').disabled=!enabled||!state.library?.page?.Root;$('library-prev').disabled=!fresh()||state.offset===0;$('library-next').disabled=!fresh()||state.library?.page?.Items?.length!==50;document.querySelectorAll('.asset-action').forEach(button=>button.disabled=!enabled);assetDialogControls();}
   async function discover(){
     try{const result=await api('/api/engines');const options=result.engines??[];$('engine-select').replaceChildren(...(options.length?options.map(name=>{const option=element('option','',name);option.value=name;return option;}):[element('option','','No engines available')]));$('engine-select').disabled=!options.length;$('connect-engine').disabled=!options.length;text('engine-discovery',options.length?`${options.length} isolated engine${options.length===1?'':'s'} found on this computer.`:result.preview?'Visual preview. No broadcasting engine is connected.':'No isolated engine is running. The service setup workflow is still being built.');}
     catch(error){text('engine-discovery','Engine discovery unavailable: '+error.message);}
@@ -80,13 +80,13 @@
     finally{state.polling=false;renderStatus();}
   }
   async function command(action,payload={},retry=null){
-    if(!fresh()||state.busy||(!retry&&pending()))return;
+    if(!fresh()||state.busy||(!retry&&pending()))return null;
     const selected=state.station,engine=state.engine;const envelope=retry??{engine,request:{Id:crypto.randomUUID(),Action:action,StationId:selected,...payload}};
-    if(envelope.engine!==engine||envelope.request.StationId!==selected)return;
+    if(envelope.engine!==engine||envelope.request.StationId!==selected)return null;
     if(!state.pending.some(p=>p.request.Id===envelope.request.Id))state.pending.push(envelope);savePending();state.busy=true;renderStatus();
     try{let result;for(let attempt=0;attempt<2;attempt++){try{result=await api('/api/command',{method:'POST',body:envelope});break;}catch(error){if(error.status&&error.status<500){state.pending=state.pending.filter(p=>p.request.Id!==envelope.request.Id);savePending();throw error;}if(attempt===1)throw error;}}
-      state.pending=state.pending.filter(p=>p.request.Id!==envelope.request.Id);savePending();if(result?.accepted!==true)throw new Error(result?.error??'Command not accepted');message('Accepted for '+stationName(selected)+'. Reading back saved state…');await poll();if(selected===state.station)await loadLibrary();}
-    catch(error){message((pending()?'Acknowledgement unavailable. Retry the same request. ':'Command rejected. ')+error.message);}
+      state.pending=state.pending.filter(p=>p.request.Id!==envelope.request.Id);savePending();if(result?.accepted!==true)throw new Error(result?.error??'Command not accepted');message('Accepted for '+stationName(selected)+'. Reading back saved state…');await poll();if(selected===state.station)await loadLibrary();return result;}
+    catch(error){message((pending()?'Acknowledgement unavailable. Retry the same request. ':'Command rejected. ')+error.message);return null;}
     finally{state.busy=false;renderStatus();}
   }
   $('retry-command').addEventListener('click',()=>{const saved=pending();if(saved)void command(saved.request.Action,{},saved);});
@@ -98,12 +98,57 @@
   $('stop-dialog').addEventListener('close',()=>{const target=state.stopTarget;state.stopTarget=null;if($('stop-dialog').returnValue!=='stop')return;if(!target||target.station!==state.station||target.engine!==state.engine){message('Channel changed. Stop was cancelled.');return;}void command('stop-station');});
   $('toggle-inspector').addEventListener('click',()=>{const expanded=$('toggle-inspector').getAttribute('aria-expanded')!=='true';$('toggle-inspector').setAttribute('aria-expanded',String(expanded));$('channel-inspector').classList.toggle('expanded',expanded);});
   $('skip-item').addEventListener('click',()=>void command('skip'));
+  function assetContext(target){return !!target&&target.engine===state.engine&&target.station===state.station&&target.revision===state.library?.page?.Root?.Revision;}
+  function assetDialogControls(){
+    for(const [target,prefix] of [[state.editTarget,'asset-editor'],[state.assetStateTarget,'asset-state']]){
+      const context=assetContext(target), waiting=!!pending(), enabled=context&&fresh()&&!state.busy&&!waiting;
+      $(prefix==='asset-editor'?'asset-editor-save':'asset-state-confirm').disabled=!enabled;
+      $(prefix+'-retry').hidden=!waiting||!context;
+      $(prefix+'-retry').disabled=!context||!fresh()||state.busy;
+      if(target&&!context)text(prefix+'-feedback','Channel or live folder changed. Close this window and reopen the item.');
+    }
+    $('asset-reset-metadata').disabled=!assetContext(state.editTarget)||!fresh()||state.busy||!!pending()||!state.editTarget?.asset.HasMetadataOverride;
+    $('asset-title-input').disabled=state.busy;$('asset-artist-input').disabled=state.busy;
+  }
+  function captureAsset(asset){return {engine:state.engine,station:state.station,revision:state.library?.page?.Root?.Revision,asset};}
+  function openAssetEditor(asset){
+    if(!fresh()||state.busy||pending()||!state.library?.page?.Root)return;
+    state.editTarget=captureAsset(asset);text('asset-editor-channel',stationName());text('asset-editor-path',asset.RelativePath);
+    $('asset-title-input').value=asset.Title;$('asset-artist-input').value=asset.Artist;
+    text('asset-editor-feedback',asset.HasMetadataOverride?'Manual metadata is saved. Use file tags to return to the scanned tags.':'File tags are in use.');
+    $('asset-editor').showModal();assetDialogControls();
+  }
+  function openAssetState(asset){
+    if(!fresh()||state.busy||pending()||!state.library?.page?.Root)return;
+    state.assetStateTarget=captureAsset(asset);const restore=asset.State==='Retired';
+    text('asset-state-heading',(restore?'Restore item to ':'Remove item from ')+stationName()+'?');text('asset-state-title',asset.Title);
+    text('asset-state-confirm',restore?'Restore and validate':'Remove from rotation');
+    text('asset-state-description',restore?'The original file will be validated again before returning to rotation.':
+      'The current item will finish. No file is deleted; this item can be restored later.'+(state.library.page.Ready===1&&asset.State==='Ready'?' This is the last validated item. Removing it can leave the station without music.':''));
+    text('asset-state-feedback','');$('asset-state-dialog').showModal();assetDialogControls();
+  }
+  async function submitAsset(action,target,dialog,feedback,metadata={},retry=null){
+    if(!assetContext(target)){text(feedback,'Channel or live folder changed. Close this window and reopen the item.');return;}
+    text(feedback,'Saving and reading back committed state…');
+    const result=await command(action,{Revision:target.revision,AssetId:target.asset.Id,ExpectedVersion:target.asset.EditVersion??0,...metadata},retry);
+    if(result?.asset){message('Saved state for '+stationName(target.station)+': '+result.asset.Title+' · '+result.asset.State);$(dialog).close();}
+    else text(feedback,$('action-status').textContent||'The change has not been confirmed.');
+  }
+  $('asset-editor-form').addEventListener('submit',event=>{event.preventDefault();if(!$('asset-editor-form').reportValidity())return;void submitAsset('library-metadata',state.editTarget,'asset-editor','asset-editor-feedback',{Artist:$('asset-artist-input').value,Title:$('asset-title-input').value});});
+  $('asset-reset-metadata').addEventListener('click',()=>void submitAsset('library-reset-metadata',state.editTarget,'asset-editor','asset-editor-feedback'));
+  for(const id of ['asset-editor-close','asset-editor-cancel'])$(id).addEventListener('click',()=>$('asset-editor').close());
+  $('asset-editor').addEventListener('close',()=>{state.editTarget=null;});
+  $('asset-state-dialog').addEventListener('close',()=>{state.assetStateTarget=null;});
+  $('asset-state-confirm').addEventListener('click',()=>{const target=state.assetStateTarget;if(target)void submitAsset(target.asset.State==='Retired'?'library-restore':'library-retire',target,'asset-state-dialog','asset-state-feedback');});
+  for(const [prefix,dialog,getTarget] of [['asset-editor','asset-editor',()=>state.editTarget],['asset-state','asset-state-dialog',()=>state.assetStateTarget]]){
+    $(prefix+'-retry').addEventListener('click',()=>{const saved=pending(),target=getTarget();if(saved&&target&&saved.request.AssetId===target.asset.Id&&saved.request.Revision===target.revision)void submitAsset(saved.request.Action,target,dialog,prefix+'-feedback',{},saved);});
+  }
   function resetLibrary(){text('folder-name','Live folder not loaded');text('folder-path','Connect the engine to view or assign a folder.');text('folder-state','Not connected');text('library-count','No library loaded');text('library-progress','Waiting for engine connection');$('managed-folder').hidden=true;$('library-rows').replaceChildren(emptyLibrary());libraryControls();}
-  function emptyLibrary(){const row=element('tr'),cell=element('td','table-empty large-empty');cell.colSpan=5;cell.append(icon('folder'),element('strong','','A home for your station’s music'),element('span','','Choose a live folder or add audio files. Original files stay unchanged.'));if(!fresh()){const button=element('button','button subtle','Connect engine');button.append(icon('chevron'));button.addEventListener('click',()=>navigate('system'));cell.append(button);}row.append(cell);return row;}
+  function emptyLibrary(){const row=element('tr'),cell=element('td','table-empty large-empty');cell.colSpan=6;cell.append(icon('folder'),element('strong','','A home for your station’s music'),element('span','','Choose a live folder or add audio files. Original files stay unchanged.'));if(!fresh()){const button=element('button','button subtle','Connect engine');button.append(icon('chevron'));button.addEventListener('click',()=>navigate('system'));cell.append(button);}row.append(cell);return row;}
   async function loadLibrary(){
     if(!fresh())return;const engine=state.engine,station=state.station,query=state.query,offset=state.offset;
-    try{const result=await api('/api/library?'+new URLSearchParams({engine,station,query,offset:String(offset)}));if(engine!==state.engine||station!==state.station||query!==state.query||offset!==state.offset)return;state.library=result;const page=result.page,root=page.Root;text('folder-name',root?'Live music folder':'No folder assigned');text('folder-path',root?.Path??'Add files to create a managed folder, or choose an existing live folder.');$('folder-path').title=root?.Path??'';text('folder-state',result.worker?.State??'Unknown');text('library-count',`${page.Ready??0} validated · ${page.Total??0} indexed`);text('library-page',page.Items?.length?`${offset+1}–${offset+page.Items.length}`:'0');$('managed-folder').hidden=result.canImportFiles||!root;
-      const rows=(page.Items??[]).map(asset=>{const row=element('tr');row.title=asset.Error??'';const item=element('td');item.append(icon('music'));const title=element('td');title.append(element('span','asset-title',asset.Title),element('span','asset-artist',asset.Artist||'Unknown artist'));const file=element('td','quiet',asset.RelativePath);file.title=asset.RelativePath;const status=element('td');status.append(element('span','asset-state '+asset.State.toLowerCase(),asset.State));row.append(item,title,file,status,element('td','align-right mono',duration(asset.Seconds)));return row;});$('library-rows').replaceChildren(...(rows.length?rows:[emptyLibrary()]));text('library-progress',[result.worker?.State,result.worker?.Error,page.Import?`Latest import: ${page.Import.State}`:null,page.Import?.Error].filter(Boolean).join(' · '));libraryControls();
+    try{const result=await api('/api/library?'+new URLSearchParams({engine,station,query,offset:String(offset)}));if(engine!==state.engine||station!==state.station||query!==state.query||offset!==state.offset)return;state.library=result;const page=result.page,root=page.Root;text('folder-name',root?'Live music folder':'No folder assigned');text('folder-path',root?.Path??'Add files to create a managed folder, or choose an existing live folder.');$('folder-path').title=root?.Path??'';text('folder-state',result.worker?.State??'Unknown');text('library-count',`${page.Ready??0} validated · ${page.Retired??0} removed · ${page.Total??0} indexed`);text('library-page',page.Items?.length?`${offset+1}–${offset+page.Items.length}`:'0');$('managed-folder').hidden=result.canImportFiles||!root;
+      const rows=(page.Items??[]).map(asset=>{const row=element('tr');row.title=asset.Error??'';const item=element('td');item.append(icon('music'));const title=element('td');title.append(element('span','asset-title',asset.Title),element('span','asset-artist',asset.Artist||'Unknown artist'));const file=element('td','quiet',asset.RelativePath);file.title=asset.RelativePath;const status=element('td');status.append(element('span','asset-state '+asset.State.toLowerCase(),asset.State));const actions=element('td');const group=element('div','asset-actions');const edit=element('button','button asset-action','Edit');edit.setAttribute('aria-label','Edit metadata for '+asset.Title);edit.addEventListener('click',()=>openAssetEditor(asset));const toggle=element('button','button asset-action',asset.State==='Retired'?'Restore':'Remove');toggle.setAttribute('aria-label',(asset.State==='Retired'?'Restore ':'Remove from rotation: ')+asset.Title);toggle.addEventListener('click',()=>openAssetState(asset));group.append(edit,toggle);actions.append(group);row.append(item,title,file,status,element('td','align-right mono',duration(asset.Seconds)),actions);return row;});$('library-rows').replaceChildren(...(rows.length?rows:[emptyLibrary()]));text('library-progress',[result.worker?.State,result.worker?.Error,page.Import?`Latest import: ${page.Import.State}`:null,page.Import?.Error].filter(Boolean).join(' · '));libraryControls();
     }catch(error){text('library-progress','Library unavailable: '+error.message);}
   }
   let searchTimer; $('library-search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{state.query=$('library-search').value.trim();state.offset=0;void loadLibrary();},250);});

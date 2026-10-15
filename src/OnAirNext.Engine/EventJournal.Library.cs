@@ -8,10 +8,10 @@ namespace OnAirNext.Engine;
 
 public sealed record LibraryRoot(string StationId, string Path, long Revision);
 public sealed record LibraryAsset(string Id, string RelativePath, string Artist, string Title, double Seconds,
-    long Bytes, long ModifiedTicks, string State, string? Error = null);
+    long Bytes, long ModifiedTicks, string State, string? Error = null, long EditVersion = 0, bool HasMetadataOverride = false, string? ValidationState = null);
 public sealed record LibraryImport(string Id, string StationId, long Revision, string[] Paths, string State, string? Error);
 public sealed record LibraryPage(LibraryRoot? Root, long Total, long Ready, long Missing,
-    IReadOnlyList<LibraryAsset> Items, int Offset, LibraryImport? Import);
+    IReadOnlyList<LibraryAsset> Items, int Offset, LibraryImport? Import, long Retired = 0);
 
 public sealed partial class EventJournal
 {
@@ -25,6 +25,11 @@ public sealed partial class EventJournal
               bytes INTEGER NOT NULL,modified_ticks INTEGER NOT NULL,state TEXT NOT NULL,error TEXT,
               PRIMARY KEY(station_id,revision,id));
             CREATE INDEX IF NOT EXISTS library_asset_page ON library_assets(station_id,revision,title,id);
+            CREATE TABLE IF NOT EXISTS library_asset_edits(station_id TEXT NOT NULL,revision INTEGER NOT NULL,id TEXT NOT NULL,
+              artist TEXT,title TEXT,retired INTEGER NOT NULL DEFAULT 0,version INTEGER NOT NULL,PRIMARY KEY(station_id,revision,id));
+            INSERT OR IGNORE INTO library_asset_edits(station_id,revision,id,retired,version)
+              SELECT station_id,revision,id,1,1 FROM library_assets WHERE state='Retired';
+            UPDATE library_assets SET state='Invalid',modified_ticks=-1,error='Restored catalog requires validation.' WHERE state='Retired';
             CREATE TABLE IF NOT EXISTS library_imports(id TEXT PRIMARY KEY,station_id TEXT NOT NULL,revision INTEGER NOT NULL,
               payload TEXT NOT NULL,state TEXT NOT NULL,error TEXT,created_utc TEXT NOT NULL);
             """;
@@ -121,7 +126,7 @@ public sealed partial class EventJournal
                 INSERT INTO library_assets VALUES($station,$revision,$id,$path,$artist,$title,$seconds,$bytes,$modified,$state,$error)
                 ON CONFLICT(station_id,revision,id) DO UPDATE SET relative_path=excluded.relative_path,artist=excluded.artist,
                   title=excluded.title,seconds=excluded.seconds,bytes=excluded.bytes,modified_ticks=excluded.modified_ticks,
-                  state=CASE WHEN library_assets.state='Retired' THEN 'Retired' ELSE excluded.state END,error=excluded.error
+                  state=excluded.state,error=excluded.error
                 """, ("$station", root.StationId), ("$revision", root.Revision), ("$id", asset.Id), ("$path", asset.RelativePath),
                 ("$artist", asset.Artist), ("$title", asset.Title), ("$seconds", asset.Seconds), ("$bytes", asset.Bytes),
                 ("$modified", asset.ModifiedTicks), ("$state", asset.State), ("$error", asset.Error));
@@ -129,7 +134,7 @@ public sealed partial class EventJournal
         }
         foreach (var id in missing)
         {
-            using var cmd = LibraryCommand(c, t, "UPDATE library_assets SET state='Missing' WHERE station_id=$station AND revision=$revision AND id=$id AND state<>'Retired'",
+            using var cmd = LibraryCommand(c, t, "UPDATE library_assets SET state='Missing' WHERE station_id=$station AND revision=$revision AND id=$id",
                 ("$station", root.StationId), ("$revision", root.Revision), ("$id", id));
             cmd.ExecuteNonQuery();
         }
@@ -142,35 +147,44 @@ public sealed partial class EventJournal
         using var c = OpenReader(DatabasePath); using var t = c.BeginTransaction(deferred: true);
         var root = ReadLibraryRoot(c, t, station);
         if (root is null) return new(null, 0, 0, 0, [], offset, null);
-        using var count = LibraryCommand(c, t, "SELECT COUNT(*),COALESCE(SUM(state='Ready'),0),COALESCE(SUM(state='Missing'),0) FROM library_assets WHERE station_id=$station AND revision=$revision",
+        using var count = LibraryCommand(c, t, "SELECT COUNT(*),COALESCE(SUM(a.state='Ready' AND COALESCE(e.retired,0)=0),0),COALESCE(SUM(a.state='Missing' AND COALESCE(e.retired,0)=0),0),COALESCE(SUM(e.retired=1),0) " + AssetJoin + " WHERE a.station_id=$station AND a.revision=$revision",
             ("$station", station), ("$revision", root.Revision));
-        long total, ready, missing;
-        using (var r = count.ExecuteReader()) { r.Read(); total = r.GetInt64(0); ready = r.GetInt64(1); missing = r.GetInt64(2); }
-        using var rows = LibraryCommand(c, t, """
-            SELECT id,relative_path,artist,title,seconds,bytes,modified_ticks,state,error FROM library_assets
-            WHERE station_id=$station AND revision=$revision AND
-              ($query='' OR instr(lower(title || ' ' || artist || ' ' || relative_path),lower($query))>0)
-            ORDER BY title COLLATE NOCASE,id LIMIT 50 OFFSET $offset
+        long total, ready, missing, retired;
+        using (var r = count.ExecuteReader()) { r.Read(); total = r.GetInt64(0); ready = r.GetInt64(1); missing = r.GetInt64(2); retired = r.GetInt64(3); }
+        using var rows = LibraryCommand(c, t, AssetSelect + AssetJoin + """
+            WHERE a.station_id=$station AND a.revision=$revision AND
+              ($query='' OR instr(lower(COALESCE(e.title,a.title) || ' ' || COALESCE(e.artist,a.artist) || ' ' || a.relative_path),lower($query))>0)
+            ORDER BY COALESCE(e.title,a.title) COLLATE NOCASE,a.id LIMIT 50 OFFSET $offset
             """, ("$station", station), ("$revision", root.Revision), ("$query", query), ("$offset", offset));
         var assets = new List<LibraryAsset>();
         using (var r = rows.ExecuteReader()) while (r.Read()) assets.Add(ReadAsset(r));
         using var job = LibraryCommand(c, t, "SELECT id,station_id,revision,payload,state,error FROM library_imports WHERE station_id=$station ORDER BY created_utc DESC,id DESC LIMIT 1", ("$station", station));
         LibraryImport? import; using (var r = job.ExecuteReader()) import = r.Read() ? ReadImport(r) : null;
-        return new(root, total, ready, missing, assets, offset, import);
+        return new(root, total, ready, missing, assets, offset, import, retired);
     }
 
-    public IReadOnlyList<LibraryAsset> LibraryAssets(LibraryRoot root)
+    public IReadOnlyList<LibraryAsset> LibraryAssets(LibraryRoot root, bool raw = false)
     {
         using var c = OpenReader(DatabasePath); using var cmd = c.CreateCommand();
-        cmd.CommandText = "SELECT id,relative_path,artist,title,seconds,bytes,modified_ticks,state,error FROM library_assets WHERE station_id=$station AND revision=$revision";
+        cmd.CommandText = raw
+            ? "SELECT id,relative_path,artist,title,seconds,bytes,modified_ticks,state,error FROM library_assets WHERE station_id=$station AND revision=$revision"
+            : AssetSelect + AssetJoin + " WHERE a.station_id=$station AND a.revision=$revision";
         cmd.Parameters.AddWithValue("$station", root.StationId); cmd.Parameters.AddWithValue("$revision", root.Revision);
         using var r = cmd.ExecuteReader(); var assets = new List<LibraryAsset>();
         while (r.Read()) assets.Add(ReadAsset(r)); return assets;
     }
 
+    private const string AssetSelect = """
+        SELECT a.id,a.relative_path,COALESCE(e.artist,a.artist),COALESCE(e.title,a.title),a.seconds,a.bytes,a.modified_ticks,
+          CASE WHEN e.retired=1 THEN 'Retired' ELSE a.state END,a.error,COALESCE(e.version,0),
+          (e.artist IS NOT NULL OR e.title IS NOT NULL),a.state
+        """;
+    private const string AssetJoin = " FROM library_assets a LEFT JOIN library_asset_edits e ON e.station_id=a.station_id AND e.revision=a.revision AND e.id=a.id ";
+
     public static string LibraryAssetId(string relativePath) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(relativePath.ToUpperInvariant())));
     private static LibraryAsset ReadAsset(SqliteDataReader r) => new(r.GetString(0), r.GetString(1), r.GetString(2), r.GetString(3),
-        r.GetDouble(4), r.GetInt64(5), r.GetInt64(6), r.GetString(7), r.IsDBNull(8) ? null : r.GetString(8));
+        r.GetDouble(4), r.GetInt64(5), r.GetInt64(6), r.GetString(7), r.IsDBNull(8) ? null : r.GetString(8),
+        r.FieldCount > 9 ? r.GetInt64(9) : 0, r.FieldCount > 10 && r.GetBoolean(10), r.FieldCount > 11 ? r.GetString(11) : r.GetString(7));
     private static LibraryImport ReadImport(SqliteDataReader r) => new(r.GetString(0), r.GetString(1), r.GetInt64(2),
         JsonSerializer.Deserialize<string[]>(r.GetString(3))!, r.GetString(4), r.IsDBNull(5) ? null : r.GetString(5));
     private static LibraryRoot? ReadLibraryRoot(SqliteConnection c, SqliteTransaction t, string station)

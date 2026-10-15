@@ -28,6 +28,7 @@ public sealed class StationLibrary : IAsyncDisposable
     private Task? _worker;
     private Task? _disposal;
     private readonly object _lifetime = new();
+    private readonly object _publication = new();
     private volatile bool _disposed;
     private long _version;
     public event Action<string, bool>? Changed;
@@ -55,7 +56,7 @@ public sealed class StationLibrary : IAsyncDisposable
     {
         RequireStation(station);
         if (await _journal.SetLibraryRootAsync(station, root, command))
-        { _playback[station] = new(true, [], Interlocked.Increment(ref _version)); Changed?.Invoke(station, false); Wake(); }
+        { lock (_publication) { _playback[station] = new(true, [], Interlocked.Increment(ref _version)); Changed?.Invoke(station, false); } Wake(); }
     }
     public async Task ImportAsync(string station, string[] paths, string command)
     {
@@ -69,6 +70,18 @@ public sealed class StationLibrary : IAsyncDisposable
     public void Wake() { try { _wake.Release(); } catch (SemaphoreFullException) { } }
     public async Task RescanAsync(string station, string command)
     { RequireStation(station); if (await _journal.RequestLibraryRescanAsync(station, command)) Wake(); }
+    public async Task<LibraryAsset> EditAssetAsync(string station, long revision, string assetId, long expectedVersion,
+        LibraryEditKind kind, string command, string? artist = null, string? title = null)
+    {
+        RequireStation(station);
+        if (await _journal.ChangeLibraryAssetAsync(station, revision, assetId, expectedVersion, kind, command, artist, title))
+        {
+            var root = _journal.LibraryRoots().SingleOrDefault(x => x.StationId == station);
+            if (root is not null) Publish(root, allowNew: false);
+            Wake();
+        }
+        return _journal.LibraryItem(station, revision, assetId) ?? throw new InvalidOperationException("The edited item is no longer in the current library.");
+    }
     private void RequireStation(string station)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -131,8 +144,11 @@ public sealed class StationLibrary : IAsyncDisposable
                     catch (Exception ex)
                     {
                         _status[root.StationId] = new("Unavailable", ex.Message, DateTimeOffset.UtcNow);
-                        _playback[root.StationId] = new(true, [], Interlocked.Increment(ref _version));
-                        Changed?.Invoke(root.StationId, false);
+                        lock (_publication)
+                        {
+                            _playback[root.StationId] = new(true, [], Interlocked.Increment(ref _version));
+                            Changed?.Invoke(root.StationId, false);
+                        }
                         foreach (var path in _observed.Keys.Where(path => path.StartsWith(root.Path + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)).ToArray())
                             _observed.Remove(path);
                     }
@@ -225,7 +241,7 @@ public sealed class StationLibrary : IAsyncDisposable
     {
         _status[root.StationId] = new("Scanning", null, null);
         var all = Enumerate(root.Path, token); // failure/partial enumeration must never mark existing songs missing
-        var existing = _journal.LibraryAssets(root).ToDictionary(x => x.Id, StringComparer.Ordinal);
+        var existing = _journal.LibraryAssets(root, raw: true).ToDictionary(x => x.Id, StringComparer.Ordinal);
         var present = all.Select(x => EventJournal.LibraryAssetId(x.Relative)).ToHashSet(StringComparer.Ordinal);
         var missing = existing.Values.Where(x => x.State is not ("Missing" or "Retired") && !present.Contains(x.Id)).Select(x => x.Id).ToArray();
         foreach (var batch in missing.Chunk(100)) await _journal.ApplyLibraryChangesAsync(root, [], batch);
@@ -269,14 +285,21 @@ public sealed class StationLibrary : IAsyncDisposable
         _status[root.StationId] = new(_observed.Keys.Any(paths.Contains) ? "Waiting for stable files" : "Watching", null, DateTimeOffset.UtcNow);
     }
 
-    private void Publish(LibraryRoot root)
+    private void Publish(LibraryRoot root, bool allowNew = true)
     {
-        if (!_journal.LibraryRoots().Contains(root)) return;
-        var items = _journal.LibraryAssets(root).Where(x => x.State == "Ready")
-            .Select(x => new MediaItem(x.Id, Path.Combine(root.Path, x.RelativePath), x.Artist, x.Title, DurationSeconds: x.Seconds)).OrderBy(x => x.Id, StringComparer.Ordinal).ToArray();
-        if (_playback.TryGetValue(root.StationId, out var prior) && prior.Configured && prior.Items.SequenceEqual(items)) return;
-        _playback[root.StationId] = new(true, items, Interlocked.Increment(ref _version));
-        Changed?.Invoke(root.StationId, items.Length > 0);
+        lock (_publication)
+        {
+            if (!_journal.LibraryRoots().Contains(root)) return;
+            _playback.TryGetValue(root.StationId, out var prior);
+            // Edits may update/remove already eligible items; only a successful scan can add them.
+            var eligible = allowNew ? null : prior?.Items.Select(x => x.Id).ToHashSet(StringComparer.Ordinal) ?? [];
+            var items = _journal.LibraryAssets(root).Where(x => x.State == "Ready" && (eligible is null || eligible.Contains(x.Id)))
+                .Select(x => new MediaItem(x.Id, Path.Combine(root.Path, x.RelativePath), x.Artist, x.Title, DurationSeconds: x.Seconds))
+                .OrderBy(x => x.Id, StringComparer.Ordinal).ToArray();
+            if (prior is not null && prior.Configured && prior.Items.SequenceEqual(items)) return;
+            _playback[root.StationId] = new(true, items, Interlocked.Increment(ref _version));
+            Changed?.Invoke(root.StationId, items.Length > 0);
+        }
     }
 
     private static List<Signature> Enumerate(string root, CancellationToken token)
