@@ -11,7 +11,7 @@ The new dark browser console has a channel strip, broadcast desk, searchable/pag
 - Unconnected visual preview: loopback port 18120, clearly labelled UI PREVIEW.
 - ASP.NET Core console under qualification: literal loopback port 18121. It bridges only isolated onair-next-dev-* engine pipes.
 - Local mutations require a same-origin session cookie and request token. Production engine identities are not accepted.
-- The broadcasting engine owns playback; closing or disconnecting the browser does not stop it. Service installation and automatic startup are still incomplete.
+- The broadcasting engine owns playback; closing or disconnecting the browser does not stop it. An isolated Windows-service lifecycle fixture has passed on a disposable CI runner; guided installation, real before-logon startup and target-PC media access are still incomplete.
 
 The active solution now builds OnAirNext.Web. On Air, Library and System are the initial screens; unfinished screens and unavailable controls are explicitly disabled. A visible screen is not proof of connected operation. Real browser upload/folder readback, remaining workflows, installation and Codex-free operator acceptance are still open.
 
@@ -30,7 +30,7 @@ The active solution now builds OnAirNext.Web. On Air, Library and System are the
 
 ## Evidence and release limits
 
-The current browser/engine source at 126f772a27e638de4bf3c29fe086528b3ac7f9f4 compiled in GitHub-hosted Windows CI and passed **85/85 unit cases** (run 38797896071), including eight new catalog-editing regressions. This is distinct from the broadcasting-PC baseline of 49 unit cases, 14 real durable checks and a 17-check output-recovery regression. Unit success and visual preview navigation do not qualify the connected browser application or production playout. Failed runs and resource deferrals remain retained. See [current delivery ledger](docs/BROADCAST_PC_DELIVERY_LEDGER.md) and [library editing evidence](artifacts/evidence/library-editing-85-20261015.json).
+Source bb87f4d90ebca70694af15096c53944311ac54e8 compiled in Windows CI and passed **98/98 unit cases**, plus a real isolated Windows-service lifecycle fixture (run 38806887011). Digest-verified [service evidence](artifacts/evidence/service-foundation-98-20261016.json) covers authenticated cross-account control, rejected-client survival, preserved running/stopped intent, parent-only crash cleanup and SCM recovery. The earlier 85-case catalog editing result and historical broadcasting-PC audio/recovery checks remain separate evidence. This is not an installed, commissioned service or complete operator UI. See the [current delivery ledger](docs/BROADCAST_PC_DELIVERY_LEDGER.md).
 
 A protected local build was stopped after an existing Classic transport-health flag changed. No legacy PID/generation changed, the guardian verified zero remaining test processes, and later snapshots recovered. That observation is not proof of a listener outage or its cause. Remote builds reduce load on the broadcasting PC.
 

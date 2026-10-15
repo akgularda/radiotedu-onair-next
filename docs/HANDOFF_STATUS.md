@@ -2,7 +2,7 @@
 
 # Handoff snapshot status
 
-Broadcast-PC continuation: see the [delivery ledger](BROADCAST_PC_DELIVERY_LEDGER.md) for current 42-unit/13-check isolated recovery evidence and incomplete release gates. The active UI is now the dark browser console; the native prototype is historical. Windows build and 85 tests passed at 126f772a, including versioned catalog editing/removal/restore regressions. Connected UI acceptance remains pending after a protective resource stop; production has not been migrated. See [browser validation](../artifacts/browser-ui-validation-20261015.json).
+Current continuation, 16 October 2026: the active product is the dark browser console. Source bb87f4d compiled and passed 98 unit cases plus a real isolated SCM lifecycle fixture on a disposable Windows runner. See [scoped service evidence](../artifacts/evidence/service-foundation-98-20261016.json) and the [complete delivery ledger](BROADCAST_PC_DELIVERY_LEDGER.md). No new service is installed on the broadcast PC; actual source-volume access before logon, connected mouse workflows and production migration remain unpassed. The historical snapshot below retains earlier evidence and limitations; it is not the current release declaration.
 
 Prepared 15 October 2026. This is a development snapshot for the broadcasting-PC agent, not a production-ready release.
 

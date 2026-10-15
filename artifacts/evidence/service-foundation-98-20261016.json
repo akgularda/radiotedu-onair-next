@@ -1,0 +1,74 @@
+{
+  "date": "2026-10-16",
+  "sourceCommit": "bb87f4d90ebca70694af15096c53944311ac54e8",
+  "runId": "38806887011",
+  "url": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38806887011",
+  "scope": "Disposable Windows CI runner only. Harmless process-tree fixture; no audio, credentials or real music.",
+  "unit": {
+    "total": 98,
+    "executed": 98,
+    "passed": 98,
+    "failed": 0,
+    "error": 0,
+    "timeout": 0,
+    "aborted": 0,
+    "inconclusive": 0,
+    "passedButRunAborted": 0,
+    "notRunnable": 0,
+    "notExecuted": 0,
+    "disconnected": 0,
+    "warning": 0,
+    "completed": 0,
+    "inProgress": 0,
+    "pending": 0
+  },
+  "artifacts": [
+    {
+      "name": "windows-unit-results",
+      "digest": "sha256:8bce8f684be38b7ffbfebbcb01b582493311a49ac1b1b7ac4492407472dbf871",
+      "bytes": 22744
+    },
+    {
+      "name": "windows-service-qualification",
+      "digest": "sha256:6abe28810abfe449fd851764b6943f6b4477c5b05bcf710bbe599578f9b7dcc4",
+      "bytes": 745
+    }
+  ],
+  "service": {
+    "passed": true,
+    "checks": [
+      "Automatic delayed startup is persisted",
+      "Authenticated operator crosses the service identity boundary",
+      "Service uses its separate LocalService identity",
+      "Anonymous caller is disconnected without a response",
+      "Rejected client does not restart or kill the service",
+      "No browser console is required for service readiness",
+      "Developer global stop is not a service command",
+      "Start intent is durably acknowledged",
+      "Graceful service exit releases owned descendants",
+      "Graceful service exit releases owned descendants",
+      "SCM stop preserves requested-running intent",
+      "Only the verified held host handle is terminated",
+      "Kernel job releases descendants after parent-only crash",
+      "Kernel job releases descendants after parent-only crash",
+      "SCM recovers the host automatically without browser or manual start",
+      "Unexpected process death preserves requested-running intent",
+      "Explicit station stop is acknowledged",
+      "Explicit stopped intent survives service restart"
+    ],
+    "configuredIdentity": "LocalService",
+    "journalBoundary": "Fixed isolated ProgramData journal; ordinary constructor and operator identity cannot open it"
+  },
+  "targetPCServiceInstalled": false,
+  "targetPCMediaAccessVerified": false,
+  "realColdBootVerified": false,
+  "connectedBrowserAcceptancePassed": false,
+  "productionChanged": false,
+  "remaining": [
+    "Guided setup and protected credentials",
+    "Actual broadcasting-PC before-logon H-volume access",
+    "Real codecs, audio, microphone and loudness",
+    "Full connected browser mouse workflow",
+    "18-output 24/72-hour qualification and one-station UI migration"
+  ]
+}
