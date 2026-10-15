@@ -114,7 +114,9 @@ app.MapPost("/api/import", async (HttpRequest request, CancellationToken token) 
                 if (File.Exists(destination))
                 {
                     await using var old = File.OpenRead(destination); await using var added = File.OpenRead(temporary);
-                    if (!CryptographicOperations.FixedTimeEquals(await SHA256.HashDataAsync(old, deadline.Token), await SHA256.HashDataAsync(added, deadline.Token)))
+                    var oldHash = await SHA256.HashDataAsync(old, deadline.Token);
+                    var addedHash = await SHA256.HashDataAsync(added, deadline.Token);
+                    if (!CryptographicOperations.FixedTimeEquals(oldHash, addedHash))
                         throw new ArgumentException("This upload ID already belongs to different audio. Start a new import.");
                 }
                 else File.Move(temporary, destination);
