@@ -78,6 +78,10 @@ try{
  Check 'Authenticated operator crosses the service identity boundary' ($state.controller.mode -eq 'windows-service')
  $service=Get-CimInstance -ClassName Win32_Service -Filter ("Name='"+$serviceName+"'")
  Check 'Service uses its separate LocalService identity' ($service.StartName -eq 'NT AUTHORITY\LocalService')
+ $verifiedProcess=$service.ProcessId
+ Check 'Anonymous caller is disconnected without a response' ((Probe 'anonymous').rejected -eq $true)
+ $null=Ready $false;$afterRejected=Get-CimInstance -ClassName Win32_Service -Filter ("Name='"+$serviceName+"'")
+ Check 'Rejected client does not restart or kill the service' ($afterRejected.ProcessId -eq $verifiedProcess)
  Check 'No browser console is required for service readiness' (-not (Get-Process -Name 'OnAirNext.Web' -ErrorAction SilentlyContinue))
  Check 'Developer global stop is not a service command' ((Probe 'stop').accepted -eq $false)
  Check 'Start intent is durably acknowledged' ((Probe 'start-station').accepted -eq $true)
