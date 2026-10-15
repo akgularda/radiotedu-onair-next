@@ -19,6 +19,7 @@
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
                     <Button x:Name="OnAirButton" Content="_On air" Click="ShowOnAir" Margin="0,0,6,0" Padding="18,4" />
+                    <Button x:Name="LibraryButton" Content="_Library" Click="ShowLibrary" Margin="0,0,6,0" Padding="18,4" />
                     <Button x:Name="SystemButton" Content="_System" Click="ShowSystem" Padding="18,4" />
                 </StackPanel>
                 <TextBlock x:Name="WallClock" Grid.Column="2" FontFamily="Consolas" FontSize="19" AutomationProperties.Name="Istanbul local time" />
@@ -96,6 +97,63 @@
                         </DataGrid>
                     </DockPanel>
                 </Border>
+            </Grid>
+        </Grid>
+        <Grid x:Name="LibraryPage" Grid.Row="2" Margin="12" Visibility="Collapsed">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="168"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource DividerBrush}" BorderThickness="1">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="STATIONS" Style="{StaticResource SecondaryLabel}" Margin="12"/>
+                    <ListBox ItemsSource="{Binding ItemsSource, ElementName=StationList}" SelectedItem="{Binding SelectedItem, ElementName=StationList, Mode=TwoWay}"
+                             AutomationProperties.Name="Library station"/>
+                </DockPanel>
+            </Border>
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <Border Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource DividerBrush}" BorderThickness="1" Padding="12">
+                    <StackPanel>
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0">
+                                <Button x:Name="ImportMusicButton" Content="Add _files…" Click="ImportMusic" Margin="0,0,6,0" IsEnabled="False"/>
+                                <Button x:Name="ChooseFolderButton" Content="Choose live folder…" Click="ChooseMusicFolder" IsEnabled="False"/>
+                            </StackPanel>
+                            <TextBlock x:Name="LibraryHeading" Text="Music library" FontSize="20" FontWeight="SemiBold"/>
+                        </DockPanel>
+                        <TextBlock x:Name="LibraryRootPath" Text="No live folder assigned" TextWrapping="Wrap" MaxHeight="44" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" Margin="0,10,0,4"/>
+                        <TextBlock Text="Subfolders belong to this station. Add files copies music into its live folder; originals stay unchanged."
+                                   TextWrapping="Wrap" Style="{StaticResource SecondaryLabel}"/>
+                    </StackPanel>
+                </Border>
+                <Grid Grid.Row="1" Margin="0,10">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBox x:Name="LibrarySearch" AutomationProperties.Name="Search music by artist, title or filename" KeyDown="LibrarySearchKey"/>
+                    <Button Grid.Column="1" x:Name="SearchMusicButton" Content="Search" Click="SearchMusic" Margin="6,0,0,0" IsEnabled="False"/>
+                    <Button Grid.Column="2" x:Name="RescanMusicButton" Content="Rescan" Click="RescanMusic" Margin="6,0,0,0" IsEnabled="False"/>
+                </Grid>
+                <Border Grid.Row="2" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource DividerBrush}" BorderThickness="1">
+                    <DataGrid x:Name="LibraryRows" IsReadOnly="True" AutomationProperties.Name="Station music library">
+                        <DataGrid.RowStyle><Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}"><Setter Property="ToolTip" Value="{Binding Error}"/></Style></DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Title" Binding="{Binding Title}" Width="*" MinWidth="130"/>
+                            <DataGridTextColumn Header="Artist" Binding="{Binding Artist}" Width="150"/>
+                            <DataGridTextColumn Header="Duration" Binding="{Binding Duration}" Width="78"/>
+                            <DataGridTextColumn Header="State" Binding="{Binding State}" Width="78"/>
+                            <DataGridTextColumn Header="File" Binding="{Binding RelativePath}" Width="280"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+                <StackPanel Grid.Row="3" Margin="0,10,0,0">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0">
+                            <Button x:Name="PreviousMusicButton" Content="Previous" Click="PreviousMusic" IsEnabled="False" Margin="0,0,6,0"/>
+                            <Button x:Name="NextMusicButton" Content="Next" Click="NextMusic" IsEnabled="False"/>
+                        </StackPanel>
+                        <TextBlock x:Name="LibraryCounts" Text="Select a connected station" Style="{StaticResource SecondaryLabel}" TextWrapping="Wrap"/>
+                    </DockPanel>
+                    <ScrollViewer MaxHeight="70" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,6,0,0">
+                        <TextBlock x:Name="LibraryProgress" Text="" TextWrapping="Wrap" Style="{StaticResource SecondaryLabel}"/>
+                    </ScrollViewer>
+                </StackPanel>
             </Grid>
         </Grid>
         <Grid x:Name="SystemPage" Grid.Row="2" Margin="12" Visibility="Collapsed">

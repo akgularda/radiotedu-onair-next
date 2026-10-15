@@ -35,7 +35,7 @@ public sealed class StationEngine : IStationSession
     public StationEngine(string ffmpeg, StationSettings settings, EventJournal journal, IReadOnlyList<IProgramOutput>? outputs = null, IPlayoutPlanner? planner = null)
     {
         if (string.IsNullOrWhiteSpace(settings.Id)) throw new ArgumentException("Station ID is required.");
-        if (settings.Playlist.Count == 0) throw new ArgumentException("An approved nonempty playlist is required.");
+        if (settings.Playlist.Count == 0 && planner is null) throw new ArgumentException("An approved nonempty playlist is required.");
         if (settings.Outputs.Select(x => x.Id).Distinct().Count() != settings.Outputs.Count)
             throw new ArgumentException("Output IDs must be unique.");
         if (settings.Outputs.Select(x => (x.Host, x.Port, x.Mount)).Distinct().Count() != settings.Outputs.Count)
@@ -165,7 +165,7 @@ public sealed class StationEngine : IStationSession
                         _announced = false;
                     }
                     Emit("decode_failed", _samples + offset / 4, "Asset rejected: " + ex.GetType().Name);
-                    if (++failedAssets >= _settings.Playlist.Count) throw new InvalidDataException("No approved asset could be decoded.");
+                    if (++failedAssets >= Math.Max(1, _planner?.AvailableItems ?? _settings.Playlist.Count)) throw new InvalidDataException("No approved asset could be decoded.");
                     await AdvanceAsync();
                     continue;
                 }
@@ -207,7 +207,13 @@ public sealed class StationEngine : IStationSession
 
     private async ValueTask RefreshPreparedAsync()
     {
-        var desired = Select(_index + (_selection?.QueueEntryId is null ? 1 : 0), _selection?.QueueEntryId);
+        PlayoutSelection desired;
+        try { desired = Select(_index + (_selection?.QueueEntryId is null ? 1 : 0), _selection?.QueueEntryId); }
+        catch (InvalidOperationException) when (_planner?.AvailableItems == 0)
+        {
+            if (_next is not null) await _next.DisposeAsync();
+            _next = null; _nextSelection = null; return; // finish the current item; do not cut it on folder loss
+        }
         if (desired == _nextSelection) return;
         if (_next is not null) await _next.DisposeAsync();
         _nextSelection = desired; _next = new MediaDecoder(_ffmpeg, desired.Item);

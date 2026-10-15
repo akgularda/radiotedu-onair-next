@@ -1,0 +1,286 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
+
+namespace OnAirNext.Engine;
+
+public sealed record LibraryWorkerStatus(string State, string? Error, DateTimeOffset? ScannedAtUtc);
+
+// One bounded import/validation lane across stations. No file operation or SQLite query runs in Select().
+public sealed class StationLibrary : IAsyncDisposable
+{
+    private sealed record Signature(string Path, string Relative, long Bytes, long Modified);
+    private sealed record Stable(long Bytes, long Modified, long FirstObserved);
+    private sealed record PlaybackSet(bool Configured, MediaItem[] Items, long Version);
+    private static readonly HashSet<string> Extensions = new(StringComparer.OrdinalIgnoreCase)
+        { ".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg", ".opus", ".aif", ".aiff", ".wma", ".mp4" };
+    private readonly EventJournal _journal;
+    private readonly string _dataRoot;
+    private readonly Func<string, CancellationToken, Task<AudioMetadata>> _probe;
+    private readonly HashSet<string> _stations;
+    private readonly ConcurrentDictionary<string, PlaybackSet> _playback = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, LibraryWorkerStatus> _status = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Stable> _observed = new(StringComparer.OrdinalIgnoreCase);
+    private readonly SemaphoreSlim _wake = new(0, 1);
+    private readonly CancellationTokenSource _stop = new();
+    private Task? _worker;
+    private Task? _disposal;
+    private readonly object _lifetime = new();
+    private volatile bool _disposed;
+    private long _version;
+    public event Action<string, bool>? Changed;
+
+    public StationLibrary(EventJournal journal, string ffmpeg, string dataRoot, IEnumerable<string> stations,
+        Func<string, CancellationToken, Task<AudioMetadata>>? probe = null)
+    {
+        _journal = journal; _dataRoot = dataRoot; _stations = stations.ToHashSet(StringComparer.Ordinal);
+        _probe = probe ?? new LibraryAudioProbe(ffmpeg).VerifyAsync;
+    }
+
+    public async Task InitializeAsync()
+    {
+        if (_worker is not null) throw new InvalidOperationException("Library already initialized.");
+        await _journal.InitializeLibraryAsync();
+        foreach (var root in _journal.LibraryRoots().Where(x => _stations.Contains(x.StationId)))
+            _playback[root.StationId] = new(true, [], Interlocked.Increment(ref _version));
+        _worker = Task.Run(RunAsync);
+    }
+
+    public LibraryWorkerStatus Status(string station) => _status.GetValueOrDefault(station) ?? new("Not configured", null, null);
+    public LibraryPage Page(string station, string query, int offset) { RequireStation(station); return _journal.LibraryPage(station, query, offset); }
+    public async Task SetRootAsync(string station, string root, string command)
+    {
+        RequireStation(station);
+        if (await _journal.SetLibraryRootAsync(station, root, command))
+        { _playback[station] = new(true, [], Interlocked.Increment(ref _version)); Changed?.Invoke(station, false); Wake(); }
+    }
+    public async Task ImportAsync(string station, string[] paths, string command)
+    {
+        RequireStation(station);
+        var safeId = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(station)))[..16];
+        if (await _journal.QueueLibraryImportAsync(station, paths, Path.Combine(_dataRoot, "music", safeId), command)) Wake();
+    }
+    public void Wake() { try { _wake.Release(); } catch (SemaphoreFullException) { } }
+    private void RequireStation(string station)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (!_stations.Contains(station)) throw new ArgumentException("Unknown station.");
+    }
+
+    public IPlayoutPlanner? Planner(StationSettings settings) => settings.Repeat ? new PlannerView(this, settings) : null;
+    private sealed class PlannerView(StationLibrary owner, StationSettings settings) : IPlayoutPlanner
+    {
+        private long _version = -1; private int _cycle = -1; private MediaItem[] _shuffled = [];
+        public int? AvailableItems => owner._playback.TryGetValue(settings.Id, out var set) && set.Configured ? set.Items.Length : settings.Playlist.Count;
+        public PlayoutSelection Select(int rotationIndex, string? excludeQueueEntryId = null)
+        {
+            if (!owner._playback.TryGetValue(settings.Id, out var set) || !set.Configured)
+            {
+                if (settings.Playlist.Count == 0) throw new InvalidOperationException("Choose a live folder or import music in Library.");
+                return new(settings.Playlist[rotationIndex % settings.Playlist.Count]);
+            }
+            if (set.Items.Length == 0) throw new InvalidOperationException("The configured live folder has no validated, available music.");
+            var cycle = rotationIndex / set.Items.Length;
+            if (_version != set.Version || _cycle != cycle)
+            {
+                _shuffled = set.Items.OrderBy(item => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(settings.Id + "|" + cycle + "|" + item.Id))), StringComparer.Ordinal).ToArray();
+                _version = set.Version; _cycle = cycle;
+            }
+            return new(_shuffled[rotationIndex % _shuffled.Length]);
+        }
+    }
+
+    private async Task RunAsync()
+    {
+        while (!_stop.IsCancellationRequested)
+        {
+            try
+            {
+                var job = _journal.PendingLibraryImport();
+                if (job is not null)
+                {
+                    try { _stop.Token.ThrowIfCancellationRequested(); if (!_stations.Contains(job.StationId)) throw new ArgumentException("Import station is not configured."); await CopyImportAsync(job, _stop.Token); await _journal.FinishLibraryImportAsync(job.Id, null); }
+                    catch (OperationCanceledException) when (_stop.IsCancellationRequested) { throw; }
+                    catch (Exception ex) { await _journal.FinishLibraryImportAsync(job.Id, ex.Message); }
+                    continue;
+                }
+                var roots = _journal.LibraryRoots().Where(x => _stations.Contains(x.StationId)).ToArray();
+                foreach (var path in _observed.Keys.Where(path => !roots.Any(root => path.StartsWith(root.Path + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))).ToArray())
+                    _observed.Remove(path);
+                foreach (var root in roots)
+                {
+                    _stop.Token.ThrowIfCancellationRequested();
+                    try { await ScanAsync(root, _stop.Token); }
+                    catch (OperationCanceledException) when (_stop.IsCancellationRequested) { throw; }
+                    catch (Exception ex)
+                    {
+                        _status[root.StationId] = new("Unavailable", ex.Message, DateTimeOffset.UtcNow);
+                        _playback[root.StationId] = new(true, [], Interlocked.Increment(ref _version));
+                        Changed?.Invoke(root.StationId, false);
+                        foreach (var path in _observed.Keys.Where(path => path.StartsWith(root.Path + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)).ToArray())
+                            _observed.Remove(path);
+                    }
+                }
+                await _wake.WaitAsync(TimeSpan.FromSeconds(_observed.Count > 0 ? 3 : 30), _stop.Token);
+            }
+            catch (OperationCanceledException) when (_stop.IsCancellationRequested) { break; }
+            catch (Exception ex)
+            {
+                foreach (var station in _stations) _status[station] = new("Retrying library operation", ex.Message, DateTimeOffset.UtcNow);
+                try { await Task.Delay(TimeSpan.FromSeconds(5), _stop.Token); }
+                catch (OperationCanceledException) when (_stop.IsCancellationRequested) { break; }
+            }
+        }
+    }
+
+    private async Task CopyImportAsync(LibraryImport job, CancellationToken token)
+    {
+        var root = _journal.LibraryRoots().SingleOrDefault(x => x.StationId == job.StationId && x.Revision == job.Revision)
+            ?? throw new InvalidOperationException("The music folder changed. Import these files again into the current folder.");
+        _status[job.StationId] = new("Importing", null, null);
+        Directory.CreateDirectory(root.Path);
+        if ((File.GetAttributes(root.Path) & FileAttributes.ReparsePoint) != 0) throw new IOException("Choose a real folder, rather than a folder link.");
+        var errors = new List<string>(); var imported = new List<string>();
+        foreach (var source in job.Paths)
+        {
+            token.ThrowIfCancellationRequested();
+            if (!_journal.LibraryRoots().Contains(root)) throw new IOException("The live folder changed during import.");
+            if (!Extensions.Contains(Path.GetExtension(source))) { errors.Add(Path.GetFileName(source) + ": unsupported audio file type"); continue; }
+            var relative = Path.GetRelativePath(root.Path, source);
+            if (!Path.IsPathRooted(relative) && relative != ".." && !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+            { imported.Add(relative); continue; }
+            var temporary = Path.Combine(root.Path, ".onair-import-" + Guid.NewGuid().ToString("N") + ".partial");
+            try
+            {
+                var before = new FileInfo(source); var bytes = before.Length; var modified = before.LastWriteTimeUtc.Ticks;
+                await using (var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, true))
+                await using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 65536, true))
+                { await input.CopyToAsync(output, token); await output.FlushAsync(token); output.Flush(flushToDisk: true); }
+                var after = new FileInfo(source);
+                if (after.Length != bytes || after.LastWriteTimeUtc.Ticks != modified) throw new IOException("The source file changed during import.");
+                string hash;
+                await using (var copied = new FileStream(temporary, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, true))
+                    hash = Convert.ToHexString(await SHA256.HashDataAsync(copied, token));
+                // Content-addressed destination makes a crash/retry idempotent, without replacing a different song.
+                var stem = Path.GetFileNameWithoutExtension(source);
+                stem = stem[..Math.Min(stem.Length, 50)];
+                var destination = Path.Combine(root.Path, stem + "--" + hash + Path.GetExtension(source).ToLowerInvariant());
+                if (File.Exists(destination))
+                {
+                    await using var old = new FileStream(destination, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, true);
+                    if (Convert.ToHexString(await SHA256.HashDataAsync(old, token)) != hash)
+                        throw new IOException("An existing imported file changed; it was not overwritten.");
+                }
+                else
+                {
+                    if (!_journal.LibraryRoots().Contains(root)) throw new IOException("The live folder changed during import.");
+                    File.Move(temporary, destination, overwrite: false);
+                }
+                imported.Add(Path.GetRelativePath(root.Path, destination));
+            }
+            catch (IOException ex)
+            {
+                errors.Add(Path.GetFileName(source) + ": " + ex.Message);
+            }
+            finally { if (File.Exists(temporary)) File.Delete(temporary); }
+            if (errors.Count > 8) break;
+        }
+        await ScanAsync(root, token);
+        await Task.Delay(2100, token); // second observation is required before validation/publication
+        await ScanAsync(root, token);
+        var indexed = _journal.LibraryAssets(root).ToDictionary(x => x.Id, StringComparer.Ordinal);
+        foreach (var relative in imported)
+            if (!indexed.TryGetValue(EventJournal.LibraryAssetId(relative), out var asset) || asset.State != "Ready")
+                errors.Add(relative + ": " + (asset?.Error ?? "not stable or not ready"));
+        if (errors.Count > 0) throw new IOException(string.Join("; ", errors));
+    }
+
+    private async Task ScanAsync(LibraryRoot root, CancellationToken token)
+    {
+        _status[root.StationId] = new("Scanning", null, null);
+        var all = Enumerate(root.Path, token); // failure/partial enumeration must never mark existing songs missing
+        var existing = _journal.LibraryAssets(root).ToDictionary(x => x.Id, StringComparer.Ordinal);
+        var present = all.Select(x => EventJournal.LibraryAssetId(x.Relative)).ToHashSet(StringComparer.Ordinal);
+        var missing = existing.Values.Where(x => x.State is not ("Missing" or "Retired") && !present.Contains(x.Id)).Select(x => x.Id).ToArray();
+        foreach (var batch in missing.Chunk(100)) await _journal.ApplyLibraryChangesAsync(root, [], batch);
+        var changed = all.Select(file => (File: file, Asset: existing.GetValueOrDefault(EventJournal.LibraryAssetId(file.Relative))))
+            .Where(x => x.Asset is { State: "Ready" } && (x.Asset.Bytes != x.File.Bytes || x.Asset.ModifiedTicks != x.File.Modified))
+            .Select(x => x.Asset! with { State = "Invalid", Error = "File changed; validation pending." }).ToArray();
+        foreach (var batch in changed.Chunk(100)) await _journal.ApplyLibraryChangesAsync(root, batch, []);
+        Publish(root);
+        var lastPublish = Stopwatch.StartNew();
+        foreach (var file in all)
+        {
+            token.ThrowIfCancellationRequested();
+            var id = EventJournal.LibraryAssetId(file.Relative);
+            if (existing.TryGetValue(id, out var prior) && prior.State is "Ready" or "Invalid" or "Retired" && prior.Bytes == file.Bytes && prior.ModifiedTicks == file.Modified) continue;
+            if (!_observed.TryGetValue(file.Path, out var observed) || observed.Bytes != file.Bytes || observed.Modified != file.Modified)
+            {
+                _observed[file.Path] = new(file.Bytes, file.Modified, Stopwatch.GetTimestamp());
+                continue;
+            }
+            if (Stopwatch.GetElapsedTime(observed.FirstObserved) < TimeSpan.FromSeconds(2)) continue;
+            _status[root.StationId] = new("Validating " + file.Relative, null, null);
+            LibraryAsset asset;
+            try
+            {
+                var metadata = await _probe(file.Path, token);
+                var after = new FileInfo(file.Path);
+                if (after.Length != file.Bytes || after.LastWriteTimeUtc.Ticks != file.Modified) { _observed.Remove(file.Path); continue; }
+                asset = new(id, file.Relative, metadata.Artist, metadata.Title, metadata.Seconds, file.Bytes, file.Modified, "Ready");
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+            catch (Exception ex) { asset = new(id, file.Relative, "", Path.GetFileNameWithoutExtension(file.Relative), 0, file.Bytes, file.Modified, "Invalid", ex.Message); }
+            await _journal.ApplyLibraryChangesAsync(root, [asset], []);
+            _observed.Remove(file.Path);
+            if (lastPublish.Elapsed >= TimeSpan.FromSeconds(5)) { Publish(root); lastPublish.Restart(); }
+            await Task.Delay(100, token);
+        }
+        var paths = all.Select(x => x.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in _observed.Keys.Where(path => path.StartsWith(root.Path + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) && !paths.Contains(path)).ToArray()) _observed.Remove(path);
+        Publish(root);
+        _status[root.StationId] = new(_observed.Keys.Any(paths.Contains) ? "Waiting for stable files" : "Watching", null, DateTimeOffset.UtcNow);
+    }
+
+    private void Publish(LibraryRoot root)
+    {
+        if (!_journal.LibraryRoots().Contains(root)) return;
+        var items = _journal.LibraryAssets(root).Where(x => x.State == "Ready")
+            .Select(x => new MediaItem(x.Id, Path.Combine(root.Path, x.RelativePath), x.Artist, x.Title)).OrderBy(x => x.Id, StringComparer.Ordinal).ToArray();
+        if (_playback.TryGetValue(root.StationId, out var prior) && prior.Configured && prior.Items.SequenceEqual(items)) return;
+        _playback[root.StationId] = new(true, items, Interlocked.Increment(ref _version));
+        Changed?.Invoke(root.StationId, items.Length > 0);
+    }
+
+    private static List<Signature> Enumerate(string root, CancellationToken token)
+    {
+        if (!Directory.Exists(root)) throw new DirectoryNotFoundException("The live folder is unavailable. Existing catalog history is retained.");
+        if ((File.GetAttributes(root) & FileAttributes.ReparsePoint) != 0) throw new IOException("Folder links cannot be used as live roots.");
+        var files = new List<Signature>(); var directories = new Stack<string>(); directories.Push(root);
+        while (directories.TryPop(out var directory))
+            foreach (var path in Directory.EnumerateFileSystemEntries(directory))
+            {
+                token.ThrowIfCancellationRequested(); var attributes = File.GetAttributes(path);
+                if ((attributes & FileAttributes.ReparsePoint) != 0) continue;
+                if ((attributes & FileAttributes.Directory) != 0) { directories.Push(path); continue; }
+                if (!Extensions.Contains(Path.GetExtension(path))) continue;
+                if (files.Count >= 100000) throw new IOException("Live folder exceeds 100,000 audio files; choose a smaller station folder.");
+                var info = new FileInfo(path);
+                files.Add(new(path, Path.GetRelativePath(root, path), info.Length, info.LastWriteTimeUtc.Ticks));
+            }
+        return files;
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        lock (_lifetime) return new(_disposal ??= DisposeCoreAsync());
+    }
+    private async Task DisposeCoreAsync()
+    {
+        _disposed = true;
+        await _stop.CancelAsync();
+        if (_worker is not null) await _worker;
+        _stop.Dispose();
+    }
+}

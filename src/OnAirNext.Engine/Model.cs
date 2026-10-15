@@ -67,7 +67,11 @@ public sealed record StationSettings(string Id, IReadOnlyList<MediaItem> Playlis
 public sealed record PlaybackEvent(string EventId, string OccurrenceId, string StationId, string Type, string ItemId,
     string Artist, string Title, ContentKind Kind, DateTimeOffset AtUtc, long SamplePosition, string Detail = "", string? QueueEntryId = null, string? PreviousOccurrenceId = null, string TimingQuality = "sample_clock");
 public sealed record PlayoutSelection(MediaItem Item, string? QueueEntryId = null);
-public interface IPlayoutPlanner { PlayoutSelection Select(int rotationIndex, string? excludeQueueEntryId = null); }
+public interface IPlayoutPlanner
+{
+    int? AvailableItems => null;
+    PlayoutSelection Select(int rotationIndex, string? excludeQueueEntryId = null);
+}
 public sealed record PlayoutCheckpoint(string StationId, string State, int RotationIndex, MediaItem? Item,
     string OccurrenceId, long ItemSamples, long ProgramSamples, bool Announced, DateTimeOffset SavedAtUtc,
     string? QueueEntryId = null, string? SessionId = null, string? PreviousOccurrenceId = null);
@@ -84,6 +88,7 @@ public interface IStationSession : IAsyncDisposable
     Task Completion { get; }
     StationSnapshot Snapshot();
     Task SkipAsync(string commandId);
+    void RefreshNext() { }
 }
 
 public interface IProgramOutput : IAsyncDisposable

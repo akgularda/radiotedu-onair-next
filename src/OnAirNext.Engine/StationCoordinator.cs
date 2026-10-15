@@ -15,6 +15,7 @@ public sealed class StationCoordinator : IAsyncDisposable
         public volatile string? Error;
         public volatile RetryState Retry = new(null, 0);
         public volatile bool ReleasePending, Completed;
+        public int ContentAvailable;
         public SemaphoreSlim Wake { get; } = new(0, 1);
     }
     private sealed record RetryState(DateTimeOffset? At, int Failures, long DueTimestamp = 0)
@@ -120,6 +121,14 @@ public sealed class StationCoordinator : IAsyncDisposable
         finally { _commands.Release(); }
     }
 
+    public void RefreshLibrary(string station, bool available)
+    {
+        if (_disposed || !_slots.TryGetValue(station, out var slot)) return;
+        slot.Session?.RefreshNext();
+        if (available) Interlocked.Exchange(ref slot.ContentAvailable, 1);
+        Signal(slot);
+    }
+
     private Slot Get(string station)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -143,6 +152,7 @@ public sealed class StationCoordinator : IAsyncDisposable
         {
             while (!_stop.IsCancellationRequested)
             {
+                if (Interlocked.Exchange(ref slot.ContentAvailable, 0) == 1) slot.Completed = false;
                 if (slot.ReleasePending || !ShouldRun(slot) && slot.Session is not null)
                 {
                     slot.ReleasePending = true;

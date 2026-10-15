@@ -55,16 +55,22 @@ public partial class MainWindow : Window
         SampleAge.Text = _sampleAt is null ? "No status sample" : !_pollVisible ? "Updates paused while minimized"
             : $"Sample age {Math.Max(0, (int)(DateTimeOffset.UtcNow - _sampleAt.Value).TotalSeconds)}s";
         RenderStation();
+        if (LibraryPage.Visibility == Visibility.Visible && HasFreshStatus && !_libraryBusy && DateTimeOffset.UtcNow >= _libraryPollAt)
+            _ = RefreshLibraryAsync();
     }
 
-    private void ShowOnAir(object sender, RoutedEventArgs e) => ShowPage(true);
-    private void ShowSystem(object sender, RoutedEventArgs e) => ShowPage(false);
-    private void ShowPage(bool onAir)
+    private void ShowOnAir(object sender, RoutedEventArgs e) => ShowPage("air");
+    private void ShowSystem(object sender, RoutedEventArgs e) => ShowPage("system");
+    private void ShowLibrary(object sender, RoutedEventArgs e) { ShowPage("library"); _ = RefreshLibraryAsync(); }
+    private void ShowPage(string page)
     {
+        var onAir = page == "air";
         OnAirPage.Visibility = onAir ? Visibility.Visible : Visibility.Collapsed;
-        SystemPage.Visibility = onAir ? Visibility.Collapsed : Visibility.Visible;
+        LibraryPage.Visibility = page == "library" ? Visibility.Visible : Visibility.Collapsed;
+        LibraryButton.Background = (System.Windows.Media.Brush)FindResource(page == "library" ? "SelectionBackground" : "RaisedBackground");
+        SystemPage.Visibility = page == "system" ? Visibility.Visible : Visibility.Collapsed;
         OnAirButton.Background = (System.Windows.Media.Brush)FindResource(onAir ? "SelectionBackground" : "RaisedBackground");
-        SystemButton.Background = (System.Windows.Media.Brush)FindResource(onAir ? "RaisedBackground" : "SelectionBackground");
+        SystemButton.Background = (System.Windows.Media.Brush)FindResource(page == "system" ? "SelectionBackground" : "RaisedBackground");
     }
 
     private void RefreshEngines(object sender, RoutedEventArgs e) => DiscoverEngines();
@@ -85,7 +91,11 @@ public partial class MainWindow : Window
     }
 
     private void SelectEngine(object sender, SelectionChangedEventArgs e) => ConnectButton.IsEnabled = EngineList.SelectedItem is string;
-    private void SelectStation(object sender, SelectionChangedEventArgs e) => RenderStation();
+    private void SelectStation(object sender, SelectionChangedEventArgs e)
+    {
+        RenderStation(); ResetLibraryView();
+        if (LibraryPage.Visibility == Visibility.Visible) _ = RefreshLibraryAsync();
+    }
     private void ConnectEngine(object sender, RoutedEventArgs e)
     {
         if (EngineList.SelectedItem is not string pipe) return;
@@ -101,7 +111,7 @@ public partial class MainWindow : Window
     {
         _connection?.Cancel(); _connection?.Dispose(); _connection = null;
         _pipe = null; _fresh = false; _sampleAt = null;
-        _stations.Clear(); _stationIds = [];
+        _stations.Clear(); _stationIds = []; ResetLibraryView();
         StationList.ItemsSource = Array.Empty<string>();
         EmptyStations.Visibility = Visibility.Visible;
         ConnectionStatus.Text = "DISCONNECTED";
@@ -176,6 +186,7 @@ public partial class MainWindow : Window
         SkipButton.IsEnabled = HasFreshStatus && !_commandBusy && station is { State: "Running", RequestedRunning: true };
         StartButton.IsEnabled = HasFreshStatus && !_commandBusy && station is { Enabled: true, RequestedRunning: false, State: "Stopped" or "Completed" };
         StopButton.IsEnabled = HasFreshStatus && !_commandBusy && station is { RequestedRunning: true };
+        RenderLibraryControls();
     }
 
     private async void SkipCurrent(object sender, RoutedEventArgs e) => await SendStationCommandAsync("skip");

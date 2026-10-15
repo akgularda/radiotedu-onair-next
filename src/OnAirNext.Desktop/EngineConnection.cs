@@ -31,14 +31,37 @@ internal static class EngineConnection
     internal static async Task CommandAsync(string name, string action, string station, string id, CancellationToken token)
     {
         if (action is not ("skip" or "start-station" or "stop-station")) throw new ArgumentException("Unknown station action.");
+        await MutateAsync(name, new(id, action, station), token);
+    }
+
+    internal static async Task<LibraryReply> ReadLibraryAsync(string name, string station, string query, int offset, CancellationToken token)
+    {
+        var response = await SendAsync(name, new(Guid.NewGuid().ToString("N"), "library-status", station, Query: query, Offset: offset), token);
+        using var document = JsonDocument.Parse(response);
+        if (!document.RootElement.TryGetProperty("page", out _)) throw new InvalidOperationException(
+            document.RootElement.TryGetProperty("error", out var error) ? error.GetString() : "Library status is unavailable.");
+        var reply = JsonSerializer.Deserialize<LibraryReply>(response, Json) ?? throw new InvalidDataException("Empty library response.");
+        if (reply.Page?.Items is null || reply.Page.Items.Length > 50 || reply.Worker is null) throw new InvalidDataException("Invalid library page.");
+        return reply;
+    }
+
+    internal static Task SetLibraryRootAsync(string name, string station, string path, CancellationToken token)
+        => MutateAsync(name, new(Guid.NewGuid().ToString("N"), "library-root", station, Path: path), token);
+    internal static Task ImportFilesAsync(string name, string station, string[] paths, CancellationToken token)
+        => MutateAsync(name, new(Guid.NewGuid().ToString("N"), "library-import", station, Paths: paths), token);
+    internal static Task RescanLibraryAsync(string name, string station, CancellationToken token)
+        => MutateAsync(name, new(Guid.NewGuid().ToString("N"), "library-rescan", station), token);
+
+    private static async Task MutateAsync(string name, Command request, CancellationToken token)
+    {
         byte[] response;
-        try { response = await SendAsync(name, new(id, action, station), token); }
+        try { response = await SendAsync(name, request, token); }
         catch (Exception ex) when ((ex is IOException or OperationCanceledException) && !token.IsCancellationRequested)
         {
             // The exact same ID/station/action is retried; a lost acknowledgement cannot
             // turn one Skip into two or replay an old Start over a later Stop decision.
             await Task.Delay(100, token);
-            response = await SendAsync(name, new(id, action, station), token);
+            response = await SendAsync(name, request, token);
         }
         using var reply = JsonDocument.Parse(response);
         if (!reply.RootElement.TryGetProperty("accepted", out var accepted) || !accepted.GetBoolean())
@@ -57,19 +80,32 @@ internal static class EngineConnection
         // One bounded line, without a StreamWriter whose disposal can flush after the peer closes.
         using var response = new MemoryStream();
         var bytes = new byte[4096];
-        while (response.Length < 131072)
+        while (response.Length < 524288)
         {
             var read = await pipe.ReadAsync(bytes, timeout.Token);
             if (read == 0) throw new EndOfStreamException("Engine closed before acknowledging the request.");
             var newline = Array.IndexOf(bytes, (byte)'\n', 0, read);
+            if (response.Length + (newline < 0 ? read : newline) > 524288) throw new InvalidDataException("Engine response exceeds 512 KiB.");
             response.Write(bytes, 0, newline < 0 ? read : newline);
             if (newline >= 0) return response.ToArray();
         }
-        throw new InvalidDataException("Engine response exceeds 128 KiB.");
+        throw new InvalidDataException("Engine response exceeds 512 KiB.");
     }
 
-    private sealed record Command(string Id, string Action, string? StationId);
+    private sealed record Command(string Id, string Action, string? StationId, string? Path = null,
+        string[]? Paths = null, string? Query = null, int Offset = 0);
 }
+
+internal sealed record LibraryReply(LibraryPageView Page, LibraryWorkerView Worker);
+internal sealed record LibraryRootView(string StationId, string Path, long Revision);
+internal sealed record LibraryAssetView(string Id, string RelativePath, string Artist, string Title, double Seconds, string State, string? Error)
+{
+    public string Duration => TimeSpan.FromSeconds(Seconds).ToString(@"hh\:mm\:ss");
+}
+internal sealed record LibraryImportView(string Id, string State, string? Error);
+internal sealed record LibraryPageView(LibraryRootView? Root, long Total, long Ready, long Missing,
+    LibraryAssetView[] Items, int Offset, LibraryImportView? Import);
+internal sealed record LibraryWorkerView(string State, string? Error, DateTimeOffset? ScannedAtUtc);
 
 internal sealed record StatusReply(StationView[] Stations, AuditView Audit);
 internal sealed record AuditView(long PendingEvents, long RejectedEvents, string? Error);

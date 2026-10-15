@@ -14,7 +14,11 @@ var config = JsonSerializer.Deserialize<HostSettings>(await File.ReadAllTextAsyn
 if (!config.PipeName.StartsWith("onair-next-dev-", StringComparison.Ordinal) || config.PipeName.Length > 100 ||
     config.PipeName.Any(c => !char.IsAsciiLetterOrDigit(c) && c != '-')) throw new ArgumentException("Use an isolated development pipe name.");
 await using var journal = new EventJournal(Path.Combine(config.DataRoot, "playback.db"));
-await using var coordinator = new StationCoordinator(config.Ffmpeg, config.Stations, journal);
+await using var library = new StationLibrary(journal, config.Ffmpeg, config.DataRoot, config.Stations.Where(x => x.Repeat).Select(x => x.Id));
+await library.InitializeAsync();
+await using var coordinator = new StationCoordinator(config.Ffmpeg, config.Stations, journal,
+    settings => new StationEngine(config.Ffmpeg, settings, journal, planner: library.Planner(settings)));
+library.Changed += coordinator.RefreshLibrary;
 await coordinator.InitializeAsync();
 using var stop = new CancellationTokenSource();
 Console.CancelKeyPress += (_, eventArgs) => { eventArgs.Cancel = true; stop.Cancel(); };
@@ -30,7 +34,7 @@ try
             await pipe.WaitForConnectionAsync(stop.Token);
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
             deadline.CancelAfter(TimeSpan.FromSeconds(5));
-            var frame = await PipeFrames.ReadAsync(pipe, 8192, deadline.Token);
+            var frame = await PipeFrames.ReadAsync(pipe, 65536, deadline.Token);
             if (frame is null) continue;
             var request = JsonSerializer.Deserialize<EngineCommand>(frame, json);
             if (request is null || string.IsNullOrWhiteSpace(request.Id) || request.Id.Length > 128) continue;
@@ -50,6 +54,18 @@ try
                         result = "{\"accepted\":true}"; break;
                     case "skip" when request.StationId is { } skipStation:
                         await coordinator.SkipAsync(skipStation, request.Id);
+                        result = "{\"accepted\":true}"; break;
+                    case "library-status" when request.StationId is { } libraryStation:
+                        result = JsonSerializer.Serialize(new { page = library.Page(libraryStation, request.Query ?? "", request.Offset), worker = library.Status(libraryStation) });
+                        break;
+                    case "library-root" when request.StationId is { } rootStation && request.Path is { } rootPath:
+                        await library.SetRootAsync(rootStation, rootPath, request.Id);
+                        result = "{\"accepted\":true}"; break;
+                    case "library-import" when request.StationId is { } importStation && request.Paths is { } importPaths:
+                        await library.ImportAsync(importStation, importPaths, request.Id);
+                        result = "{\"accepted\":true}"; break;
+                    case "library-rescan" when request.StationId is { } rescanStation:
+                        _ = library.Page(rescanStation, "", 0); library.Wake();
                         result = "{\"accepted\":true}"; break;
                     case "stop":
                         shutdown = await coordinator.StopAllAsync(request.Id);
@@ -75,4 +91,5 @@ finally { await stop.CancelAsync(); }
 return 0;
 
 internal sealed record HostSettings(string Ffmpeg, string DataRoot, string PipeName, List<StationSettings> Stations);
-internal sealed record EngineCommand(string Id, string Action, string? StationId);
+internal sealed record EngineCommand(string Id, string Action, string? StationId, string? Path = null,
+    string[]? Paths = null, string? Query = null, int Offset = 0);

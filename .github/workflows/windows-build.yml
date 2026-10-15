@@ -35,10 +35,12 @@ jobs:
           name: windows-unit-results
           path: artifacts/test-results
           if-no-files-found: warn
+      - name: Locate compiled binaries
+        run: '"ONAIR_BUILD_BIN=$env:LOCALAPPDATA/RadioTEDU/OnAirNext-Dev/build/bin" >> $env:GITHUB_ENV'
       - name: Retain compiled development binaries
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: windows-development-build
-          path: ${{ env.LOCALAPPDATA }}/RadioTEDU/OnAirNext-Dev/build/bin
+          path: ${{ env.ONAIR_BUILD_BIN }}
           retention-days: 7
           if-no-files-found: error

@@ -64,4 +64,12 @@ Read-only health snapshots showed legacy worker generation changes. Some legacy 
 
 The Windows CI workflow compiles and runs unit tests away from the broadcasting PC. A remote pass will not replace Windows 10 runtime, audio, native mouse, full-roster or long-duration acceptance.
 
-The operator independence gate is mandatory: music import and live-folder assignment, setup, queue, schedule, microphone, reporting and recovery must work through native UI controls without Codex, SQL, scripts or hidden requests. Library/file chooser is not implemented yet. No routine task may be accepted from a developer API test alone.
+The operator independence gate is mandatory: music import and live-folder assignment, setup, queue, schedule, microphone, reporting and recovery must work through native UI controls without Codex, SQL, scripts or hidden requests. Native Library file/folder selectors, search, paged rows and persisted import progress are now implemented in source, with catalog and background-worker tests added; build/runtime/mouse qualification is still pending. No routine task may be accepted from a developer API test alone.
+
+## Native Library development update — not yet qualified
+
+Native Windows file/folder choosers now connect to persisted library commands in the isolated host. The catalog uses per-station root revisions, global command-ID/payload deduplication, bounded change batches and paged reads. Imports copy without changing originals, use content-addressed filenames, retain durable pending jobs on interruption, verify complete decode outside the programme loop and report failures. Recursive scanning excludes folder links; incomplete/unavailable scans retain catalog history. The planner reads a published in-memory set, and replacement/removal updates future selection. Empty-root successor refresh finishes the current item. A deterministic shuffled order is rebuilt per rotation cycle.
+
+This source is under qualification. Nine additional catalog/worker unit cases are intended to exercise pagination, stale scans, command retries, stable changes, drive return and interrupted-copy recovery; simulated probe tests do not prove real audio or UI operation. Metadata editing, retirement/restore controls, playlists, queue editing, resource-budgeted analysis and the remaining commissioning gates are still open. No production folders or audio have been imported.
+
+Remote CI run 38782165103 compiled the preceding coordinator/native source and passed its unit-test step; artifact upload failed because the environment path was not resolved in the Actions expression. The workflow now exports the actual build directory before upload. Do not describe that entire run as passed.
