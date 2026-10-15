@@ -2,7 +2,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const roster = [{id:'1',name:'Classic'},{id:'2',name:'Lofi'},{id:'4',name:'Radio'},{id:'5',name:'Cazz'},{id:'8',name:'Rock'},{id:'9',name:'Energize'},{id:'10',name:'Situation'},{id:'11',name:'Main Character'}];
-  const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[]};
+  const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null};
   try { const saved=JSON.parse(localStorage.getItem('studio-pending-commands')??'[]');if(Array.isArray(saved))state.pending=saved.filter(p=>typeof p.engine==='string'&&p.request?.Id&&p.request?.StationId).slice(0,32); } catch { }
   const pending = () => state.pending.find(p=>p.engine===state.engine&&p.request.StationId===state.station);
   const savePending = () => {try{localStorage.setItem('studio-pending-commands',JSON.stringify(state.pending));}catch{}};
@@ -13,7 +13,7 @@
   const element = (tag,className,value) => {const node=document.createElement(tag);if(className)node.className=className;if(value!==undefined)node.textContent=value;return node;};
   const current = () => state.stations.find(item=>item.Id===state.station);
   const fresh = () => !!state.engine && !!state.sampleAt && Date.now()-state.sampleAt<4000;
-  const stationName = () => roster.find(item=>item.id===state.station)?.name ?? state.station;
+  const stationName = (id=state.station) => roster.find(item=>item.id===id)?.name ?? id;
   const message = value => text('action-status',value);
   const duration = seconds => {if(!Number.isFinite(seconds)||seconds<0)return'--:--';const s=Math.floor(seconds);return s>=3600?`${Math.floor(s/3600)}:${String(Math.floor(s/60)%60).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`:`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;};
 
@@ -42,8 +42,14 @@
     text('elapsed',connected?duration((station?.CurrentItemSamples??0)/48000):'--:--');
     text('programme-time',connected?duration((station?.Samples??0)/48000):'--:--:--');
     text('inspector-engine',connected?'Connected':'Not connected');
-    $('start-station').disabled=!connected||state.busy||!!pending()||!station||(!running&&(!station.Enabled||!station.Outputs?.length));
-    $('start-station').replaceChildren(icon(running?'recovery':'play'),document.createTextNode(running?'Stop station':'Start station'));
+    $('start-station').disabled=!connected||state.busy||!!pending()||!station||running||!station.Enabled||!station.Outputs?.length;
+    $('stop-station').disabled=!connected||state.busy||!!pending()||!station||!running;
+    $('progress-fill').parentElement.hidden=true;
+    text('remaining','');text('duration-label',connected?'Elapsed programme time · duration unavailable':'Duration unavailable');
+    const queueCell=element('td','table-empty');queueCell.colSpan=4;
+    queueCell.append(icon('library'),element('strong','',connected?'Running order is not available in this build':'Your running order will appear here'),element('span','',connected?'The engine reports the current item. Upcoming items are not exposed yet.':'Connect the engine to view channel status.'));
+    if(!connected){const connect=element('button','button subtle','Connect engine');connect.addEventListener('click',()=>navigate('system'));queueCell.append(connect);}
+    const queueRow=element('tr');queueRow.append(queueCell);$('queue-rows').replaceChildren(queueRow);text('queue-count','—');text('queue-footer',connected?'Upcoming items unavailable':'Not loaded');
     $('skip-item').disabled=!connected||state.busy||!!pending()||station?.State!=='Running';
     text('transport-note',connected?(station?.Outputs?.length?'Selected station only':'Configure outputs before starting'):'Controls unavailable');
     const outputs=connected?(station?.Outputs??[]):[];text('output-count',connected?String(outputs.length):'—');
@@ -75,7 +81,7 @@
     if(envelope.engine!==engine||envelope.request.StationId!==selected)return;
     if(!state.pending.some(p=>p.request.Id===envelope.request.Id))state.pending.push(envelope);savePending();state.busy=true;renderStatus();
     try{let result;for(let attempt=0;attempt<2;attempt++){try{result=await api('/api/command',{method:'POST',body:envelope});break;}catch(error){if(error.status&&error.status<500){state.pending=state.pending.filter(p=>p.request.Id!==envelope.request.Id);savePending();throw error;}if(attempt===1)throw error;}}
-      state.pending=state.pending.filter(p=>p.request.Id!==envelope.request.Id);savePending();if(result?.accepted!==true)throw new Error(result?.error??'Command not accepted');message('Accepted for '+stationName()+'. Reading back saved state…');await poll();if(selected===state.station)await loadLibrary();}
+      state.pending=state.pending.filter(p=>p.request.Id!==envelope.request.Id);savePending();if(result?.accepted!==true)throw new Error(result?.error??'Command not accepted');message('Accepted for '+stationName(selected)+'. Reading back saved state…');await poll();if(selected===state.station)await loadLibrary();}
     catch(error){message((pending()?'Acknowledgement unavailable. Retry the same request. ':'Command rejected. ')+error.message);}
     finally{state.busy=false;renderStatus();}
   }
@@ -83,8 +89,10 @@
   $('refresh-engines').addEventListener('click',()=>void discover());
   $('connect-engine').addEventListener('click',async()=>{state.engine=$('engine-select').value;state.sampleAt=0;await poll();if(fresh()){message('Connected to the isolated engine.');navigate('air');}});
   $('disconnect-engine').addEventListener('click',()=>{state.engine=null;state.stations=[];state.sampleAt=0;state.library=null;stationTabs();resetLibrary();renderStatus();message('Console disconnected. The engine continues independently.');});
-  $('start-station').addEventListener('click',()=>{if(current()?.RequestedRunning)$('stop-dialog').showModal();else void command('start-station');});
-  $('stop-dialog').addEventListener('close',()=>{if($('stop-dialog').returnValue==='stop')void command('stop-station');});
+  $('start-station').addEventListener('click',()=>void command('start-station'));
+  $('stop-station').addEventListener('click',()=>{state.stopTarget={station:state.station,engine:state.engine};text('stop-heading','Stop '+stationName()+'?');text('stop-name',stationName());$('stop-dialog').returnValue='cancel';$('stop-dialog').showModal();});
+  $('stop-dialog').addEventListener('close',()=>{const target=state.stopTarget;state.stopTarget=null;if($('stop-dialog').returnValue!=='stop')return;if(!target||target.station!==state.station||target.engine!==state.engine){message('Channel changed. Stop was cancelled.');return;}void command('stop-station');});
+  $('toggle-inspector').addEventListener('click',()=>{const expanded=$('toggle-inspector').getAttribute('aria-expanded')!=='true';$('toggle-inspector').setAttribute('aria-expanded',String(expanded));$('channel-inspector').classList.toggle('expanded',expanded);});
   $('skip-item').addEventListener('click',()=>void command('skip'));
   function resetLibrary(){text('folder-name','Live folder not loaded');text('folder-path','Connect the engine to view or assign a folder.');text('folder-state','Not connected');text('library-count','No library loaded');text('library-progress','Waiting for engine connection');$('managed-folder').hidden=true;$('library-rows').replaceChildren(emptyLibrary());libraryControls();}
   function emptyLibrary(){const row=element('tr'),cell=element('td','table-empty large-empty');cell.colSpan=5;cell.append(icon('folder'),element('strong','','A home for your station’s music'),element('span','','Choose a live folder or add audio files. Original files stay unchanged.'));if(!fresh()){const button=element('button','button subtle','Connect engine');button.append(icon('chevron'));button.addEventListener('click',()=>navigate('system'));cell.append(button);}row.append(cell);return row;}
