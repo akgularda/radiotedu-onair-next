@@ -7,7 +7,14 @@
   const pending = () => state.pending.find(p=>p.engine===state.engine&&p.request.StationId===state.station);
   const savePending = () => {try{localStorage.setItem('studio-pending-commands',JSON.stringify(state.pending));}catch{}};
   let bootstrap='';
-  try{const fragment=new URLSearchParams(location.hash.slice(1));const supplied=fragment.get('access');if(supplied&&/^[0-9A-Fa-f]{64}$/.test(supplied)){sessionStorage.setItem('studio-bootstrap',supplied);history.replaceState(null,'',location.pathname+location.search);}bootstrap=sessionStorage.getItem('studio-bootstrap')??'';}catch{}
+  try{
+    const supplied=new URLSearchParams(location.hash.slice(1)).get('access');
+    if(supplied&&/^[0-9A-Fa-f]{64}$/.test(supplied)){
+      bootstrap=supplied;
+      try{history.replaceState(null,'',location.pathname+location.search);}catch{}
+      try{sessionStorage.setItem('studio-bootstrap',supplied);}catch{}
+    }else{try{const stored=sessionStorage.getItem('studio-bootstrap');if(stored&&/^[0-9A-Fa-f]{64}$/.test(stored))bootstrap=stored;}catch{}}
+  }catch{}
   const names = {air:'On Air',library:'Library',system:'System'};
   const clock = new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Istanbul',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
   const text = (id,value) => { $(id).textContent = value; };
