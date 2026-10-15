@@ -34,7 +34,7 @@ public sealed class ServicePipePolicyTests
     {
         var acl = new ServicePipePolicy("S-1-5-19", Operator).Security();
         var rules = acl.GetAccessRules(true,true,typeof(SecurityIdentifier)).Cast<PipeAccessRule>().ToArray();
-        var grant = Assert.Single(rules.Where(r=>r.IdentityReference.Value==Operator && r.AccessControlType==AccessControlType.Allow));
+        var grant = Assert.Single(rules,r=>r.IdentityReference.Value==Operator && r.AccessControlType==AccessControlType.Allow);
         Assert.Equal((PipeAccessRights)0,grant.PipeAccessRights & PipeAccessRights.CreateNewInstance);
         Assert.Equal(PipeAccessRights.ReadWrite,grant.PipeAccessRights & PipeAccessRights.ReadWrite);
         foreach(var sid in new[]{"S-1-5-2","S-1-5-7"}) Assert.Contains(rules,r=>r.IdentityReference.Value==sid && r.AccessControlType==AccessControlType.Deny);
