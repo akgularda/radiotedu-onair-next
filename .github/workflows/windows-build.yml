@@ -12,7 +12,7 @@ concurrency:
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
       DOTNET_NOLOGO: '1'
@@ -46,6 +46,17 @@ jobs:
           name: windows-service-qualification
           path: artifacts/service-smoke/summary.json
           if-no-files-found: warn
+      - name: Publish self-contained Windows development package
+        run: ./scripts/Package-Windows.ps1
+      - name: Qualify guided Windows setup on disposable runner
+        run: ./scripts/Test-WindowsSetup.ps1 -BuildRoot "$env:ONAIR_BUILD_BIN" -PackageRoot artifacts/windows-package
+      - name: Retain setup qualification
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-setup-qualification
+          path: artifacts/setup-smoke/summary.json
+          if-no-files-found: warn
       - name: Retain compiled development binaries
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -71,3 +82,19 @@ jobs:
             ${{ env.ONAIR_BUILD_BIN }}/OnAirNext.Host/release/runtimes/win-x64/native/*.dll
           retention-days: 7
           if-no-files-found: error
+      - name: Retain Windows package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-portable-setup
+          path: artifacts/windows-package
+          retention-days: 7
+          if-no-files-found: error
+      - name: Retain runtime expansion locks and package measurements
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-runtime-package-evidence
+          path: |
+            artifacts/windows-runtime-locks
+            artifacts/windows-package-summary.json
+          if-no-files-found: warn

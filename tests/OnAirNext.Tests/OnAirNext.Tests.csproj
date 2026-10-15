@@ -7,6 +7,7 @@
     <ProjectReference Include="../../src/OnAirNext.Engine/OnAirNext.Engine.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="../../src/OnAirNext.Setup/SetupModels.cs" Link="Installation/SetupModels.cs" />
     <Compile Include="../../src/OnAirNext.Host/ServiceEndpoint.cs" Link="ServiceControl/ServiceEndpoint.cs" />
     <Compile Include="../../src/OnAirNext.Host/ServicePipeClient.cs" Link="ServiceControl/ServicePipeClient.cs" />
     <Compile Include="../../src/OnAirNext.Host/ServicePipePolicy.cs" Link="ServiceControl/ServicePipePolicy.cs" />

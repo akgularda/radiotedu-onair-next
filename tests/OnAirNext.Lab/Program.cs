@@ -9,6 +9,8 @@ if (args.Length == 1 && args[0] == "--service-upload-probe") return await Upload
 if (args.Length == 2 && args[0] == "--service-source-probe") return await ServiceProbe.SourceAsync(args[1]);
 if (args.Length == 2 && args[0] == "--service-probe") return await ServiceProbe.CommandAsync(args[1]);
 if (args.Length == 2 && args[0] == "--service-child" && args[1] == "leaf") return await ServiceProbe.OwnedChildFixtureAsync(true);
+if (Environment.GetEnvironmentVariable("ONAIR_SETUP_TEST_RUNTIME")=="1" && args.SequenceEqual(new[]{"-hide_banner","-encoders"}) && Path.GetFileName(Environment.ProcessPath)=="ffmpeg.exe")
+{ Console.WriteLine("Engineering fixture only; no audio codec implementation.\n A..... libfdk_aac test-listing\n A..... flac test-listing"); return 0; }
 if (args.SequenceEqual(new[] { "-hide_banner", "-encoders" }) && Path.GetFileName(Environment.ProcessPath)=="ffmpeg.exe")
     return await ServiceProbe.OwnedChildFixtureAsync(false);
 

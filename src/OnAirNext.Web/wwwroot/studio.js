@@ -28,7 +28,7 @@
     $('stations').replaceChildren(...stations.map(station=>{const button=element('button','station-tab');button.role='tab';button.setAttribute('aria-selected',String(station.id===state.station));button.setAttribute('aria-label',station.name+' channel');button.append(element('span','dot'),document.createTextNode(station.name));button.addEventListener('click',()=>selectStation(station.id));return button;}));
   }
   function selectStation(id){state.station=id;state.library=null;state.offset=0;stationTabs();renderStatus();resetLibrary();if(state.page==='library')void loadLibrary();}
-  function navigate(page){if(!names[page])return;state.page=page;document.querySelectorAll('[data-view]').forEach(section=>section.hidden=section.dataset.view!==page);document.querySelectorAll('.nav-item[data-page]').forEach(button=>{button.classList.toggle('selected',button.dataset.page===page);button.setAttribute('aria-current',button.dataset.page===page?'page':'false');});text('breadcrumb',names[page]);if(page==='library')void loadLibrary();}
+  function navigate(page){if(!names[page])return;state.page=page;document.querySelectorAll('[data-view]').forEach(section=>section.hidden=section.dataset.view!==page);document.querySelectorAll('.nav-item[data-page]').forEach(button=>{button.classList.toggle('selected',button.dataset.page===page);button.setAttribute('aria-current',button.dataset.page===page?'page':'false');});text('breadcrumb',names[page]);if(page==='library')void loadLibrary();if(page==='system')void loadSetup();}
   document.querySelectorAll('[data-page]:not(:disabled)').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();navigate(button.dataset.page);}));
   document.addEventListener('keydown',event=>{if(event.altKey && (event.key==='1'||event.key==='2')){event.preventDefault();navigate(event.key==='1'?'air':'library');}});
   function renderStatus(){
@@ -71,7 +71,7 @@
   }
   function libraryControls(){const enabled=fresh()&&!state.busy&&!pending();$('choose-folder').disabled=!enabled;$('add-files').disabled=!enabled||!state.library?.canImportFiles;$('managed-folder').disabled=!enabled;$('rescan').disabled=!enabled||!state.library?.page?.Root;$('library-prev').disabled=!fresh()||state.offset===0;$('library-next').disabled=!fresh()||state.library?.page?.Items?.length!==50;document.querySelectorAll('.transfer-action').forEach(button=>button.disabled=!enabled);document.querySelectorAll('.asset-action').forEach(button=>button.disabled=!enabled);assetDialogControls();folderControls();}
   async function discover(){
-    try{const result=await api('/api/engines');const options=result.engines??[];$('engine-select').replaceChildren(...(options.length?options.map(name=>{const option=element('option','',name);option.value=name;return option;}):[element('option','','No engines available')]));$('engine-select').disabled=!options.length;$('connect-engine').disabled=!options.length;text('engine-discovery',options.length?`${options.length} isolated engine${options.length===1?'':'s'} found on this computer.`:result.preview?'Visual preview. No broadcasting engine is connected.':'No isolated engine is running. The service setup workflow is still being built.');}
+    try{const result=await api('/api/engines');const options=result.engines??[];$('engine-select').replaceChildren(...(options.length?options.map(name=>{const option=element('option','',name);option.value=name;return option;}):[element('option','','No engines available')]));$('engine-select').disabled=!options.length;$('connect-engine').disabled=!options.length;text('engine-discovery',options.length?`${options.length} isolated engine${options.length===1?'':'s'} found on this computer.`:result.preview?'Visual preview. No broadcasting engine is connected.':'No isolated engine is running. Review the separate installation below or refresh discovery after service startup.');}
     catch(error){text('engine-discovery','Engine discovery unavailable: '+error.message);}
   }
   async function poll(){
@@ -262,6 +262,40 @@
   });
   $('folder-retry').addEventListener('click',async()=>{const saved=pending();if(!folderContext()||saved?.request.Action!=='library-root'||saved.request.Path!==state.folder)return;const result=await command('library-root',{},saved);if(result?.accepted)$('folder-dialog').close();else text('folder-access-info',$('action-status').textContent);folderControls();});
   $('folder-dialog').addEventListener('close',()=>{state.folderGeneration++;state.folderSource=null;state.folderTarget=null;});
+  let setupState=null,setupPath=null,setupParent=null,setupLoading=false;
+  function setupControls(){
+    const available=!state.session?.preview&&setupState?.supported&&setupState.packageAvailable;
+    const busy=setupState?.busy||setupLoading,installed=!!setupState?.receipt||!!setupState?.service;
+    $('setup-browse').disabled=!available||busy||installed;$('setup-check').disabled=!available||busy||installed||!$('setup-runtime').value;
+    $('setup-start').disabled=busy||installed;$('setup-install').disabled=!available||busy||!setupState?.plan||setupState.receipt?.phase==='Installed';
+  }
+  async function loadSetup(){
+    if(setupLoading)return;
+    if(state.session?.preview){text('setup-phase','Preview');text('setup-detail','This is an unconnected visual preview. Use the complete Windows package for installation.');setupControls();return;}
+    setupLoading=true;
+    try{
+      const previous=setupState?.receipt?.phase;setupState=await api('/api/setup');const plan=setupState.plan,receipt=setupState.receipt;
+      text('setup-phase',receipt?.phase??setupState.phase);text('setup-detail',setupState.systemError??setupState.detail);
+      if(plan){$('setup-runtime').value=plan.runtimeRoot;$('setup-start').checked=plan.startService;}
+      $('setup-review').hidden=!plan;
+      const properties=plan?[['Installation',setupState.installRoot],['Separate data',setupState.dataRoot],['Windows service account','LocalService'],['Studio operator',plan.operatorSid],['Audio runtime',plan.runtimeRoot],['Package checksum',plan.bundle],['Initial channels','Eight stopped channels · zero armed outputs']]:[];
+      $('setup-review').replaceChildren(...properties.map(([name,value])=>{const row=element('div');row.append(element('dt','',name),element('dd','',value));return row;}));
+      text('setup-receipt',receipt?receipt.detail+(setupState.service?.state===4?' Service is running.':''):'No installation has been recorded.');
+      if(receipt?.phase==='Installed'&&previous!=='Installed')await discover();
+    }catch(error){text('setup-phase','Unavailable');text('setup-detail',error.message);}
+    finally{setupLoading=false;setupControls();}
+  }
+  async function setupFolders(path=null){
+    try{const result=await api('/api/folders'+(path?'?path='+encodeURIComponent(path):''));setupPath=result.path;setupParent=result.parent;text('setup-folder-path',setupPath??'Locations');text('setup-folder-error','');$('setup-folder-select').disabled=!setupPath;
+      $('setup-folder-list').replaceChildren(...(result.folders??[]).map(folder=>{const button=element('button','folder-choice',folder.Name??folder.name);button.type='button';button.addEventListener('click',()=>void setupFolders(folder.Path??folder.path));return button;}));}
+    catch(error){text('setup-folder-error',error.message);}
+  }
+  $('setup-browse').addEventListener('click',async()=>{$('setup-folder-dialog').showModal();await setupFolders($('setup-runtime').value||null);});
+  $('setup-folder-up').addEventListener('click',()=>void setupFolders(setupParent));
+  $('setup-folder-select').addEventListener('click',()=>{if(!setupPath)return;$('setup-runtime').value=setupPath;$('setup-folder-dialog').close();setupControls();});
+  $('setup-check').addEventListener('click',async()=>{try{await api('/api/setup/prepare',{method:'POST',body:{RuntimeFolder:$('setup-runtime').value,StartService:$('setup-start').checked}});await loadSetup();}catch(error){text('setup-detail',error.message);}});
+  $('setup-install').addEventListener('click',async()=>{if(!setupState?.plan)return;try{await api('/api/setup/install',{method:'POST',body:{Id:setupState.plan.id}});await loadSetup();}catch(error){text('setup-detail',error.message);}});
+  $('setup-refresh').addEventListener('click',()=>void loadSetup());
   async function initialize(){stationTabs();renderStatus();try{state.session=await api('/api/session');text('build-label',state.session.preview?'UI PREVIEW':'DEVELOPMENT');}catch(error){message('Console connection unavailable: '+error.message);}await discover();}
-  let ticks=0;setInterval(()=>{if(document.hidden)return;text('clock',clock.format(new Date()));renderStatus();if(++ticks%2===0){void poll();void pollFolderCheck();}if(ticks%4===0&&state.page==='library')void loadLibrary();},1000);text('clock',clock.format(new Date()));document.addEventListener('visibilitychange',()=>{if(!document.hidden){text('clock',clock.format(new Date()));void poll();}});void initialize();
+  let ticks=0;setInterval(()=>{if(document.hidden)return;text('clock',clock.format(new Date()));renderStatus();if(++ticks%2===0){void poll();void pollFolderCheck();}if(ticks%4===0&&state.page==='library')void loadLibrary();if(ticks%4===0&&state.page==='system')void loadSetup();},1000);text('clock',clock.format(new Date()));document.addEventListener('visibilitychange',()=>{if(!document.hidden){text('clock',clock.format(new Date()));void poll();}});void initialize();
 })();

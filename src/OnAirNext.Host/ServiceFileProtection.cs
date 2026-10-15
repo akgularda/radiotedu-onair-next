@@ -7,13 +7,14 @@ namespace OnAirNext.ServiceControl;
 [SupportedOSPlatform("windows")]
 internal static class ServiceFileProtection
 {
-    public static void Bootstrap(string configPath)
+    public static void Bootstrap(string configPath) => BootstrapInstalled(configPath, AppContext.BaseDirectory);
+    public static void BootstrapInstalled(string configPath, string binaryDirectory)
     {
         ServiceEndpoint.RequirePath(configPath, ServiceEndpoint.ConfigPath);
-        ServiceEndpoint.RequirePath(AppContext.BaseDirectory, Path.Combine(ServiceEndpoint.InstallRoot, "bin"));
+        ServiceEndpoint.RequirePath(binaryDirectory, Path.Combine(ServiceEndpoint.InstallRoot, "bin"));
         AssertProtected(new DirectoryInfo(ServiceEndpoint.DataRoot).GetAccessControl(AccessControlSections.Access | AccessControlSections.Owner));
         AssertProtected(new FileInfo(configPath).GetAccessControl(AccessControlSections.Access | AccessControlSections.Owner));
-        AssertProtected(new DirectoryInfo(AppContext.BaseDirectory).GetAccessControl(AccessControlSections.Access | AccessControlSections.Owner));
+        AssertProtected(new DirectoryInfo(binaryDirectory).GetAccessControl(AccessControlSections.Access | AccessControlSections.Owner));
     }
     public static void ValidateSettings(string engineData, string ffmpeg)
     {

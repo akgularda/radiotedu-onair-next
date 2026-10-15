@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Http.Features;
 using OnAirNext.Web;
 using OnAirNext.UploadProtocol;
+using OnAirNext.Installation;
 
 var dataRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadioTEDU", "OnAirNext-Dev", "browser-console");
 Directory.CreateDirectory(Path.Combine(dataRoot, "http-temp"));
@@ -13,6 +14,7 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = ar
 builder.WebHost.UseUrls("http://127.0.0.1:18121");
 builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 256L * 1024 * 1024);
 builder.Services.Configure<FormOptions>(options => { options.MultipartBodyLengthLimit = 256L * 1024 * 1024; options.MemoryBufferThreshold = 65536; });
+builder.Services.AddSingleton(_ => new SetupCoordinator(dataRoot));
 var app = builder.Build();
 var csrf = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 var cookie = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
@@ -45,6 +47,10 @@ app.Use(async (context, next) =>
     }
 });
 app.UseDefaultFiles(); app.UseStaticFiles();
+app.MapGet("/api/health", () => Results.Json(new { product="RadioTEDU-OnAirNext" }));
+app.MapGet("/api/setup", (SetupCoordinator setup) => Results.Json(setup.Status()));
+app.MapPost("/api/setup/prepare", (SetupRequest request, SetupCoordinator setup) => { setup.Prepare(request); return Results.Json(new { accepted=true }); });
+app.MapPost("/api/setup/install", (SetupInstall request, SetupCoordinator setup) => { setup.Install(request.Id); return Results.Json(new { accepted=true }); });
 app.MapGet("/api/session", (HttpResponse response) =>
 {
     response.Cookies.Append("studio-session", cookie, new CookieOptions { HttpOnly = true, SameSite = SameSiteMode.Strict, IsEssential = true, Path = "/" });
@@ -133,3 +139,5 @@ internal sealed record ConsoleCommand(string Engine, JsonElement Request);
 internal sealed record FolderChoice(string Name, string Path);
 
 internal sealed record UploadCancellation(string Engine,string Station,string Id);
+
+internal sealed record SetupInstall(string Id);

@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>WinExe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../OnAirNext.Host/ServiceEndpoint.cs" Link="ServiceControl/ServiceEndpoint.cs" />
+    <Compile Include="../OnAirNext.Host/ServiceFileProtection.cs" Link="ServiceControl/ServiceFileProtection.cs" />
+    <Compile Include="../OnAirNext.Host/WindowsOwnedJob.cs" Link="ServiceControl/WindowsOwnedJob.cs" />
+  </ItemGroup>
+</Project>

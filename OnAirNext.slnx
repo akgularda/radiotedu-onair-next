@@ -3,6 +3,7 @@
     <Project Path="src/OnAirNext.Engine/OnAirNext.Engine.csproj" />
     <Project Path="src/OnAirNext.Host/OnAirNext.Host.csproj" />
     <Project Path="src/OnAirNext.Web/OnAirNext.Web.csproj" />
+    <Project Path="src/OnAirNext.Setup/OnAirNext.Setup.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/OnAirNext.Tests/OnAirNext.Tests.csproj" />

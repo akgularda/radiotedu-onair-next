@@ -6,6 +6,8 @@
     <Compile Include="../OnAirNext.Engine/LocalMediaPath.cs" Link="Protocol/LocalMediaPath.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="../OnAirNext.Setup/SetupModels.cs" Link="Installation/SetupModels.cs" />
+    <Compile Include="../OnAirNext.Setup/SetupService.cs" Link="Installation/SetupService.cs" />
     <Compile Include="../OnAirNext.Host/ServiceEndpoint.cs" Link="ServiceControl/ServiceEndpoint.cs" />
     <Compile Include="../OnAirNext.Host/ServicePipeClient.cs" Link="ServiceControl/ServicePipeClient.cs" />
   </ItemGroup>
