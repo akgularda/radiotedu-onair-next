@@ -10,7 +10,7 @@ internal static class ServiceProbe
 {
     public static async Task<int> CommandAsync(string action)
     {
-        if (action == "anonymous") return await RejectedAnonymousAsync();
+        if (action is "anonymous" or "anonymous-files") return await RejectedAnonymousAsync(action == "anonymous-files" ? ServiceEndpoint.FilePipe : ServiceEndpoint.Pipe);
         if(action is not ("status" or "start-station" or "stop-station" or "stop"))throw new ArgumentException("Unknown isolated service probe.");
         return await SendAsync(new { Id=Guid.NewGuid().ToString("N"),Action=action,StationId="service-fixture" });
     }
@@ -43,16 +43,16 @@ internal static class ServiceProbe
             Path = action is "denied" or "assign-mismatch" ? denied : readable,
             SourceCheckId = action == "replay" ? null : proof });
     }
-    private static async Task<int> RejectedAnonymousAsync()
+    private static async Task<int> RejectedAnonymousAsync(string name)
     {
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("This probe requires Windows.");
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        await using var pipe = new System.IO.Pipes.NamedPipeClientStream(".", ServiceEndpoint.Pipe,
+        await using var pipe = new System.IO.Pipes.NamedPipeClientStream(".", name,
             System.IO.Pipes.PipeAccessRights.ReadWrite | System.IO.Pipes.PipeAccessRights.Synchronize,
             System.IO.Pipes.PipeOptions.Asynchronous, System.Security.Principal.TokenImpersonationLevel.Anonymous,
             HandleInheritability.None);
         await pipe.ConnectAsync(deadline.Token);
-        ServicePipeClient.AuthenticateServer(pipe, ServiceEndpoint.Pipe);
+        ServicePipeClient.AuthenticateServer(pipe, name);
         try
         {
             await pipe.WriteAsync(JsonSerializer.SerializeToUtf8Bytes(new { Id = Guid.NewGuid().ToString("N"), Action = "status" }), deadline.Token);

@@ -115,6 +115,8 @@ try{
  $upload=($uploadOutput -join [Environment]::NewLine)|ConvertFrom-Json
  Check 'Authenticated file transport crosses the LocalService boundary with matching SHA-256' $upload.verified
  Check 'Retry reuses one retained file rather than duplicating it' $upload.retained
+ Check 'A stalled file transfer leaves station controls responsive' $upload.controlsAvailable
+ Check 'Anonymous file transport caller is rejected before execution' ((Probe 'anonymous-files').rejected -eq $true)
  Check 'Service rejects browser-operator filesystem import paths' $upload.rawPathsRejected
  Check 'Discard removes staged copies and preserves operator originals' ($upload.discarded -and $upload.preserved)
  Check 'Cross-account transfer does not broaden source folder permissions' ((Get-Acl -LiteralPath $deniedSource).Sddl -eq $aclBefore)
