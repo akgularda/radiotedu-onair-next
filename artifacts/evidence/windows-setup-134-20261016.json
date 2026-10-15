@@ -1,6 +1,6 @@
 {
-  "source": "063fadaef5a067c4ad3b763a4a2a2a76303eddbd",
-  "run": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38819810890",
+  "source": "05b2d31f9c9ba77a3f24f529bfe240c93f984bc8",
+  "run": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38821160644",
   "scope": "Disposable Windows installer software fixture; runtime encoder listing is an explicit test double, no real audio or broadcasting-PC commissioning",
   "unitCases": {
     "total": 134,
@@ -62,12 +62,6 @@
     ]
   },
   "setup": {
-    "Completed": true,
-    "Error": null,
-    "Source": "063fadaef5a067c4ad3b763a4a2a2a76303eddbd",
-    "Passed": true,
-    "ProductionChanged": false,
-    "Scope": "Disposable Windows installer software fixture; runtime encoder listing is an explicit test double, no real audio or broadcasting-PC commissioning",
     "Checks": [
       "Preparation keeps the service and machine roots absent",
       "Preparation preserves the invoking operator SID",
@@ -86,37 +80,43 @@
       "Repeating shortcut creation preserves existing matching shortcut bytes",
       "Visible console-close route releases its own web process",
       "Closing the console preserves the same running engine service"
-    ]
+    ],
+    "ProductionChanged": false,
+    "Error": null,
+    "Scope": "Disposable Windows installer software fixture; runtime encoder listing is an explicit test double, no real audio or broadcasting-PC commissioning",
+    "Passed": true,
+    "Source": "05b2d31f9c9ba77a3f24f529bfe240c93f984bc8",
+    "Completed": true
   },
   "package": {
-    "Source": "063fadaef5a067c4ad3b763a4a2a2a76303eddbd",
-    "UncompressedBytes": 274547758,
+    "UncompressedBytes": 274546734,
+    "ManifestSha256": "1744A2D35B4A5104EAB91F623B43E66373BFB723F39C3ED7A37BE4283843BC0A",
+    "Source": "05b2d31f9c9ba77a3f24f529bfe240c93f984bc8",
     "Files": 733,
-    "Scope": "Windows x64 self-contained development package; no FFmpeg, music, credentials or production configuration",
-    "ManifestSha256": "5AF65FF237DAFAD6262EB809AA6C2A309E0A1934D3A268A7351C84DB7C039747",
+    "UniquePayloadBytes": 112441776,
     "Commissioned": false,
-    "UniquePayloadBytes": 112442800
+    "Scope": "Windows x64 self-contained development package; no FFmpeg, music, credentials or production configuration"
   },
   "artifactDigests": [
     {
       "name": "windows-unit-results",
-      "digest": "sha256:43437756c85adba459c97d69ec84d82f0a5585d73098f3265de96112e7988d5b",
-      "bytes": 31709
+      "digest": "sha256:f0ad72926fbc404a647aabdde07070b38c63512b52b74f8c2e07feacfcab6216",
+      "bytes": 31826
     },
     {
       "name": "windows-service-qualification",
-      "digest": "sha256:081b9e03b5e86df0947bdd8f95baddf8c34297d6d84150d6820fb5c8e6c24b52",
-      "bytes": 1155
+      "digest": "sha256:e88677215301ffa597a4afb14b32fe0f99641019955ffed355f50ae8bd955f58",
+      "bytes": 1154
     },
     {
       "name": "windows-setup-qualification",
-      "digest": "sha256:3c8aebe3851ace087efc77dd775af19f07661ae8fec73648a4c007a84cbc6eee",
-      "bytes": 840
+      "digest": "sha256:f95358265fe6dad499516015b477d98fae42d6f3096192ca2676ef7af7b0c448",
+      "bytes": 846
     },
     {
       "name": "windows-runtime-package-evidence",
-      "digest": "sha256:3093d81b567e979fe0ca955b9f20709012af190247ae30f533192d2db9b39c75",
-      "bytes": 4248
+      "digest": "sha256:b330400c8ffc92b757916812e25ce190cb0c34f4cc1a576f2b43c5ed37721fa2",
+      "bytes": 4236
     }
   ],
   "runtimeLocks": [
@@ -125,24 +125,24 @@
       "sha256": "4c9c0fa0cd93303569b342dfa4abcd9dbc88ae51351b51bd71704899c34af10e"
     },
     {
+      "name": "OnAirNext.Engine-packages.lock.json",
+      "sha256": "89525152d31b7095f59b30cbd65ff929256cb4249be21cb53f0bf764b84170bd"
+    },
+    {
       "name": "OnAirNext.Desktop-packages.lock.json",
       "sha256": "3ea8c3864c8f23b39364f9f40beb868ce4d8ecb62c5a25188dca037417beed3b"
     },
     {
-      "name": "OnAirNext.Engine-packages.lock.json",
-      "sha256": "81f3eb1cc63d407e952376445d307df5d3c7526addda5509c444b263857c262d"
-    },
-    {
       "name": "OnAirNext.Host-packages.lock.json",
-      "sha256": "3703cd36ffee6582290fc2a5ddc754455d63d45647b51ef5fd9d0b1dc29c65cf"
+      "sha256": "837182fc5ebf853fa0c586883aaf708e4abf0b7ab97bbba1a660fa8f7d057699"
     },
     {
       "name": "OnAirNext.Setup-packages.lock.json",
-      "sha256": "cd97f644c24bb2cd8c96d92c519036a65133ab22cafc294d07b527626ad20e84"
+      "sha256": "c30b149eb0b6c271aabe8d79d7b0318ba25f0bbd2ebf6a08faa3b67056bce9b3"
     },
     {
       "name": "OnAirNext.Web-packages.lock.json",
-      "sha256": "cd97f644c24bb2cd8c96d92c519036a65133ab22cafc294d07b527626ad20e84"
+      "sha256": "c30b149eb0b6c271aabe8d79d7b0318ba25f0bbd2ebf6a08faa3b67056bce9b3"
     }
   ],
   "productionChanged": false,
@@ -150,5 +150,15 @@
   "mouseAcceptance": false,
   "actualAudioQualified": false,
   "remaining": "Full delivery ledger remains authoritative; Linux/macOS and target-PC/18-output/loudness/mic/events/reports/import/rollback/24-72h gates remain.",
-  "at": "2026-10-15T22:57:21.309Z"
+  "at": "2026-10-15T23:11:42.557Z",
+  "windowsGraphRestore": "Locked framework and win-x64 graph, with reviewed pinned source locks",
+  "previousQualifiedRuns": [
+    {
+      "source": "063fadaef5a067c4ad3b763a4a2a2a76303eddbd",
+      "run": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38819810890",
+      "units": 134,
+      "serviceChecks": 35,
+      "setupChecks": 17
+    }
+  ]
 }
