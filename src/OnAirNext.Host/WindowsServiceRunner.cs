@@ -31,11 +31,13 @@ internal sealed class WindowsServiceRunner
             if (_statusHandle==0) throw new Win32Exception(Marshal.GetLastWin32Error());
             // Release SCM's startup serialization promptly; engine readiness is a separate IPC state.
             lock (_gate) Report(4,0);
+            WindowsServiceDiagnostics.Stage("process ownership");
             WindowsOwnedJob.AttachCurrentProcess();
+            WindowsServiceDiagnostics.Stage("engine initialization");
             var code=_work(_stop.Token,Ready,Stopping).GetAwaiter().GetResult();
             lock (_gate) failure=code!=0 ? (uint)code : _requestedStop ? 0u : 1u;
         }
-        catch(Exception error) { failure=unchecked((uint)error.HResult); if(failure==0)failure=1; }
+        catch(Exception error) { WindowsServiceDiagnostics.RecordFailure(error); failure=unchecked((uint)error.HResult); if(failure==0)failure=1; }
         finally
         {
             Task cancellation;

@@ -13,8 +13,10 @@ internal static class EngineHost
         if (serviceMode)
         {
             if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Windows service mode requires Windows.");
+            WindowsServiceDiagnostics.Stage("configuration protection");
             ServiceFileProtection.Bootstrap(configPath);
         }
+        if (serviceMode) WindowsServiceDiagnostics.Stage("configuration read");
         if (new FileInfo(configPath).Length > 1048576) throw new ArgumentException("The engine configuration exceeds its size limit.");
         var json = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
         var config = JsonSerializer.Deserialize<HostSettings>(await File.ReadAllTextAsync(configPath, externalStop), json)
@@ -29,6 +31,7 @@ internal static class EngineHost
         }
         else if (config.PipeName == ServiceEndpoint.Pipe) throw new ArgumentException("The reserved pipe belongs to the Windows service only.");
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(externalStop);
+        if (serviceMode) WindowsServiceDiagnostics.Stage("pipe policy");
         ServicePipePolicy? servicePolicy = null;
         if (serviceMode && OperatingSystem.IsWindows())
         {
@@ -36,19 +39,25 @@ internal static class EngineHost
             servicePolicy = new ServicePipePolicy(identity.User?.Value ?? throw new InvalidOperationException("Service identity is unavailable."),
                 config.OperatorSid ?? throw new ArgumentException("Select a Windows operator during setup."));
         }
+        if (serviceMode) WindowsServiceDiagnostics.Stage("pipe create");
         await using var pipe = serviceMode && OperatingSystem.IsWindows()
             ? servicePolicy!.CreateServer()
             : new NamedPipeServerStream(config.PipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
                 PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly | PipeOptions.FirstPipeInstance);
+        if (serviceMode) WindowsServiceDiagnostics.Stage("journal open");
         await using var journal = new EventJournal(Path.Combine(config.DataRoot, "playback.db"));
+        if (serviceMode) WindowsServiceDiagnostics.Stage("library and coordinator construction");
         await using var library = new StationLibrary(journal, config.Ffmpeg, config.DataRoot, config.Stations.Where(x => x.Repeat).Select(x => x.Id));
         await using var coordinator = new StationCoordinator(config.Ffmpeg, config.Stations, journal,
             settings => new StationEngine(config.Ffmpeg, settings, journal, planner: library.Planner(settings)));
         library.Changed += coordinator.RefreshLibrary;
         try
         {
+            if (serviceMode) WindowsServiceDiagnostics.Stage("library initialization");
             await library.InitializeAsync();
+            if (serviceMode) WindowsServiceDiagnostics.Stage("coordinator initialization");
             await coordinator.InitializeAsync();
+            if (serviceMode) WindowsServiceDiagnostics.Stage("controller ready");
             ready();
             Console.WriteLine(JsonSerializer.Serialize(new { state = "controller-ready", config.PipeName, stations = config.Stations.Count, loopbackOnly = true, mode = serviceMode ? "windows-service" : "developer" }));
             while (!stop.IsCancellationRequested)

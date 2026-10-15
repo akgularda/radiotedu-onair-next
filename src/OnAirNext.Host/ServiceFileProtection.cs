@@ -20,7 +20,7 @@ internal static class ServiceFileProtection
         ServiceEndpoint.RequirePath(engineData, ServiceEndpoint.EngineData);
         ServiceEndpoint.RequirePath(ffmpeg, ServiceEndpoint.Ffmpeg);
     }
-    private static void AssertProtected(FileSystemSecurity security)
+    internal static void AssertProtected(FileSystemSecurity security)
     {
         var administrators = new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null).Value;
         var system = new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null).Value;

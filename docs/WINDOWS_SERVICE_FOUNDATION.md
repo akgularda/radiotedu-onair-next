@@ -6,12 +6,16 @@ This is an isolated development service, not a production installation. The targ
 - The service uses SCM dispatch/control callbacks. Service shutdown cancels the controller without writing station stop intent; explicit station Stop remains durable. A graceful restart resumes only saved requested-running stations.
 - The process owns an unnamed Windows Job Object with kill-on-close. Its sole non-inheritable handle stays alive until process exit. Abrupt parent death must release all owned descendants; there are no PID-list kill loops.
 - Service configuration/data and binaries are separate machine paths, outside the legacy installation. Startup rejects links, wrong paths, operator-writable configuration/binaries and broad operator principals. The installer must create and seal these locations; no production installer is delivered yet.
-- Pipe ACLs grant the configured Windows operator read/write without create-instance rights and deny network/anonymous access. After reading a bounded request, the host queries the client's identity without doing database/file work under impersonation. The browser bridge validates SCM's running PID against the connected pipe before transmitting a command. Service IPC accepts station commands; the developer global stop does not apply.
+- Pipe ACLs grant the configured Windows operator read/write without create-instance rights and deny network/anonymous access. After reading a bounded request, the host queries the client's identity without doing database/file work under impersonation. Unavailable/anonymous identity reads are normalized to rejected-client errors rather than taking down the service. The browser bridge validates SCM's running PID against the connected pipe before transmitting a command. Service IPC accepts station commands; the developer global stop does not apply.
 - One pipe instance is retained between requests, with bounded client deadlines and response/close handling. Status distinguishes OS service lifetime from the controller being ready or audio being verified.
 
 ## Evidence scope
 
-The Windows CI fixture installs only this new isolated service under LocalService on a disposable runner. It uses generated settings, no real credentials/media, and a harmless fake codec process tree. It tests cross-account IPC, persisted requested/stopped intent, graceful stop, SCM recovery and parent-only crash cleanup. It does not install anything on the broadcast PC, play audio, prove a real cold boot, or replace operator UI/mouse acceptance. Results must be inspected before this foundation is called qualified.
+The Windows CI fixture installs only this new isolated service under LocalService on a disposable runner. It uses generated settings, no real credentials/media, and a harmless fake codec process tree. It tests cross-account IPC, anonymous-client rejection without a service PID change, persisted requested/stopped intent, graceful stop, SCM recovery and parent-only crash cleanup. It does not install anything on the broadcast PC, play audio, prove a real cold boot, or replace operator UI/mouse acceptance. Results must be inspected before this foundation is called qualified.
+
+## External media access
+
+The configured operator and the service have different identities. Operator folder enumeration does not establish LocalService access or before-logon volume visibility. The guided installer must verify actual music/branding sources through the service while stations remain disarmed. A read-only top-level inventory is discovery only; do not infer active station assignments, activate generated/archive media or import a shared parent containing every station. See [live folder workflow](LIVE_FOLDER_OPERATOR_WORKFLOW.md).
 
 ## Official API references
 
