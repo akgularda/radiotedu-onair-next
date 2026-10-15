@@ -1,6 +1,6 @@
 # RadioTEDU OnAir Next development plan
 
-Draft dated 15 October 2026.
+Baseline dated 15 October 2026; scope approved and operating requirements refined on the same date. The [current operating and delivery plan](docs/OPERATING_PLAN.md) controls the confirmed 18-output roster, live-folder behavior, restart-from-beginning recovery, microphone-only recording trigger and English-only interface. Its delivery order supersedes the preliminary phase order below.
 
 Build a new Windows broadcast application with a new audio engine, native operator interface, database, installer, and maintenance tools. It must handle RadioTEDU's existing broadcast needs on the HP Z220 with 8 GB RAM while making every operational and administrative task available through the UI. The current program continues broadcasting throughout development.
 
@@ -88,7 +88,7 @@ Use seven primary destinations:
 
 The On Air screen keeps the active station and broadcast status visible. Its main area shows the playing item and ordered queue; a compact live strip contains microphone level, live state, music ducking, headphone cue, and return-to-automation. Multi-station overview remains one action away. Stopping all broadcasts is visually separated from routine queue controls.
 
-Support a minimum 1366 by 768 display, 100 to 150 percent scaling, keyboard navigation, visible focus, non-color status cues, large live controls, and readable countdowns. Use Turkish as the provisional default and keep all text localizable for English. Validate the language choice during operator trials.
+Support a minimum 1366 by 768 display, 100 to 150 percent scaling, keyboard navigation, visible focus, non-color status cues, large live controls, and readable countdowns. All application-owned interface text, setup, help and errors must be English. Preserve original content metadata, including Turkish artist names and titles.
 
 Every content operation must have an ordinary form or direct manipulation alternative. Queue ordering supports both drag-and-drop and Move Up/Down. Preview always routes to a selected cue device; prevent accidental preview on the program bus. Show exactly which station a command affects. Preserve unsaved edits when health updates arrive.
 
@@ -136,7 +136,7 @@ Annual reporting can consolidate daily events and totals through the UI. Keep a 
 
 The active authenticated account is `akgularda`. It remains the account used for repository work. `radiotedu` is a personal user account, not an organization. The inspected OnAir source repository grants `akgularda` read-only access, while several other RadioTEDU repositories grant write access. No dedicated play-report repository was visible in the accessible inventory. The old script's default checkout name does not prove that a corresponding accessible repository exists.
 
-During implementation, create a dedicated private `akgularda/radiotedu-broadcast-reports` repository after checking that name. Use a separate private application repository for the new source. Do not repurpose unrelated RadioTEDU repositories and do not switch the active account to create repositories under `radiotedu`.
+The dedicated private `akgularda/radiotedu-broadcast-reports` repository and separate private application repository `akgularda/radiotedu-onair-next` now exist. The report repository currently contains labeled synthetic test archives. Do not repurpose unrelated RadioTEDU repositories and do not switch the active account to create repositories under `radiotedu`.
 
 Archive reports under `reports/YYYY/MM/YYYY-MM-DD/`, with detailed plays, hourly summary, and a manifest containing schema version, timezone, event count, checksum, completeness, and revision. Upload only reports and manifests; omit audio, credentials, database backups, absolute media paths, and unnecessary personal information.
 
@@ -210,7 +210,7 @@ Keep a documented module map, state transitions, database schema, media ownershi
 
 Every release must document changes, compatibility, backup/migration behavior, rollback, test evidence, and resource results. Give operators a built-in quick guide and an actionable diagnostic export that redacts credentials. Schedule runtime/dependency review as a maintenance practice; no unattended runtime or application update may interrupt a broadcast.
 
-Planning has created only the isolated reference copy, integrity records, and this new project plan. The new engine, installer, local Icecast instance, and GitHub reporting connection are implementation deliverables and have not been deployed by this planning pass.
+An isolated engine milestone and local Icecast laboratory now exist, with private source and synthetic-report repositories under akgularda. Durable recovery/application storage remain unfinished working changes; native UI, service installation, full HE-AAC testing and production cutover are not complete. See README.md for the committed milestone and docs/OPERATING_PLAN.md for the next delivery gates. The current installation remains untouched.
 
 ## Technical references
 

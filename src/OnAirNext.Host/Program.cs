@@ -50,7 +50,7 @@ var server = Task.Run(async () =>
             switch (request.Action)
             {
                 case "status": result = JsonSerializer.Serialize(new { stations = stations.Select(x => x.Snapshot()), audit = new { journal.PendingEvents, journal.RejectedEvents, journal.Error } }); break;
-                case "skip" when station is not null: station.Skip(); result = "{\"accepted\":true}"; break;
+                case "skip" when station is not null: station.Skip(request.Id); result = "{\"accepted\":true}"; break;
                 case "stop": result = "{\"accepted\":true}"; break;
                 default: result = "{\"accepted\":false,\"error\":\"Unknown command or station.\"}"; break;
             }

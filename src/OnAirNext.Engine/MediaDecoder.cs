@@ -16,10 +16,10 @@ public sealed class MediaDecoder : IAsyncDisposable
     public Task Ready { get; }
     private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public MediaDecoder(string ffmpeg, MediaItem item)
+    public MediaDecoder(string ffmpeg, MediaItem item, long startSample = 0)
     {
         _process = ChildProcess.Start(ffmpeg, ["-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", item.Path,
-            "-vn", "-sn", "-dn", "-threads", "1", "-f", "s16le", "-acodec", "pcm_s16le", "-ar", "48000", "-ac", "2", _pcm.Path]);
+            "-vn", "-sn", "-dn", "-threads", "1", "-af", "aresample=48000,atrim=start_sample=" + startSample.ToString(System.Globalization.CultureInfo.InvariantCulture), "-f", "s16le", "-acodec", "pcm_s16le", "-ar", "48000", "-ac", "2", _pcm.Path]);
         _stderr = ChildProcess.DrainErrorAsync(_process);
         Ready = _ready.Task;
         _pump = PumpAsync();

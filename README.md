@@ -2,6 +2,8 @@
 
 Independent Windows broadcast application under development. The first engine milestone implements continuous program audio, isolated Icecast outputs, an audio-agent input boundary, local play history, and reproducible loopback tests. The operator interface, installer, production migration, and full automation features follow the [development plan](DEVELOPMENT_PLAN.md).
 
+**Broadcasting-PC handoff:** read [the handoff instructions](docs/BROADCAST_PC_HANDOFF.md), [approved operating plan](docs/OPERATING_PLAN.md) and [current handoff status](docs/HANDOFF_STATUS.md) before continuing. This snapshot includes unfinished recovery/application source, not a production-ready installer. Its partial recovery code still attempts checkpoint-position resume, which must be changed to the approved restart-from-beginning policy. The new required roster is eight AAC-LC + eight libfdk_aac HE-AACv2 + two FLAC outputs. Configure/operate through the native UI and migrate one station group at a time; retire the old service only after the verified handover gates pass.
+
 This repository does not launch, modify, import, or replace the current RadioTEDU installation. The development host rejects production destinations: only literal loopback IPs, unprivileged test ports, `/next-` mounts, a private development data root, and new named-pipe identities are accepted.
 
 ## Implemented engine

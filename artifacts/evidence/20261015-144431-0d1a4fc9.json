@@ -1,0 +1,205 @@
+{
+  "SchemaVersion": 1,
+  "CreatedAtUtc": "2026-10-15T14:44:47.2020806+00:00",
+  "Machine": "ARDA",
+  "OS": "Microsoft Windows 10.0.29683",
+  "Runtime": ".NET 10.0.13",
+  "Icecast": "2.5.0",
+  "TestProfiles": [
+    "AAC-LC 192 kbps",
+    "Ogg FLAC"
+  ],
+  "HeAacTested": false,
+  "Source": "New independent implementation; no production configuration or services accessed.",
+  "Results": [
+    {
+      "Name": "baseline",
+      "Passed": true,
+      "DurationSeconds": 15.6097469,
+      "Checks": [
+        {
+          "Description": "The program continues across a full song/ad/sweeper cycle.",
+          "Passed": true
+        },
+        {
+          "Description": "Both encoders and source sessions remain persistent across content boundaries.",
+          "Passed": true
+        },
+        {
+          "Description": "Healthy outputs lose no PCM blocks.",
+          "Passed": true
+        },
+        {
+          "Description": "Audit work does not overflow or fail.",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-baseline-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 8 seconds on /next-baseline-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-baseline-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-baseline-aac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-baseline-aac",
+          "Passed": true
+        },
+        {
+          "Description": "No decoder error on /next-baseline-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded listener audio exceeds 8 seconds on /next-baseline-flac",
+          "Passed": true
+        },
+        {
+          "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-baseline-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Listener hears multiple actual content transitions on /next-baseline-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Decoded tone order has no skips or repeats on /next-baseline-flac",
+          "Passed": true
+        },
+        {
+          "Description": "Playback journal hash chain is valid.",
+          "Passed": true
+        },
+        {
+          "Description": "Event acknowledgements do not duplicate journal rows.",
+          "Passed": true
+        },
+        {
+          "Description": "Music, advertisements and sweepers produce separate occurrence records.",
+          "Passed": true
+        },
+        {
+          "Description": "Orderly stop leaves a terminal record for every started occurrence.",
+          "Passed": true
+        },
+        {
+          "Description": "Completed assets retain their exact sample counts, including boundaries inside a 20 ms block.",
+          "Passed": true
+        },
+        {
+          "Description": "Program sample positions never reset during output recovery: baseline",
+          "Passed": true
+        },
+        {
+          "Description": "No track is repeated or advanced by transport recovery: baseline",
+          "Passed": true
+        },
+        {
+          "Description": "Daily local report contains one record per station occurrence, independent of output variants.",
+          "Passed": true
+        }
+      ],
+      "Details": {
+        "station": {
+          "Id": "baseline",
+          "State": "Running",
+          "Samples": 600000,
+          "CompletedItems": 8,
+          "SkippedItems": 0,
+          "CurrentTitle": "song-a",
+          "LateBlocks": 42,
+          "AuditRejectedEvents": 0,
+          "Outputs": [
+            {
+              "Id": "baseline-aac",
+              "State": "SourceConnected",
+              "EncoderStarts": 1,
+              "Connections": 1,
+              "FramesWritten": 625,
+              "DroppedBlocks": 0,
+              "QueuedBlocks": 0,
+              "EncoderPid": 24216,
+              "LastError": null
+            },
+            {
+              "Id": "baseline-flac",
+              "State": "SourceConnected",
+              "EncoderStarts": 1,
+              "Connections": 1,
+              "FramesWritten": 625,
+              "DroppedBlocks": 0,
+              "QueuedBlocks": 0,
+              "EncoderPid": 8104,
+              "LastError": null
+            }
+          ],
+          "CurrentAssetId": "song-a",
+          "CurrentItemSamples": 22848,
+          "Recovered": false
+        },
+        "decodedListeners": [
+          {
+            "Mount": "/next-baseline-aac",
+            "DecodedSeconds": 12.38,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 8,
+            "UnexpectedToneTransitions": 0,
+            "LiveToneWindows": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660,
+              440
+            ],
+            "Error": null
+          },
+          {
+            "Mount": "/next-baseline-flac",
+            "DecodedSeconds": 11.52,
+            "SilentWindows": 0,
+            "LongestSilentRun": 0,
+            "ToneTransitions": 7,
+            "UnexpectedToneTransitions": 0,
+            "LiveToneWindows": 0,
+            "FirstTones": [
+              440,
+              880,
+              1320,
+              660,
+              440,
+              880,
+              1320,
+              660
+            ],
+            "Error": null
+          }
+        ],
+        "report": {
+          "SchemaVersion": 1,
+          "LocalDate": "2026-10-15",
+          "Timezone": "Europe/Istanbul",
+          "Records": 9,
+          "IncompleteRecords": 0,
+          "Sha256": "bea04d522da5ad95fde0252554030bc31a213244bef27d14df110e81e41d28bb",
+          "FileName": "2026-10-15.csv",
+          "GeneratedAtUtc": "2026-10-15T14:44:47.1423661+00:00"
+        }
+      },
+      "Error": null
+    }
+  ],
+  "RemainingOwnedChildren": {}
+}
