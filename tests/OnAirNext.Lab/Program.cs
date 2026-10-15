@@ -352,40 +352,68 @@ async Task DurableAsync(CaseResult result)
     }));
     var sdk = Path.Combine(localRoot, "tools", "dotnet", "dotnet.exe");
     var assembly = Path.Combine(localRoot, "build", "bin", "OnAirNext.Host", "release", "OnAirNext.Host.dll");
+    var hostLogs = new List<Task>();
+    var generation = 0;
+    async Task SaveHostLogAsync(Task<string> text, string file)
+    {
+        try { await File.WriteAllTextAsync(file, await text); }
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException)
+        { await File.WriteAllTextAsync(file, "Log ended during process cleanup: " + ex.GetType().Name); }
+    }
     Process Launch()
     {
         var process = ChildProcess.Start(sdk, [assembly, "--config", config], output: true, role: "durable-test-host");
-        _ = process.StandardOutput.ReadToEndAsync(); _ = ChildProcess.DrainErrorAsync(process);
+        var prefix = Path.Combine(root, "host-" + ++generation);
+        hostLogs.Add(SaveHostLogAsync(process.StandardOutput.ReadToEndAsync(), prefix + ".stdout.log"));
+        hostLogs.Add(SaveHostLogAsync(ChildProcess.DrainErrorAsync(process), prefix + ".stderr.log"));
         return process;
     }
-    async Task<JsonDocument> Command(string action, string? id = null)
+    async Task<JsonDocument> Command(string action, string? id = null, CancellationToken cancellationToken = default)
     {
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(12));
         await using var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
         await pipe.ConnectAsync(timeout.Token);
         using var reader = new StreamReader(pipe, leaveOpen: true);
         await pipe.WriteAsync(System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Id = id ?? Guid.NewGuid().ToString("N"), Action = action, StationId = "durable" }) + "\n"), timeout.Token);
         return JsonDocument.Parse(await reader.ReadLineAsync(timeout.Token) ?? throw new IOException("No command acknowledgement."));
     }
-    async Task WaitRunning()
+    async Task WaitRunning(Process activeHost)
     {
-        for (var i = 0; i < 60; i++)
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        IOException? lastTransportError = null;
+        try
         {
-            using var status = await Command("status");
-            if (status.RootElement.GetProperty("stations")[0].GetProperty("State").GetString() == "Running") return;
-            await Task.Delay(100);
+            while (!deadline.IsCancellationRequested)
+            {
+                if (activeHost.HasExited) throw new InvalidOperationException($"Recovered host exited with {activeHost.ExitCode}; inspect the generation's retained stderr log.");
+                try
+                {
+                    using var status = await Command("status", cancellationToken: deadline.Token);
+                    var stations = status.RootElement.GetProperty("stations");
+                    if (stations.GetArrayLength() > 0 && stations[0].GetProperty("State").GetString() == "Running") return;
+                }
+                catch (IOException ex) { lastTransportError = ex; }
+                await Task.Delay(100, deadline.Token);
+            }
         }
-        throw new TimeoutException("Recovered host did not reach Running.");
+        catch (OperationCanceledException) when (deadline.IsCancellationRequested) { }
+        throw new TimeoutException("Recovered host did not reach Running within 20 seconds. Last status transport error: " + lastTransportError?.Message);
     }
     Process? host = null;
     try
     {
-        host = Launch(); await WaitRunning(); await Task.Delay(6200);
+        host = Launch(); await WaitRunning(host); await Task.Delay(6200);
         using (var status = await Command("status"))
             Check(result, status.RootElement.GetProperty("stations")[0].GetProperty("CurrentItemSamples").GetInt64() >= 5 * 48000,
                 "Crash occurs beyond the fixture's distinctive four-second opening.");
-        await ChildProcess.StopAsync(host); host = null;
-        host = Launch(); await WaitRunning();
+        var originalHostPid = host.Id;
+        await ChildProcess.StopAsync(host);
+        await ChildProcess.StopAsync(host);
+        Check(result, !ChildProcess.ActiveProcesses.ContainsKey(originalHostPid),
+            "Repeated cleanup acknowledges only confirmed process exit and is safe after handle disposal.");
+        host = null;
+        host = Launch(); await WaitRunning(host);
         await using (var listener = new Probe(ffmpeg, origin.Port, "/next-durable"))
         {
             await WaitAsync(() => listener.Snapshot().DecodedSeconds >= 1.2 || listener.Snapshot().Error is not null,
@@ -402,7 +430,7 @@ async Task DurableAsync(CaseResult result)
         using (var accepted = await Command("skip", skipId))
             Check(result, accepted.RootElement.GetProperty("accepted").GetBoolean(), "Skip admission is acknowledged before hard kill.");
         await ChildProcess.StopAsync(host); host = null;
-        host = Launch(); await WaitRunning();
+        host = Launch(); await WaitRunning(host);
         using (var retry = await Command("skip", skipId))
             Check(result, retry.RootElement.GetProperty("accepted").GetBoolean(), "A lost-response Skip retry is accepted after host restart.");
         await using (var listener = new Probe(ffmpeg, origin.Port, "/next-durable"))
@@ -436,7 +464,11 @@ async Task DurableAsync(CaseResult result)
             Check(result, response.StatusCode == System.Net.HttpStatusCode.NotFound,
                 "Listener endpoint confirms that the stopped station did not silently autostart.");
     }
-    finally { if (host is not null) await ChildProcess.StopAsync(host); }
+    finally
+    {
+        if (host is not null) await ChildProcess.StopAsync(host);
+        await Task.WhenAll(hostLogs);
+    }
 }
 
 async Task HostAsync(CaseResult result)
