@@ -11,9 +11,15 @@ The new dark browser console has a channel strip, broadcast desk, searchable/pag
 - Unconnected visual preview: loopback port 18120, clearly labelled UI PREVIEW.
 - ASP.NET Core console under qualification: literal loopback port 18121. It bridges only isolated onair-next-dev-* engine pipes.
 - Local mutations require a same-origin session cookie and request token. Production engine identities are not accepted.
-- The broadcasting engine owns playback; closing or disconnecting the browser does not stop it. An isolated Windows-service lifecycle fixture has passed on a disposable CI runner; guided installation, real before-logon startup and target-PC media access are still incomplete.
+- The broadcasting engine owns playback; closing or disconnecting the browser does not stop it. The guided Windows installer and self-contained package passed disposable-runner software qualification; actual Windows 10 installation, before-logon media/device access and connected mouse acceptance remain incomplete.
 
 The active solution now builds OnAirNext.Web. On Air, Library and System are the initial screens; unfinished screens and unavailable controls are explicitly disabled. A visible screen is not proof of connected operation. Real browser upload/folder readback, remaining workflows, installation and Codex-free operator acceptance are still open.
+
+## Windows setup under qualification
+
+Exact source 063fadaef5a067c4ad3b763a4a2a2a76303eddbd compiled and passed **134/134 unit cases, 35 real service checks and 17 installer/console checks** in Windows run 38819810890. The actual self-contained package was installed on a disposable runner, with eight stopped channels and zero outputs. Packaged runtime loading, immutable-file hard links, repeated install/shortcut commands and console close without stopping the engine were verified. See [scoped setup evidence](artifacts/evidence/windows-setup-134-20261016.json) and [operator setup instructions](docs/WINDOWS_GUIDED_SETUP.md). The runtime encoder listing in this fixture is a test double: no real codec/audio/loudness acceptance is implied.
+
+The measured package payload is 274,547,758 bytes logically extracted, with 112,442,800 unique file bytes; .NET is included, FFmpeg/music/credentials are excluded. These are package content measurements, not download size or target-PC RAM usage. Its [Windows runtime dependency graph is pinned](src/OnAirNext.Setup/packages.lock.json); the latest lock-pinning follow-up requires fresh CI. No service has been installed on the broadcasting PC and no station has migrated.
 
 ## Engine and library foundation
 

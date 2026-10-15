@@ -9,8 +9,8 @@ $before=@{}
 foreach($file in Get-ChildItem -LiteralPath (Join-Path $root 'src') -Filter packages.lock.json -Recurse){$before[$file.FullName]=Get-Content -LiteralPath $file.FullName -Raw|ConvertFrom-Json -AsHashtable}
 foreach($entry in @(@{Project='OnAirNext.Host';Folder='bin'},@{Project='OnAirNext.Web';Folder='console'},@{Project='OnAirNext.Setup';Folder='setup'})){
  $project=Join-Path $root ('src/'+$entry.Project+'/'+$entry.Project+'.csproj')
- # Add the Windows runtime graph only after the locked framework build/tests. Existing dependency versions must remain identical.
- & dotnet restore $project -r win-x64 --use-lock-file --disable-parallel -m:1 /p:SelfContained=true /p:RestoreLockedMode=false
+ # Use the reviewed Windows runtime graph; framework and runtime dependencies both restore in locked mode.
+ & dotnet restore $project -r win-x64 --locked-mode --disable-parallel -m:1 /p:SelfContained=true
  if($LASTEXITCODE -ne 0){throw ('Runtime restore failed: '+$entry.Project)}
  foreach($path in $before.Keys){
   $after=Get-Content -LiteralPath $path -Raw|ConvertFrom-Json -AsHashtable
