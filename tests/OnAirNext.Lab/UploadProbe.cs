@@ -24,7 +24,8 @@ internal static class UploadProbe
         var retained=status.GetProperty("uploads").EnumerateArray().Single().GetProperty("ReceivedFiles").GetInt32()==1;
         var pathImport=await EngineRpc.SendAsync(ServiceEndpoint.Pipe,new{Id=Guid.NewGuid().ToString("N"),Action="library-import",StationId="service-fixture",Paths=new[]{original}},deadline.Token);
         await UploadRpc.SendAsync(ServiceEndpoint.Pipe,new("cancel",id,"service-fixture"),null,deadline.Token);
-        var preserved=before.SequenceEqual(await File.ReadAllBytesAsync(original,deadline.Token));
+        var after=await File.ReadAllBytesAsync(original,deadline.Token);
+        var preserved=before.SequenceEqual(after);
         Console.WriteLine(JsonSerializer.Serialize(new{verified,retained,preserved,discarded=!Directory.Exists(Path.Combine(ServiceEndpoint.EngineData,"upload-inbox",id)),rawPathsRejected=!pathImport.GetProperty("accepted").GetBoolean()}));return 0;
     }
 }

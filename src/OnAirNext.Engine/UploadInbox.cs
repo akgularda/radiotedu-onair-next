@@ -167,7 +167,7 @@ public sealed class UploadInbox
             if(file is null || file.Name is null || file.Sha256 is null)throw new ArgumentException("Upload identities are required.");
             var name=file.Name;var stem=name.Split('.')[0].ToUpperInvariant();
             if(name.Length is <1 or >160||name is "." or ".."||name.TrimEnd(' ','.')!=name||name.IndexOfAny(Path.GetInvalidFileNameChars())>=0||name.Contains('/')||name.Contains('\\')||name.Contains(':')||
-                stem is "CON" or "PRN" or "AUX" or "NUL"||stem.Length==4&&(stem.StartsWith("COM",StringComparison.Ordinal)||stem.StartsWith("LPT",StringComparison.Ordinal))&&stem[3] is >= '1' and <= '9'||!Extensions.Contains(Path.GetExtension(name))||file.Bytes<=0||
+                stem is "CON" or "PRN" or "AUX" or "NUL"||stem.Length==4&&(stem.StartsWith("COM",StringComparison.Ordinal)||stem.StartsWith("LPT",StringComparison.Ordinal))&&stem[3] is >= '1' and <= '9'||!Extensions.Contains(Path.GetExtension(name))||file.Bytes<=0||file.Bytes>MaximumBytes||
                 file.Sha256.Length!=64||!file.Sha256.All(Uri.IsHexDigit))throw new ArgumentException("Choose valid audio filenames, lengths and SHA-256 identities.");
             total=checked(total+file.Bytes);if(total>MaximumBytes)throw new ArgumentException("Use upload batches no larger than 240 MiB.");
             normalized.Add(file with {Sha256=file.Sha256.ToUpperInvariant()});

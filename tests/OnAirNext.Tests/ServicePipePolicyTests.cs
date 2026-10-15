@@ -59,15 +59,17 @@ public sealed class ServicePipePolicyTests
             Assert.Throws<UnauthorizedAccessException>(()=>policy.Authorize(server));
         }
     }
-    [Fact]
-    public async Task AConnectedCounterfeitProcessIsRejectedBeforePayloadTransmission()
+    [Theory]
+    [InlineData(ServiceEndpoint.Pipe)]
+    [InlineData(ServiceEndpoint.FilePipe)]
+    public async Task AConnectedCounterfeitProcessIsRejectedBeforePayloadTransmission(string reservedPipe)
     {
         var name="onair-next-dev-counterfeit-"+Guid.NewGuid().ToString("N");
         await using var server=new NamedPipeServerStream(name,PipeDirection.InOut,1,PipeTransmissionMode.Byte,
             PipeOptions.Asynchronous|PipeOptions.CurrentUserOnly|PipeOptions.FirstPipeInstance);
         using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(10));var accepted=server.WaitForConnectionAsync(deadline.Token);
         await using var client=ServicePipeClient.Create(name);await client.ConnectAsync(deadline.Token);await accepted;
-        Assert.Throws<UnauthorizedAccessException>(()=>ServicePipeClient.AuthenticateServer(client,ServiceEndpoint.Pipe));
+        Assert.Throws<UnauthorizedAccessException>(()=>ServicePipeClient.AuthenticateServer(client,reservedPipe));
     }
     [Fact]
     public void OrdinaryOperatorCannotOpenTheIsolatedMachineJournal()
