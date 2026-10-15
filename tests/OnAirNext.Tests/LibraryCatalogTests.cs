@@ -116,4 +116,14 @@ public sealed class LibraryCatalogTests
         await journal.FinishLibraryImportAsync("job-0", null);
         Assert.True(await journal.QueueLibraryImportAsync("a", files, root, "overflow"));
     }
+
+    [Fact]
+    public async Task AWholeDriveCannotAccidentallyBecomeALiveMusicRoot()
+    {
+        var root = Root(); await using var journal = new EventJournal(Path.Combine(root, "catalog.db"));
+        await Initialize(journal);
+        await Assert.ThrowsAsync<ArgumentException>(() => journal.SetLibraryRootAsync("a", Path.GetPathRoot(root)!, "folder"));
+        Assert.Null(journal.LibraryPage("a").Root);
+        Assert.True(await journal.SetLibraryRootAsync("a", Path.Combine(root, "music"), "folder"));
+    }
 }

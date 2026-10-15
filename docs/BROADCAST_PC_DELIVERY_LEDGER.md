@@ -1,3 +1,5 @@
+> **Current UI decision:** the user rejected the native prototype and requested a browser app. [Browser interface decision](./BROWSER_UI_DECISION.md) supersedes earlier native-only UI requirements. The new browser build is under qualification; production remains with the old application.
+
 # Broadcast-PC delivery ledger
 
 Updated 15 October 2026. This is an implementation and evidence ledger, not a release declaration.
@@ -79,3 +81,9 @@ Remote run 38784384514 passed the Windows solution build, all 70 unit cases (0 f
 The protected local attempt at 18:22 UTC was stopped after Classic reported transport=false in two health samples. No worker PID/generation changed, the guardian verified zero remaining development processes, and a later read-only snapshot found all eight workers healthy again. No build result was obtained. This is an observed health flag, not proof of a listener outage or its cause; local heavy testing remains deferred.
 
 Follow-up validation scope now includes 76 expected unit cases: bounded shuffled cycles, folder-return/EOF signaling, explicit rescan of rejected files, a bounded pending-import queue, validation-worker failure isolation and read-only external-folder protection. The native Library offers a managed-folder control so copying can stay inside the isolated test installation; watching external folders does not authorize changing legacy media. The default probe retains cleanup ownership and pauses new validation until its previous child exit is confirmed. These follow-up changes are pending fresh CI/runtime acceptance.
+
+## Browser replacement — latest user direction
+
+The native prototype was explicitly rejected and closed. OnAirNext.Web replaces it in the active solution; its source is retained as history. Browser decision notices supersede native-only requirements in the entry-point plans. The new frontend is dependency-free local HTML/CSS/JavaScript, with On Air/Library/System views and disabled unfinished features. Actual mouse navigation and channel changes passed in the separate visual preview. A loopback-only ASP.NET Core bridge, bounded file upload, server-side folder navigation and CSRF/session checks are now in source, awaiting a fresh build and connected runtime tests. No production engine was connected.
+
+The immediately preceding foundation passed 76/76 unit cases in remote run 38786631720. The browser bridge and whole-drive root guard are newer; 77 unit cases are expected in the next build. Browser upload/folder readback and actual listener/audio behavior are not proven by preview navigation.

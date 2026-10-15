@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "environment": "Unconnected loopback visual preview on broadcasting PC",
+  "url": "http://127.0.0.1:18120",
+  "ui": "Browser console",
+  "actions": [
+    {
+      "input": "mouse",
+      "action": "Open Library",
+      "observed": "Library Energize heading"
+    },
+    {
+      "input": "mouse",
+      "action": "Select Classic channel",
+      "observed": "Classic selected and Library Classic heading"
+    },
+    {
+      "input": "mouse",
+      "action": "Open System",
+      "observed": "System heading and explicit visual-preview/no-engine status"
+    }
+  ],
+  "claims": {
+    "navigation": true,
+    "channelSelection": true,
+    "realUpload": false,
+    "realFolderAssignment": false,
+    "engineConnected": false,
+    "productionChanged": false
+  },
+  "nativePrototype": "Closed after user rejected it; not in the active build.",
+  "notes": "Visual preview is not operational acceptance. Compiled browser backend and remaining connected mouse workflows require qualification."
+}

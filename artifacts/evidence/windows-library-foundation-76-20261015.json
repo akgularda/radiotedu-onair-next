@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "sourceCommit": "81049639963f65b63809ed48b30927d5a54f8fd7",
+  "environment": "GitHub-hosted Windows; not the broadcasting PC",
+  "workflow": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38786631720",
+  "outcome": "success",
+  "unitTests": {
+    "total": "76",
+    "executed": "76",
+    "passed": "76",
+    "failed": "0",
+    "error": "0",
+    "timeout": "0",
+    "aborted": "0",
+    "inconclusive": "0",
+    "passedButRunAborted": "0",
+    "notRunnable": "0",
+    "notExecuted": "0",
+    "disconnected": "0",
+    "warning": "0",
+    "completed": "0",
+    "inProgress": "0",
+    "pending": "0"
+  },
+  "nonPassed": [],
+  "artifactDigest": "sha256:ad9b57f4ab23bb1d353be5993f3ab0ee67a92693f8425b7b114d4db9000d8c85",
+  "scope": "Coordinator, durable catalog, background library worker and retired native UI foundation. The replacement browser backend is newer and not covered by this run.",
+  "productionChanged": false
+}

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <Content Update="wwwroot/**" CopyToOutputDirectory="PreserveNewest" />
+    <ProjectReference Include="../OnAirNext.Engine/OnAirNext.Engine.csproj" />
+  </ItemGroup>
+</Project>

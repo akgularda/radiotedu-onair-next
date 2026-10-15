@@ -45,6 +45,8 @@ public sealed partial class EventJournal
     public Task<bool> SetLibraryRootAsync(string station, string path, string id)
     {
         path = NormalizeLibraryPath(path);
+        if (Path.TrimEndingDirectorySeparator(Path.GetPathRoot(path)!).Equals(path, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Choose a station music subfolder, rather than a whole drive.");
         return TransactionAsync((c, t) =>
         {
             if (ReadDesired(c, t, station) is null) throw new ArgumentException("Unknown station.");

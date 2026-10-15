@@ -1,3 +1,5 @@
+> **Current UI decision:** the user rejected the native prototype and requested a browser app. [Browser interface decision](./BROWSER_UI_DECISION.md) supersedes earlier native-only UI requirements. The new browser build is under qualification; production remains with the old application.
+
 # Handoff snapshot status
 
 Broadcast-PC continuation: see the [delivery ledger](BROADCAST_PC_DELIVERY_LEDGER.md) for current 42-unit/13-check isolated recovery evidence and incomplete release gates. The native UI is being developed in the requested dark Palantir-like direction; production has not been migrated.
