@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-15T16:07:25.218Z",
+  "platform": "HP Z220, Windows 10 Pro build 19045, 8 GiB RAM",
+  "runtime": ".NET 10.0.13",
+  "icecast": "2.5.0",
+  "unitTests": {
+    "passed": 37,
+    "failed": 0,
+    "total": 37
+  },
+  "build": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "actualScenarioProfiles": [
+    "AAC-LC 192 kbps"
+  ],
+  "heAacTested": false,
+  "loudnessQualified": false,
+  "fullRosterQualified": false,
+  "longSoakQualified": false,
+  "failedAttempt": {
+    "name": "durable",
+    "passed": false,
+    "durationSeconds": 46.9174515,
+    "checks": [
+      {
+        "Description": "Crash occurs beyond the fixture's distinctive four-second opening.",
+        "Passed": true
+      },
+      {
+        "Description": "Independent listener hears the opening tone after a hard kill, rather than checkpoint-position tail audio.",
+        "Passed": false
+      }
+    ],
+    "details": {
+      "restartedListener": {
+        "Mount": "/next-durable",
+        "DecodedSeconds": 0.8,
+        "SilentWindows": 0,
+        "LongestSilentRun": 0,
+        "ToneTransitions": 0,
+        "UnexpectedToneTransitions": 0,
+        "LiveToneWindows": 0,
+        "FirstTones": [
+          440
+        ],
+        "Error": null
+      }
+    },
+    "error": "System.InvalidOperationException: Independent listener hears the opening tone after a hard kill, rather than checkpoint-position tail audio.\r"
+  },
+  "passedAttempt": {
+    "name": "durable",
+    "passed": true,
+    "durationSeconds": 24.3111401,
+    "checks": [
+      {
+        "Description": "Crash occurs beyond the fixture's distinctive four-second opening.",
+        "Passed": true
+      },
+      {
+        "Description": "Independent listener hears the opening tone after a hard kill, rather than checkpoint-position tail audio.",
+        "Passed": true
+      },
+      {
+        "Description": "Actual repeated audio is recorded as a new attempt linked to the interrupted attempt.",
+        "Passed": true
+      },
+      {
+        "Description": "Skip admission is acknowledged before hard kill.",
+        "Passed": true
+      },
+      {
+        "Description": "A lost-response Skip retry is accepted after host restart.",
+        "Passed": true
+      },
+      {
+        "Description": "The consumed item stays consumed and a duplicate Skip cannot skip the next song.",
+        "Passed": true
+      },
+      {
+        "Description": "One durable Skip produces exactly one terminal Skip despite process death and retry.",
+        "Passed": true
+      },
+      {
+        "Description": "The already skipped song is not started a third time.",
+        "Passed": true
+      },
+      {
+        "Description": "Recovery and restarted attempts preserve the complete event hash chain.",
+        "Passed": true
+      }
+    ],
+    "details": {
+      "restartedListener": {
+        "Mount": "/next-durable",
+        "DecodedSeconds": 1.3800000000000001,
+        "SilentWindows": 0,
+        "LongestSilentRun": 0,
+        "ToneTransitions": 0,
+        "UnexpectedToneTransitions": 0,
+        "LiveToneWindows": 0,
+        "FirstTones": [
+          440
+        ],
+        "Error": null
+      },
+      "afterSkipListener": {
+        "Mount": "/next-durable",
+        "DecodedSeconds": 1.3800000000000001,
+        "SilentWindows": 0,
+        "LongestSilentRun": 0,
+        "ToneTransitions": 0,
+        "UnexpectedToneTransitions": 0,
+        "LiveToneWindows": 0,
+        "FirstTones": [
+          660
+        ],
+        "Error": null
+      }
+    },
+    "error": null
+  },
+  "remainingOwnedChildren": {},
+  "note": "The initial fixed wall-clock listener wait captured 0.8 decoded seconds and the correct 440 Hz opening. It failed the one-second criterion. The revised test waits for at least 1.2 decoded seconds with a bounded deadline; all nine checks passed. These are one-station synthetic loopback recovery results, not production or 18-output qualification."
+}

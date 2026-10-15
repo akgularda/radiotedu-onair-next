@@ -37,7 +37,7 @@ public sealed class PcmBlock : IDisposable
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<ContentKind>))]
-public enum ContentKind { Music, Advertisement, Sweeper, Program }
+public enum ContentKind { Music, Advertisement, Sweeper, Program, Jingle }
 
 public sealed record MediaItem(string Id, string Path, string Artist, string Title, ContentKind Kind = ContentKind.Music);
 
@@ -64,12 +64,12 @@ public sealed record OutputSettings(string Id, string Host, int Port, string Mou
 
 public sealed record StationSettings(string Id, IReadOnlyList<MediaItem> Playlist, IReadOnlyList<OutputSettings> Outputs, bool Repeat = true);
 public sealed record PlaybackEvent(string EventId, string OccurrenceId, string StationId, string Type, string ItemId,
-    string Artist, string Title, ContentKind Kind, DateTimeOffset AtUtc, long SamplePosition, string Detail = "", string? QueueEntryId = null);
+    string Artist, string Title, ContentKind Kind, DateTimeOffset AtUtc, long SamplePosition, string Detail = "", string? QueueEntryId = null, string? PreviousOccurrenceId = null, string TimingQuality = "sample_clock");
 public sealed record PlayoutSelection(MediaItem Item, string? QueueEntryId = null);
 public interface IPlayoutPlanner { PlayoutSelection Select(int rotationIndex, string? excludeQueueEntryId = null); }
 public sealed record PlayoutCheckpoint(string StationId, string State, int RotationIndex, MediaItem? Item,
     string OccurrenceId, long ItemSamples, long ProgramSamples, bool Announced, DateTimeOffset SavedAtUtc,
-    string? QueueEntryId = null, string? SessionId = null);
+    string? QueueEntryId = null, string? SessionId = null, string? PreviousOccurrenceId = null);
 public sealed record OutputSnapshot(string Id, string State, long EncoderStarts, long Connections, long FramesWritten,
     long DroppedBlocks, int QueuedBlocks, int? EncoderPid, string? LastError);
 public sealed record StationSnapshot(string Id, string State, long Samples, long CompletedItems, long SkippedItems,

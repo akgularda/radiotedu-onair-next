@@ -1,5 +1,7 @@
 # RadioTEDU OnAir Next
 
+Broadcast-PC continuation: see the [delivery ledger](docs/BROADCAST_PC_DELIVERY_LEDGER.md) for current 37-unit/9-check isolated recovery evidence and incomplete release gates. The native UI is being developed in the requested dark Palantir-like direction; production has not been migrated.
+
 Independent Windows broadcast application under development. The first engine milestone implements continuous program audio, isolated Icecast outputs, an audio-agent input boundary, local play history, and reproducible loopback tests. The operator interface, installer, production migration, and full automation features follow the [development plan](DEVELOPMENT_PLAN.md).
 
 **Broadcasting-PC handoff:** read [the handoff instructions](docs/BROADCAST_PC_HANDOFF.md), [approved operating plan](docs/OPERATING_PLAN.md) and [current handoff status](docs/HANDOFF_STATUS.md) before continuing. This snapshot includes unfinished recovery/application source, not a production-ready installer. Its partial recovery code still attempts checkpoint-position resume, which must be changed to the approved restart-from-beginning policy. The new required roster is eight AAC-LC + eight libfdk_aac HE-AACv2 + two FLAC outputs. Configure/operate through the native UI and migrate one station group at a time; retire the old service only after the verified handover gates pass.

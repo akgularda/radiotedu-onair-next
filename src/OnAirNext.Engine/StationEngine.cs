@@ -13,6 +13,7 @@ public sealed class StationEngine : IAsyncDisposable
     private readonly string _sessionId = Guid.NewGuid().ToString("N");
     private long _itemSamples, _clockStart;
     private bool _recovered;
+    private string? _previousOccurrence;
     private int _refreshNext;
     private readonly CancellationTokenSource _stop = new();
     private Task? _run;
@@ -50,7 +51,7 @@ public sealed class StationEngine : IAsyncDisposable
 
     public void Skip(string? commandId = null)
     {
-        if (_journal.RequestSkipAsync(_settings.Id, commandId ?? Guid.NewGuid().ToString("N")).GetAwaiter().GetResult()) Interlocked.Exchange(ref _skip, 1);
+        if (_journal.RequestObservedSkipAsync(_settings.Id, commandId ?? Guid.NewGuid().ToString("N"), _occurrence).GetAwaiter().GetResult()) Interlocked.Exchange(ref _skip, 1);
     }
     public void RefreshNext() => Interlocked.Exchange(ref _refreshNext, 1);
     public StationSnapshot Snapshot() => new(_settings.Id, _state, Interlocked.Read(ref _samples),
@@ -63,14 +64,15 @@ public sealed class StationEngine : IAsyncDisposable
         Exception? fault = null;
         try
         {
-            var saved = await _journal.CheckpointAsync(_settings.Id);
+            var saved = await _journal.PrepareRecoveryAsync(_settings.Id);
             if (saved is not null)
             {
                 _index = saved.RotationIndex; _samples = saved.ProgramSamples;
-                if (saved.State == "Playing" && saved.Item is not null && saved.Announced)
+                if (saved.State is "RestartPending" or "Stopped" && saved.Item is not null)
                 {
-                    _selection = new(saved.Item, saved.QueueEntryId); _occurrence = saved.OccurrenceId;
-                    _announced = true; _itemSamples = saved.ItemSamples; _recovered = true;
+                    _selection = new(saved.Item, saved.QueueEntryId);
+                    _previousOccurrence = saved.Announced ? saved.OccurrenceId : saved.PreviousOccurrenceId;
+                    _itemSamples = 0; _announced = false; _recovered = true;
                 }
             }
             _selection ??= Select(_index);
@@ -84,8 +86,7 @@ public sealed class StationEngine : IAsyncDisposable
                 await Task.Delay(10, _stop.Token);
             _clockStart = _samples;
             _anchor = DateTimeOffset.UtcNow.AddSeconds(-(double)_samples / AudioFormat.SampleRate);
-            if (_recovered) Emit("resumed", _samples, "Recovered from the last committed sample checkpoint; the checkpoint interval may be replayed.");
-            if (await _journal.HasPendingSkipAsync(_settings.Id)) Interlocked.Exchange(ref _skip, 1);
+            if (await _journal.HasPendingSkipAsync(_settings.Id, _occurrence)) Interlocked.Exchange(ref _skip, 1);
             var clock = Stopwatch.StartNew();
             var checkpointClock = Stopwatch.StartNew();
             _state = "Running";
@@ -96,7 +97,7 @@ public sealed class StationEngine : IAsyncDisposable
                 if (delay > TimeSpan.Zero) await Task.Delay(delay, _stop.Token);
                 else if (delay < -AudioFormat.BlockDuration * 2) Interlocked.Increment(ref _late);
                 if (Interlocked.Exchange(ref _refreshNext, 0) == 1) await RefreshPreparedAsync();
-                if (Interlocked.Exchange(ref _skip, 0) == 1)
+                if (Interlocked.Exchange(ref _skip, 0) == 1 && await _journal.HasPendingSkipAsync(_settings.Id, _occurrence))
                 {
                     if (_announced) { Emit("skipped", _samples); Interlocked.Increment(ref _skipped); }
                     await AdvanceAsync();
@@ -208,6 +209,7 @@ public sealed class StationEngine : IAsyncDisposable
         _selection = _nextSelection; _nextSelection = null;
         _announced = false; _currentTitle = null;
         _occurrence = Guid.NewGuid().ToString("N");
+        _previousOccurrence = null;
         _itemSamples = 0;
         if (_decoder is not null) PrepareNext();
     }
@@ -217,7 +219,7 @@ public sealed class StationEngine : IAsyncDisposable
         var item = _selection!.Item;
         var entry = new PlaybackEvent(Guid.NewGuid().ToString("N"), _occurrence, _settings.Id, type,
             item.Id, item.Artist, item.Title, item.Kind,
-            _anchor.AddSeconds((double)position / AudioFormat.SampleRate), position, detail, _selection.QueueEntryId);
+            _anchor.AddSeconds((double)position / AudioFormat.SampleRate), position, detail, _selection.QueueEntryId, _previousOccurrence);
         var state = type is "ended" or "skipped" or "failed" or "decode_failed" ? "BetweenItems" : type == "interrupted" ? "Stopped" : "Playing";
         try { _journal.AppendAsync(entry, Checkpoint(state, position)).GetAwaiter().GetResult(); }
         catch { Interlocked.Increment(ref _auditRejected); throw; }
@@ -227,7 +229,7 @@ public sealed class StationEngine : IAsyncDisposable
         _index + (state == "BetweenItems" && _selection?.QueueEntryId is null ? 1 : 0),
         state == "BetweenItems" ? null : _selection?.Item, _occurrence,
         state == "BetweenItems" ? 0 : _itemSamples, position, state != "BetweenItems" && _announced,
-        DateTimeOffset.UtcNow, state == "BetweenItems" ? null : _selection?.QueueEntryId, _sessionId);
+        DateTimeOffset.UtcNow, state == "BetweenItems" ? null : _selection?.QueueEntryId, _sessionId, _previousOccurrence);
 
     public async ValueTask DisposeAsync()
     {

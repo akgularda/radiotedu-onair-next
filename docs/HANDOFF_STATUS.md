@@ -1,5 +1,7 @@
 # Handoff snapshot status
 
+Broadcast-PC continuation: see the [delivery ledger](BROADCAST_PC_DELIVERY_LEDGER.md) for current 37-unit/9-check isolated recovery evidence and incomplete release gates. The native UI is being developed in the requested dark Palantir-like direction; production has not been migrated.
+
 Prepared 15 October 2026. This is a development snapshot for the broadcasting-PC agent, not a production-ready release.
 
 ## Included

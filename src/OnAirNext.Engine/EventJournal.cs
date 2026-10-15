@@ -8,12 +8,13 @@ using Microsoft.Data.Sqlite;
 namespace OnAirNext.Engine;
 
 // SQLite writes and reports have a dedicated lane; the program never waits for a CSV or network upload.
-public sealed class EventJournal : IAsyncDisposable
+public sealed partial class EventJournal : IAsyncDisposable
 {
     private readonly Channel<Action> _pending = Channel.CreateBounded<Action>(4096);
     private readonly SqliteConnection _connection;
     private readonly Task _writer;
     private long _rejected, _committed;
+    private int _transactionEvents;
     private string? _error;
     public string DatabasePath { get; }
     public long RejectedEvents => Interlocked.Read(ref _rejected);
@@ -43,6 +44,10 @@ public sealed class EventJournal : IAsyncDisposable
               at_utc TEXT NOT NULL, payload TEXT NOT NULL, previous_hash TEXT NOT NULL, entry_hash TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS playback_events_time ON playback_events(at_utc, sequence);
             CREATE INDEX IF NOT EXISTS playback_events_occurrence ON playback_events(occurrence_id, sequence);
+            CREATE TABLE IF NOT EXISTS station_cadence(station_id TEXT PRIMARY KEY,
+              music_since_jingle INTEGER NOT NULL DEFAULT 0, music_since_sweeper INTEGER NOT NULL DEFAULT 0);
+            CREATE TABLE IF NOT EXISTS cadence_completions(station_id TEXT NOT NULL,occurrence_id TEXT NOT NULL,
+              PRIMARY KEY(station_id,occurrence_id));
             CREATE TABLE IF NOT EXISTS playout_checkpoints(station_id TEXT PRIMARY KEY,payload TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS engine_commands(id TEXT PRIMARY KEY,station_id TEXT NOT NULL,kind TEXT NOT NULL,processed INTEGER NOT NULL DEFAULT 0);
             """;
@@ -53,6 +58,27 @@ public sealed class EventJournal : IAsyncDisposable
         {
             _connection.Dispose();
             throw new InvalidDataException("Unsupported development journal schema; explicit migration is required.");
+        }
+        // Additive migration for pre-recovery development journals. Existing accepted commands remain readable.
+        using (var columns = _connection.CreateCommand())
+        {
+            columns.CommandText = "SELECT COUNT(*) FROM pragma_table_info('engine_commands') WHERE name='target_occurrence'";
+            if (Convert.ToInt32(columns.ExecuteScalar(), CultureInfo.InvariantCulture) == 0)
+            {
+                using var migrate = _connection.CreateCommand();
+                migrate.CommandText = "ALTER TABLE engine_commands ADD COLUMN target_occurrence TEXT";
+                migrate.ExecuteNonQuery();
+            }
+        }
+        using (var columns = _connection.CreateCommand())
+        {
+            columns.CommandText = "SELECT COUNT(*) FROM pragma_table_info('engine_commands') WHERE name='request_target'";
+            if (Convert.ToInt32(columns.ExecuteScalar(), CultureInfo.InvariantCulture) == 0)
+            {
+                using var migrate = _connection.CreateCommand();
+                migrate.CommandText = "ALTER TABLE engine_commands ADD COLUMN request_target TEXT; UPDATE engine_commands SET request_target=target_occurrence";
+                migrate.ExecuteNonQuery();
+            }
         }
         _writer = Task.Run(WriteAsync);
     }
@@ -68,14 +94,11 @@ public sealed class EventJournal : IAsyncDisposable
     public Task AppendAsync(PlaybackEvent entry, PlayoutCheckpoint? checkpoint = null)
         => TransactionAsync((connection, transaction) =>
         {
-            WriteEvent(connection, transaction, entry);
+            if (!WriteEvent(connection, transaction, entry)) return false;
             if (checkpoint is not null) WriteCheckpoint(connection, transaction, checkpoint);
-            if (entry.Type == "skipped")
-            {
-                using var consume = connection.CreateCommand(); consume.Transaction = transaction;
-                consume.CommandText = "UPDATE engine_commands SET processed=1 WHERE station_id=$station AND kind='skip' AND processed=0";
-                consume.Parameters.AddWithValue("$station", entry.StationId); consume.ExecuteNonQuery();
-            }
+            if (entry.Type == "ended") CompleteCadence(connection, transaction, entry);
+            if (entry.Type is "skipped" or "ended" or "failed")
+                ConsumeSkips(connection, transaction, entry.StationId, entry.OccurrenceId);
             if (entry.QueueEntryId is not null)
             {
                 using var exists = connection.CreateCommand(); exists.Transaction = transaction;
@@ -104,8 +127,11 @@ public sealed class EventJournal : IAsyncDisposable
                     try
                     {
                         using var transaction = _connection.BeginTransaction();
+                        _transactionEvents = 0;
                         var result = action(_connection, transaction);
-                        transaction.Commit(); completion.TrySetResult(result);
+                        transaction.Commit();
+                        Interlocked.Add(ref _committed, _transactionEvents);
+                        completion.TrySetResult(result);
                     }
                     catch (Exception ex) { completion.TrySetException(ex); }
                 });
@@ -127,21 +153,57 @@ public sealed class EventJournal : IAsyncDisposable
     public Task SaveCheckpointAsync(PlayoutCheckpoint checkpoint) => TransactionAsync((connection, transaction) =>
     { WriteCheckpoint(connection, transaction, checkpoint); return true; });
 
-    public Task<bool> RequestSkipAsync(string station, string id) => TransactionAsync((connection, transaction) =>
+    public Task<bool> RequestSkipAsync(string station, string id, string? targetOccurrence = null)
+        => RequestSkipCoreAsync(station, id, targetOccurrence, targetOccurrence);
+
+    internal Task<bool> RequestObservedSkipAsync(string station, string id, string targetOccurrence)
+        => RequestSkipCoreAsync(station, id, targetOccurrence, null);
+
+    private Task<bool> RequestSkipCoreAsync(string station, string id, string? targetOccurrence, string? requestTarget) => TransactionAsync((connection, transaction) =>
     {
+        if (string.IsNullOrWhiteSpace(station) || string.IsNullOrWhiteSpace(id) || id.Length > 128)
+            throw new ArgumentException("Skip commands require a station and a bounded command ID.");
+        using (var prior = connection.CreateCommand())
+        {
+            prior.Transaction = transaction;
+            prior.CommandText = "SELECT station_id,kind,request_target FROM engine_commands WHERE id=$id";
+            prior.Parameters.AddWithValue("$id", id);
+            using var reader = prior.ExecuteReader();
+            if (reader.Read())
+            {
+                var target = reader.IsDBNull(2) ? null : reader.GetString(2);
+                if (reader.GetString(0) != station || reader.GetString(1) != "skip" || target != requestTarget)
+                    throw new InvalidOperationException("Command ID was already used for a different operation.");
+                return false;
+            }
+        }
         using var command = connection.CreateCommand(); command.Transaction = transaction;
-        command.CommandText = "INSERT OR IGNORE INTO engine_commands(id,station_id,kind) VALUES($id,$station,'skip')";
+        command.CommandText = "INSERT INTO engine_commands(id,station_id,kind,target_occurrence,request_target) VALUES($id,$station,'skip',$target,$request)";
         command.Parameters.AddWithValue("$id", id); command.Parameters.AddWithValue("$station", station);
+        command.Parameters.AddWithValue("$target", (object?)targetOccurrence ?? DBNull.Value);
+        command.Parameters.AddWithValue("$request", (object?)requestTarget ?? DBNull.Value);
         return command.ExecuteNonQuery() == 1;
     });
 
-    public Task<bool> HasPendingSkipAsync(string station) => TransactionAsync((connection, transaction) =>
+    public Task<bool> HasPendingSkipAsync(string station, string? targetOccurrence = null) => TransactionAsync((connection, transaction)
+        => HasPendingSkip(connection, transaction, station, targetOccurrence));
+
+    private static bool HasPendingSkip(SqliteConnection connection, SqliteTransaction transaction, string station, string? occurrence)
     {
         using var command = connection.CreateCommand(); command.Transaction = transaction;
-        command.CommandText = "SELECT COUNT(*) FROM engine_commands WHERE station_id=$station AND processed=0";
+        command.CommandText = "SELECT COUNT(*) FROM engine_commands WHERE station_id=$station AND kind='skip' AND processed=0 AND (target_occurrence IS NULL OR target_occurrence=$target)";
         command.Parameters.AddWithValue("$station", station);
+        command.Parameters.AddWithValue("$target", (object?)occurrence ?? DBNull.Value);
         return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture) > 0;
-    });
+    }
+
+    private static void ConsumeSkips(SqliteConnection connection, SqliteTransaction transaction, string station, string occurrence)
+    {
+        using var command = connection.CreateCommand(); command.Transaction = transaction;
+        command.CommandText = "UPDATE engine_commands SET processed=1 WHERE station_id=$station AND kind='skip' AND processed=0 AND (target_occurrence IS NULL OR target_occurrence=$target)";
+        command.Parameters.AddWithValue("$station", station); command.Parameters.AddWithValue("$target", occurrence);
+        command.ExecuteNonQuery();
+    }
 
     private static void WriteCheckpoint(SqliteConnection connection, SqliteTransaction transaction, PlayoutCheckpoint checkpoint)
     {
@@ -151,12 +213,23 @@ public sealed class EventJournal : IAsyncDisposable
         command.Parameters.AddWithValue("$payload", JsonSerializer.Serialize(checkpoint)); command.ExecuteNonQuery();
     }
 
-    private void WriteEvent(SqliteConnection connection, SqliteTransaction transaction, PlaybackEvent entry)
+    private bool WriteEvent(SqliteConnection connection, SqliteTransaction transaction, PlaybackEvent entry)
     {
+        var payload = JsonSerializer.Serialize(entry);
+        using (var existing = connection.CreateCommand())
+        {
+            existing.Transaction = transaction;
+            existing.CommandText = "SELECT payload FROM playback_events WHERE event_id=$id";
+            existing.Parameters.AddWithValue("$id", entry.EventId);
+            if (existing.ExecuteScalar() is string prior)
+            {
+                if (prior != payload) throw new InvalidOperationException("Event ID was already used with a different payload.");
+                return false;
+            }
+        }
         using var previous = connection.CreateCommand(); previous.Transaction = transaction;
         previous.CommandText = "SELECT entry_hash FROM playback_events ORDER BY sequence DESC LIMIT 1";
         var priorHash = previous.ExecuteScalar() as string ?? "";
-        var payload = JsonSerializer.Serialize(entry);
         var hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(priorHash + "\n" + payload)));
         using var insert = connection.CreateCommand(); insert.Transaction = transaction;
         insert.CommandText = """
@@ -169,7 +242,9 @@ public sealed class EventJournal : IAsyncDisposable
         insert.Parameters.AddWithValue("$at", entry.AtUtc.ToString("O", CultureInfo.InvariantCulture));
         insert.Parameters.AddWithValue("$payload", payload); insert.Parameters.AddWithValue("$previous", priorHash);
         insert.Parameters.AddWithValue("$hash", hash);
-        Interlocked.Add(ref _committed, insert.ExecuteNonQuery());
+        var inserted = insert.ExecuteNonQuery() == 1;
+        if (inserted) _transactionEvents++;
+        return inserted;
     }
 
     private async Task WriteAsync()

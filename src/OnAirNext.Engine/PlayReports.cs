@@ -65,7 +65,7 @@ public static class PlayReports
         using var reader = command.ExecuteReader();
         AtomicText(destination, writer =>
         {
-            writer.WriteLine("occurrence_id,station_id,content_type,artist,title,start_utc,end_utc,start_local,end_local,local_hour,played_seconds,status");
+            writer.WriteLine("occurrence_id,station_id,content_type,artist,title,start_utc,end_utc,start_local,end_local,local_hour,played_seconds,status,previous_occurrence_id,timing_quality");
             while (reader.Read())
             {
                 var start = JsonSerializer.Deserialize<PlaybackEvent>(reader.GetString(0))!;
@@ -76,7 +76,7 @@ public static class PlayReports
                 writer.WriteLine(string.Join(',', new[] { start.OccurrenceId, start.StationId, start.Kind.ToString(), start.Artist,
                     start.Title, start.AtUtc.ToString("O", CultureInfo.InvariantCulture), end?.AtUtc.ToString("O", CultureInfo.InvariantCulture) ?? "",
                     local.ToString("O", CultureInfo.InvariantCulture), localEnd, local.Hour.ToString("D2", CultureInfo.InvariantCulture), duration,
-                    end?.Type ?? "incomplete" }.Select(CsvField)));
+                    end?.Type ?? "incomplete", start.PreviousOccurrenceId ?? "", end?.TimingQuality ?? start.TimingQuality }.Select(CsvField)));
                 count++;
                 if (end is null) incomplete++;
                 if (hourCounts is not null) hourCounts[local.Hour]++;

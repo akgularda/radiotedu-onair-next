@@ -12,12 +12,12 @@ var icecastRoot = arguments.GetValueOrDefault("--icecast-root") ?? Path.Combine(
 var scenario = arguments.GetValueOrDefault("--scenario") ?? "all";
 var duration = int.Parse(arguments.GetValueOrDefault("--duration-seconds") ?? "12", System.Globalization.CultureInfo.InvariantCulture);
 if (duration is < 6 or > 259200) throw new ArgumentException("Choose 6 seconds through 72 hours.");
-if (scenario is not ("all" or "baseline" or "recovery" or "offline" or "fleet" or "live" or "soak" or "backpressure" or "corrupt" or "host")) throw new ArgumentException("Unknown lab scenario.");
+if (scenario is not ("all" or "baseline" or "recovery" or "durable" or "offline" or "fleet" or "live" or "soak" or "backpressure" or "corrupt" or "host")) throw new ArgumentException("Unknown lab scenario.");
 var runRoot = Path.Combine(localRoot, "runs", DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N")[..8]);
 Directory.CreateDirectory(runRoot);
 var fixtures = Sandbox.Fixtures(Path.Combine(runRoot, "fixtures"));
 var results = new List<CaseResult>();
-foreach (var name in scenario == "all" ? new[] { "baseline", "recovery", "offline", "fleet", "live", "backpressure", "corrupt", "host" } : new[] { scenario })
+foreach (var name in scenario == "all" ? new[] { "baseline", "recovery", "durable", "offline", "fleet", "live", "backpressure", "corrupt", "host" } : new[] { scenario })
 {
     var result = new CaseResult(name);
     Console.WriteLine($"Starting {name}; all origins and mounts are loopback test resources.");
@@ -28,6 +28,7 @@ foreach (var name in scenario == "all" ? new[] { "baseline", "recovery", "offlin
         {
             case "baseline": await BaselineAsync(result); break;
             case "recovery": await RecoveryAsync(result); break;
+            case "durable": await DurableAsync(result); break;
             case "offline": await OfflineAsync(result); break;
             case "fleet": case "soak": await FleetAsync(result); break;
             case "live": await LiveAsync(result); break;
@@ -319,6 +320,109 @@ async Task CorruptAsync(CaseResult result)
     }
     Check(result, EventJournal.ReadEvents(database).Any(x => x.Type == "decode_failed" && x.ItemId == "broken"), "Rejected media has an explicit incident event.");
     ValidateHistory(result, database);
+}
+
+async Task DurableAsync(CaseResult result)
+{
+    var root = Path.Combine(runRoot, result.Name);
+    await using var origin = new Sandbox(icecastRoot, root); await origin.StartAsync();
+    MediaItem LongFixture(string id, int initialTone, int tailTone)
+    {
+        var path = Path.Combine(root, id + ".wav"); const int count = 20 * AudioFormat.SampleRate;
+        using var file = new BinaryWriter(File.Create(path));
+        file.Write("RIFF"u8); file.Write(36 + count * 4); file.Write("WAVEfmt "u8);
+        file.Write(16); file.Write((short)1); file.Write((short)2); file.Write(48000); file.Write(192000);
+        file.Write((short)4); file.Write((short)16); file.Write("data"u8); file.Write(count * 4);
+        for (var i = 0; i < count; i++)
+        {
+            var tone = i < 4 * AudioFormat.SampleRate ? initialTone : tailTone;
+            var sample = (short)(7000 * Math.Sin(2 * Math.PI * tone * i / AudioFormat.SampleRate));
+            file.Write(sample); file.Write(sample);
+        }
+        return new(id, path, "Synthetic recovery fixture", id);
+    }
+    var songs = new[] { LongFixture("unfinished", 440, 880), LongFixture("next-song", 660, 660) };
+    var pipeName = "onair-next-dev-" + Guid.NewGuid().ToString("N");
+    var config = Path.Combine(root, "local.host.json");
+    var db = Path.Combine(root, "playback.db");
+    await File.WriteAllTextAsync(config, JsonSerializer.Serialize(new
+    {
+        Ffmpeg = ffmpeg, DataRoot = root, PipeName = pipeName,
+        Stations = new[] { new StationSettings("durable", songs, [origin.Output("durable")], Repeat: false) }
+    }));
+    var sdk = Path.Combine(localRoot, "tools", "dotnet", "dotnet.exe");
+    var assembly = Path.Combine(localRoot, "build", "bin", "OnAirNext.Host", "release", "OnAirNext.Host.dll");
+    Process Launch()
+    {
+        var process = ChildProcess.Start(sdk, [assembly, "--config", config], output: true, role: "durable-test-host");
+        _ = process.StandardOutput.ReadToEndAsync(); _ = ChildProcess.DrainErrorAsync(process);
+        return process;
+    }
+    async Task<JsonDocument> Command(string action, string? id = null)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+        await using var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+        await pipe.ConnectAsync(timeout.Token);
+        await using var writer = new StreamWriter(pipe, leaveOpen: true) { AutoFlush = true };
+        using var reader = new StreamReader(pipe, leaveOpen: true);
+        await writer.WriteLineAsync(JsonSerializer.Serialize(new { Id = id ?? Guid.NewGuid().ToString("N"), Action = action, StationId = "durable" }));
+        return JsonDocument.Parse(await reader.ReadLineAsync(timeout.Token) ?? throw new IOException("No command acknowledgement."));
+    }
+    async Task WaitRunning()
+    {
+        for (var i = 0; i < 60; i++)
+        {
+            using var status = await Command("status");
+            if (status.RootElement.GetProperty("stations")[0].GetProperty("State").GetString() == "Running") return;
+            await Task.Delay(100);
+        }
+        throw new TimeoutException("Recovered host did not reach Running.");
+    }
+    Process? host = null;
+    try
+    {
+        host = Launch(); await WaitRunning(); await Task.Delay(6200);
+        using (var status = await Command("status"))
+            Check(result, status.RootElement.GetProperty("stations")[0].GetProperty("CurrentItemSamples").GetInt64() >= 5 * 48000,
+                "Crash occurs beyond the fixture's distinctive four-second opening.");
+        await ChildProcess.StopAsync(host); host = null;
+        host = Launch(); await WaitRunning();
+        await using (var listener = new Probe(ffmpeg, origin.Port, "/next-durable"))
+        {
+            await WaitAsync(() => listener.Snapshot().DecodedSeconds >= 1.2 || listener.Snapshot().Error is not null,
+                "Restart listener must decode a measurable opening window.", 12);
+            var heard = listener.Snapshot(); result.Details["restartedListener"] = heard;
+            Check(result, heard.DecodedSeconds >= 1 && heard.FirstTones.FirstOrDefault() == 440,
+                "Independent listener hears the opening tone after a hard kill, rather than checkpoint-position tail audio.");
+        }
+        var starts = EventJournal.ReadEvents(db).Where(x => x.Type == "started").ToArray();
+        Check(result, starts.Length == 2 && starts[0].OccurrenceId != starts[1].OccurrenceId &&
+            starts[1].PreviousOccurrenceId == starts[0].OccurrenceId,
+            "Actual repeated audio is recorded as a new attempt linked to the interrupted attempt.");
+        var skipId = Guid.NewGuid().ToString("N");
+        using (var accepted = await Command("skip", skipId))
+            Check(result, accepted.RootElement.GetProperty("accepted").GetBoolean(), "Skip admission is acknowledged before hard kill.");
+        await ChildProcess.StopAsync(host); host = null;
+        host = Launch(); await WaitRunning();
+        using (var retry = await Command("skip", skipId))
+            Check(result, retry.RootElement.GetProperty("accepted").GetBoolean(), "A lost-response Skip retry is accepted after host restart.");
+        await using (var listener = new Probe(ffmpeg, origin.Port, "/next-durable"))
+        {
+            await WaitAsync(() => listener.Snapshot().DecodedSeconds >= 1.2 || listener.Snapshot().Error is not null,
+                "Post-Skip listener must decode a measurable window.", 12);
+            var heard = listener.Snapshot(); result.Details["afterSkipListener"] = heard;
+            Check(result, heard.DecodedSeconds >= 1 && heard.FirstTones.FirstOrDefault() == 660,
+                "The consumed item stays consumed and a duplicate Skip cannot skip the next song.");
+        }
+        var events = EventJournal.ReadEvents(db);
+        Check(result, events.Count(x => x.Type == "skipped") == 1, "One durable Skip produces exactly one terminal Skip despite process death and retry.");
+        Check(result, events.Count(x => x.Type == "started" && x.ItemId == "unfinished") == 2,
+            "The already skipped song is not started a third time.");
+        Check(result, EventJournal.Verify(db), "Recovery and restarted attempts preserve the complete event hash chain.");
+        using var stopped = await Command("stop");
+        await host.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+    }
+    finally { if (host is not null) await ChildProcess.StopAsync(host); }
 }
 
 async Task HostAsync(CaseResult result)
