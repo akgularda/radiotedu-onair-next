@@ -1,0 +1,135 @@
+<Window x:Class="OnAirNext.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="RadioTEDU · OnAir Next" Width="1120" Height="700" MinWidth="760" MinHeight="460"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48" />
+            <RowDefinition Height="32" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="32" />
+        </Grid.RowDefinitions>
+        <Border Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1">
+            <Grid Margin="16,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="RadioTEDU" FontSize="18" FontWeight="SemiBold" Margin="0,0,14,0" />
+                    <TextBlock Text="ONAIR NEXT" Foreground="{StaticResource SecondaryText}" FontSize="11" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Button x:Name="OnAirButton" Content="_On air" Click="ShowOnAir" Margin="0,0,6,0" Padding="18,4" />
+                    <Button x:Name="SystemButton" Content="_System" Click="ShowSystem" Padding="18,4" />
+                </StackPanel>
+                <TextBlock x:Name="WallClock" Grid.Column="2" FontFamily="Consolas" FontSize="19" AutomationProperties.Name="Istanbul local time" />
+            </Grid>
+        </Border>
+        <Border Grid.Row="1" Background="{StaticResource RaisedBackground}" Padding="16,0">
+            <TextBlock Text="DEVELOPMENT  /  ISOLATED ENGINE" Foreground="{StaticResource WarningBrush}" FontSize="11" />
+        </Border>
+        <Grid x:Name="OnAirPage" Grid.Row="2" Margin="12">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="168"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource DividerBrush}" BorderThickness="1">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="STATIONS" Style="{StaticResource SecondaryLabel}" Margin="12" />
+                    <TextBlock x:Name="EmptyStations" DockPanel.Dock="Bottom" Text="Connect an isolated engine in System." TextWrapping="Wrap" Style="{StaticResource SecondaryLabel}" Margin="12" />
+                    <ListBox x:Name="StationList" SelectionChanged="SelectStation" AutomationProperties.Name="Stations" />
+                </DockPanel>
+            </Border>
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions><RowDefinition x:Name="NowRow" Height="146"/><RowDefinition Height="12"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <Border Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource DividerBrush}" BorderThickness="1" Padding="16">
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="160"/></Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock x:Name="StationHeading" Text="SELECT A STATION" Style="{StaticResource SecondaryLabel}" />
+                            <TextBlock x:Name="CurrentTitle" Text="No engine connected" FontSize="21" FontWeight="SemiBold" Margin="0,8,14,6" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                            <TextBlock x:Name="StationState" Text="Waiting for engine status" Foreground="{StaticResource SecondaryText}" />
+                            <TextBlock x:Name="ProgrammeClock" Text="Programme clock —" Style="{StaticResource SecondaryLabel}" Margin="0,8,0,0" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                            <TextBlock Text="ITEM ELAPSED" Style="{StaticResource SecondaryLabel}" />
+                            <TextBlock x:Name="ElapsedClock" Text="—:—:—" Style="{StaticResource RemainingClock}" Margin="0,2,0,10" />
+                            <Button x:Name="SkipButton" Content="Skip current item" Click="SkipCurrent" IsEnabled="False"
+                                    AutomationProperties.Name="Skip current item on selected isolated station"
+                                    ToolTip="Advance only the selected isolated station. The engine records the command." />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <Border Grid.Row="2" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource DividerBrush}" BorderThickness="1">
+                    <DockPanel>
+                        <Grid DockPanel.Dock="Top" Margin="12,10">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="OUTPUT TRANSPORT" Style="{StaticResource SecondaryLabel}" />
+                            <TextBlock Grid.Column="1" Text="Listener audio: not measured" Style="{StaticResource SecondaryLabel}" />
+                        </Grid>
+                        <TextBlock DockPanel.Dock="Bottom" Text="Transport counters describe the encoder connection. Loudness and listener audio require independent measurement."
+                                   Style="{StaticResource SecondaryLabel}" TextWrapping="Wrap" Margin="12,8" />
+                        <DataGrid x:Name="Outputs" IsReadOnly="True" AutomationProperties.Name="Selected station output transport">
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                                    <Setter Property="ToolTip" Value="{Binding LastError}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding State}" Value="Connecting">
+                                            <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding State}" Value="Reconnecting">
+                                            <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Output" Binding="{Binding Id}" Width="*" MinWidth="100" />
+                                <DataGridTextColumn Header="State" Binding="{Binding State}" Width="110" />
+                                <DataGridTextColumn Header="Queued" Binding="{Binding QueuedBlocks}" Width="66" />
+                                <DataGridTextColumn Header="Dropped" Binding="{Binding DroppedBlocks}" Width="72" />
+                                <DataGridTextColumn Header="Connections" Binding="{Binding Connections}" Width="90" />
+                                <DataGridTextColumn Header="Last error" Binding="{Binding LastError}" Width="220" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </Border>
+            </Grid>
+        </Grid>
+        <Grid x:Name="SystemPage" Grid.Row="2" Margin="12" Visibility="Collapsed">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Border Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource DividerBrush}" BorderThickness="1" Padding="16">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="_Refresh engines" Click="RefreshEngines" Margin="16,0,0,0" />
+                    <StackPanel>
+                        <TextBlock Text="Engine connection" FontSize="20" FontWeight="SemiBold" />
+                        <TextBlock Text="Choose a running isolated engine on this computer." Style="{StaticResource SecondaryLabel}" Margin="0,6,0,0" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+            <Border Grid.Row="1" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource DividerBrush}" BorderThickness="1,0,1,1" Padding="16">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <Button x:Name="ConnectButton" Content="_Connect" Click="ConnectEngine" IsEnabled="False" MinWidth="100" />
+                        <Button Grid.Column="1" Content="_Disconnect" Click="DisconnectEngine" Margin="8,0,0,0" MinWidth="100" />
+                        <TextBlock Grid.Column="2" x:Name="DiscoveryNote" Margin="16,0,0,0" TextWrapping="Wrap" Style="{StaticResource SecondaryLabel}" />
+                    </Grid>
+                    <ListBox x:Name="EngineList" SelectionChanged="SelectEngine" AutomationProperties.Name="Available isolated engines" />
+                </DockPanel>
+            </Border>
+            <Border Grid.Row="2" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource DividerBrush}" BorderThickness="1" Padding="16" Margin="0,12,0,0">
+                <ScrollViewer MaxHeight="100" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <TextBlock Text="Audit journal" FontWeight="SemiBold" />
+                        <TextBlock x:Name="AuditStatus" Text="No engine status received" Style="{StaticResource SecondaryLabel}" Margin="0,6,0,0" TextWrapping="Wrap" />
+                        <TextBlock x:Name="CommandStatus" Text="No command sent" Style="{StaticResource SecondaryLabel}" Margin="0,6,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+        <Border Grid.Row="3" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,1,0,0" Padding="16,0">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBlock x:Name="ConnectionStatus" Text="DISCONNECTED" Foreground="{StaticResource SecondaryText}" FontSize="12" />
+                <TextBlock x:Name="SampleAge" Grid.Column="1" Text="No status sample" Style="{StaticResource SecondaryLabel}" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

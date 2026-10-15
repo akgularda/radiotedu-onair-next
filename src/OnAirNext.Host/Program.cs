@@ -22,7 +22,13 @@ await EncoderCapabilities.ValidateAsync(config.Ffmpeg, allOutputs);
 await using var journal = new EventJournal(Path.Combine(config.DataRoot, "playback.db"));
 using var stop = new CancellationTokenSource();
 Console.CancelKeyPress += (_, eventArgs) => { eventArgs.Cancel = true; stop.Cancel(); };
-var stations = config.Stations.Select(x => new StationEngine(config.Ffmpeg, x, journal)).ToArray();
+var requested = new List<StationSettings>();
+foreach (var settings in config.Stations)
+{
+    var desired = await journal.InitializeDesiredStateAsync(settings);
+    if (desired.Enabled && desired.RequestedRunning) requested.Add(settings);
+}
+var stations = requested.Select(x => new StationEngine(config.Ffmpeg, x, journal)).ToArray();
 var commands = new Dictionary<string, (string Action, string? Station, string Result)>(StringComparer.Ordinal);
 var server = Task.Run(async () =>
 {
@@ -47,20 +53,32 @@ var server = Task.Run(async () =>
             }
             var station = stations.SingleOrDefault(x => x.Snapshot().Id == request.StationId);
             string result;
+            var stopAccepted = false;
+            var commandAccepted = false;
+            try
+            {
             switch (request.Action)
             {
                 case "status": result = JsonSerializer.Serialize(new { stations = stations.Select(x => x.Snapshot()), audit = new { journal.PendingEvents, journal.RejectedEvents, journal.Error } }); break;
-                case "skip" when station is not null: station.Skip(request.Id); result = "{\"accepted\":true}"; break;
-                case "stop": result = "{\"accepted\":true}"; break;
+                case "skip" when station is not null: station.Skip(request.Id); commandAccepted = true; result = "{\"accepted\":true}"; break;
+                case "stop":
+                    stopAccepted = await journal.RequestStopAllAsync(config.Stations.Select(x => x.Id), request.Id);
+                    commandAccepted = true;
+                    result = "{\"accepted\":true}"; break;
                 default: result = "{\"accepted\":false,\"error\":\"Unknown command or station.\"}"; break;
             }
-            if (request.Action != "status")
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+            {
+                result = JsonSerializer.Serialize(new { accepted = false, error = ex.Message });
+            }
+            if (request.Action != "status" && commandAccepted)
             {
                 if (commands.Count >= 256) commands.Remove(commands.Keys.First());
                 commands[request.Id] = (request.Action, request.StationId, result);
             }
-            await writer.WriteLineAsync(result);
-            if (request.Action == "stop") stop.Cancel();
+            try { await writer.WriteLineAsync(result); }
+            finally { if (stopAccepted) stop.Cancel(); }
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { break; }
         catch (IOException) { /* a disconnected UI does not own playout */ }
@@ -71,7 +89,7 @@ try
 {
     foreach (var station in stations) await station.StartAsync();
     Console.WriteLine(JsonSerializer.Serialize(new { state = "started", config.PipeName, stations = stations.Length, loopbackOnly = true }));
-    await Task.WhenAny(Task.Delay(Timeout.Infinite, stop.Token), Task.WhenAll(stations.Select(x => x.Completion)));
+    await Task.WhenAny(Task.Delay(Timeout.Infinite, stop.Token), stations.Length == 0 ? Task.Delay(Timeout.Infinite, stop.Token) : Task.WhenAll(stations.Select(x => x.Completion)));
 }
 finally
 {

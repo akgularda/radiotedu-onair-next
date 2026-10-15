@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/OnAirNext.Engine/OnAirNext.Engine.csproj" />
     <Project Path="src/OnAirNext.Host/OnAirNext.Host.csproj" />
+    <Project Path="src/OnAirNext.Desktop/OnAirNext.Desktop.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/OnAirNext.Tests/OnAirNext.Tests.csproj" />

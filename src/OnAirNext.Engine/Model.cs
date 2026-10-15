@@ -62,7 +62,8 @@ public sealed record OutputSettings(string Id, string Host, int Port, string Mou
     }
 }
 
-public sealed record StationSettings(string Id, IReadOnlyList<MediaItem> Playlist, IReadOnlyList<OutputSettings> Outputs, bool Repeat = true);
+public sealed record StationSettings(string Id, IReadOnlyList<MediaItem> Playlist, IReadOnlyList<OutputSettings> Outputs, bool Repeat = true,
+    bool Enabled = true, bool AutoStart = true);
 public sealed record PlaybackEvent(string EventId, string OccurrenceId, string StationId, string Type, string ItemId,
     string Artist, string Title, ContentKind Kind, DateTimeOffset AtUtc, long SamplePosition, string Detail = "", string? QueueEntryId = null, string? PreviousOccurrenceId = null, string TimingQuality = "sample_clock");
 public sealed record PlayoutSelection(MediaItem Item, string? QueueEntryId = null);

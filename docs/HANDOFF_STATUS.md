@@ -1,6 +1,6 @@
 # Handoff snapshot status
 
-Broadcast-PC continuation: see the [delivery ledger](BROADCAST_PC_DELIVERY_LEDGER.md) for current 37-unit/9-check isolated recovery evidence and incomplete release gates. The native UI is being developed in the requested dark Palantir-like direction; production has not been migrated.
+Broadcast-PC continuation: see the [delivery ledger](BROADCAST_PC_DELIVERY_LEDGER.md) for current 42-unit/13-check isolated recovery evidence and incomplete release gates. The native UI is being developed in the requested dark Palantir-like direction; production has not been migrated.
 
 Prepared 15 October 2026. This is a development snapshot for the broadcasting-PC agent, not a production-ready release.
 
@@ -12,7 +12,14 @@ Prepared 15 October 2026. This is a development snapshot for the broadcasting-PC
 - Approved development/operating plans, 162-entry legacy feature inventory, source-declared API/model appendix and broadcasting-PC migration handoff.
 - Sanitized historical evidence and a new focused baseline result.
 
-## Verification for this snapshot
+## Broadcasting-PC continuation
+
+- Restart-from-beginning with linked attempts is implemented. Desired enabled/running intent, durable stop receipts, cross-operation command validation and dedicated journal writer are implemented.
+- Windows 10 broadcasting-PC validation: 42 unit cases; 13 real hard-kill/desired-state checks; 17 reconnect/encoder-recovery checks from the dedicated-writer regression. Public summaries are in `artifacts/evidence/hp-recovery-20261015.json` and `hp-desired-state-20261015.json`.
+- An initial native dark WPF desktop is now in the solution and builds. It offers On air/System for isolated engines only. No Windows service installer, full operator workflow or production UI commissioning has shipped.
+- Native window launch and accessibility readback succeeded. Keyboard close succeeded. Screenshot/mouse qualification failed from Computer Use capture/geometry errors and must not be marked passed.
+
+## Original Windows 11 verification
 
 | Check | Result |
 |---|---|
@@ -27,8 +34,8 @@ These checks were run on the Windows 11 development host using the private SDK a
 
 ## Required fixes and missing acceptance
 
-1. Replace checkpoint-position resume with the approved unfinished-item **restart from beginning** policy. Preserve the interrupted occurrence and create a linked actual restart attempt; do not report one uninterrupted occurrence.
-2. Finish desired-state persistence, transition ownership, command ID/payload validation and crash-boundary tests. Review synchronous/awaited disk commits in the audio path and recovered snapshot state.
+1. Complete the full crash-boundary/uncertainty matrix for the implemented linked restart-from-beginning policy; current focused recovery evidence is not full-product acceptance.
+2. Finish runtime lifecycle/controller integration, transition ownership and the remaining command/crash-boundary tests. Desired-state persistence and receipt validation have focused passing evidence. Review synchronous/awaited disk commits in the audio path and recovered snapshot state.
 3. Replace/extend the initial single-studio storage model for eight station folders, durable shuffled selection, distinct jingle/sweeper counters, indexed/virtualized views and safe migration.
 4. Implement the service installer/startup/recovery, service/client pipe permissions, service-account credential/media access and Windows 10 compatibility path.
 5. Obtain/build and qualify libfdk_aac capability. Independently decode the actual eight AAC-LC/eight HE-AACv2/two FLAC roster. Missing FDK must never trigger silent codec fallback.

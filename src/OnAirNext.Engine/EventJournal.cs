@@ -44,6 +44,8 @@ public sealed partial class EventJournal : IAsyncDisposable
               at_utc TEXT NOT NULL, payload TEXT NOT NULL, previous_hash TEXT NOT NULL, entry_hash TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS playback_events_time ON playback_events(at_utc, sequence);
             CREATE INDEX IF NOT EXISTS playback_events_occurrence ON playback_events(occurrence_id, sequence);
+            CREATE TABLE IF NOT EXISTS station_desired_state(station_id TEXT PRIMARY KEY,enabled INTEGER NOT NULL,
+              requested_running INTEGER NOT NULL,updated_utc TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS station_cadence(station_id TEXT PRIMARY KEY,
               music_since_jingle INTEGER NOT NULL DEFAULT 0, music_since_sweeper INTEGER NOT NULL DEFAULT 0);
             CREATE TABLE IF NOT EXISTS cadence_completions(station_id TEXT NOT NULL,occurrence_id TEXT NOT NULL,
@@ -80,7 +82,8 @@ public sealed partial class EventJournal : IAsyncDisposable
                 migrate.ExecuteNonQuery();
             }
         }
-        _writer = Task.Run(WriteAsync);
+        _writer = Task.Factory.StartNew(WriteLoop, CancellationToken.None,
+            TaskCreationOptions.LongRunning, TaskScheduler.Default);
     }
 
     public bool TryAppend(PlaybackEvent entry)
@@ -247,11 +250,14 @@ public sealed partial class EventJournal : IAsyncDisposable
         return inserted;
     }
 
-    private async Task WriteAsync()
+    private void WriteLoop()
     {
         try
         {
-            await foreach (var work in _pending.Reader.ReadAllAsync()) work();
+            // SQLite FULL-WAL commits may block in the OS. One dedicated thread
+            // keeps that wait outside the shared pool used by audio pacing and UI commands.
+            while (_pending.Reader.WaitToReadAsync().AsTask().GetAwaiter().GetResult())
+                while (_pending.Reader.TryRead(out var work)) work();
         }
         catch (Exception ex)
         {

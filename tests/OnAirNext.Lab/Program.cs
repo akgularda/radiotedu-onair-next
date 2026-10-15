@@ -363,9 +363,8 @@ async Task DurableAsync(CaseResult result)
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(12));
         await using var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
         await pipe.ConnectAsync(timeout.Token);
-        await using var writer = new StreamWriter(pipe, leaveOpen: true) { AutoFlush = true };
         using var reader = new StreamReader(pipe, leaveOpen: true);
-        await writer.WriteLineAsync(JsonSerializer.Serialize(new { Id = id ?? Guid.NewGuid().ToString("N"), Action = action, StationId = "durable" }));
+        await pipe.WriteAsync(System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Id = id ?? Guid.NewGuid().ToString("N"), Action = action, StationId = "durable" }) + "\n"), timeout.Token);
         return JsonDocument.Parse(await reader.ReadLineAsync(timeout.Token) ?? throw new IOException("No command acknowledgement."));
     }
     async Task WaitRunning()
@@ -421,6 +420,21 @@ async Task DurableAsync(CaseResult result)
         Check(result, EventJournal.Verify(db), "Recovery and restarted attempts preserve the complete event hash chain.");
         using var stopped = await Command("stop");
         await host.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        await ChildProcess.StopAsync(host); host = null;
+        host = Launch();
+        using (var status = await Command("status"))
+            Check(result, status.RootElement.GetProperty("stations").GetArrayLength() == 0,
+                "An explicitly stopped station stays stopped after host restart, while the command interface remains available.");
+        using (var collision = await Command("stop", skipId))
+            Check(result, !collision.RootElement.GetProperty("accepted").GetBoolean(),
+                "Command IDs retain their original operation after restart; a rejected Stop cannot terminate the host.");
+        using (var status = await Command("status"))
+            Check(result, status.RootElement.GetProperty("stations").GetArrayLength() == 0,
+                "Control interface remains responsive after a cross-operation receipt collision.");
+        using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(3) })
+        using (var response = await client.GetAsync($"http://127.0.0.1:{origin.Port}/next-durable", HttpCompletionOption.ResponseHeadersRead))
+            Check(result, response.StatusCode == System.Net.HttpStatusCode.NotFound,
+                "Listener endpoint confirms that the stopped station did not silently autostart.");
     }
     finally { if (host is not null) await ChildProcess.StopAsync(host); }
 }

@@ -1,10 +1,10 @@
 # RadioTEDU OnAir Next
 
-Broadcast-PC continuation: see the [delivery ledger](docs/BROADCAST_PC_DELIVERY_LEDGER.md) for current 37-unit/9-check isolated recovery evidence and incomplete release gates. The native UI is being developed in the requested dark Palantir-like direction; production has not been migrated.
+Broadcast-PC continuation: see the [delivery ledger](docs/BROADCAST_PC_DELIVERY_LEDGER.md) for current 42-unit/13-check isolated recovery evidence and incomplete release gates. The native UI is being developed in the requested dark Palantir-like direction; production has not been migrated.
 
 Independent Windows broadcast application under development. The first engine milestone implements continuous program audio, isolated Icecast outputs, an audio-agent input boundary, local play history, and reproducible loopback tests. The operator interface, installer, production migration, and full automation features follow the [development plan](DEVELOPMENT_PLAN.md).
 
-**Broadcasting-PC handoff:** read [the handoff instructions](docs/BROADCAST_PC_HANDOFF.md), [approved operating plan](docs/OPERATING_PLAN.md) and [current handoff status](docs/HANDOFF_STATUS.md) before continuing. This snapshot includes unfinished recovery/application source, not a production-ready installer. Its partial recovery code still attempts checkpoint-position resume, which must be changed to the approved restart-from-beginning policy. The new required roster is eight AAC-LC + eight libfdk_aac HE-AACv2 + two FLAC outputs. Configure/operate through the native UI and migrate one station group at a time; retire the old service only after the verified handover gates pass.
+**Broadcasting-PC handoff:** read [the handoff instructions](docs/BROADCAST_PC_HANDOFF.md), [approved operating plan](docs/OPERATING_PLAN.md) and [current handoff status](docs/HANDOFF_STATUS.md) before continuing. This snapshot includes unfinished recovery/application source, not a production-ready installer. Unfinished items now restart from the beginning as linked attempts; 42 unit cases and a 13-check real hard-kill/stop-intent scenario passed on the broadcasting PC. Full recovery and automation acceptance remains open. The new required roster is eight AAC-LC + eight libfdk_aac HE-AACv2 + two FLAC outputs. Configure/operate through the native UI and migrate one station group at a time; retire the old service only after the verified handover gates pass.
 
 This repository does not launch, modify, import, or replace the current RadioTEDU installation. The development host rejects production destinations: only literal loopback IPs, unprivileged test ports, `/next-` mounts, a private development data root, and new named-pipe identities are accepted.
 
@@ -19,9 +19,11 @@ This repository does not launch, modify, import, or replace the current RadioTED
 - Bounded live PCM input, smooth music ducking, sample limiting, and automatic gain recovery after input loss. Hardware microphone capture belongs to the later user audio agent.
 - Append-only SQLite event journal, hash verification, immutable artist/title snapshots, occurrence IDs, start/end/skip/interruption events.
 - Istanbul daily CSV, all 24 hourly count rows, checksums, incomplete-play flags, and streamed arbitrary-period export without a 10,000-row cap.
-- Independent host status/skip/stop commands; retrying a recent Skip command ID does not execute it twice.
+- Durable restart-from-beginning attempts, persistent enabled/running intent, atomic stop receipts and Skip command-ID/payload checks across process death.
+- Distinct durable jingle/sweeper completion counters; legacy behavior import and planner integration remain pending.
+- Initial native WPF On air/System window in an original dark theme, isolated-engine discovery/status and selected-station Skip. It builds; connected mouse operations and the complete operator interface are not qualified.
 
-The current playlist is a developer-provided immutable sequence. Persisted queue editing, crash checkpoint resume, schedules, campaign ownership, native UI workflows, and production credentials are not implemented in this milestone.
+The default laboratory playlist is a developer-provided sequence. Durable queue primitives exist; complete operator queue editing, schedules, campaign ownership, migration and production credential workflows are not delivered. See the delivery ledger for the exact acceptance gaps.
 
 The public source repository is [akgularda/radiotedu-onair-next](https://github.com/akgularda/radiotedu-onair-next). Synthetic report fixtures are archived separately in [akgularda/radiotedu-broadcast-reports](https://github.com/akgularda/radiotedu-broadcast-reports). The development publisher verifies remote commits and repeat publication; the scheduled application publisher remains a later milestone.
 
@@ -43,6 +45,7 @@ Integration scenarios:
 |---|---|
 | baseline | Songs, advertisement and sweeper through persistent AAC and FLAC sessions |
 | recovery | Kill an owned encoder, then restart the owned Icecast origin |
+| durable | Hard-kill/restart from the opening, linked attempts, durable Skip retry, persistent Stop and receipt-collision rejection |
 | offline | Begin with no origin, then bring it online without resetting the program |
 | fleet | Eight synthetic stations, sixteen AAC/FLAC outputs, sixteen continuously decoded listeners |
 | live | Synthetic audio-agent input, ducking, loss and return |
@@ -61,7 +64,7 @@ The soak command supports up to 72 hours and streams analysis without retaining 
 
 ## Audio and reporting semantics
 
-`SourceConnected` means that Icecast accepted a source handshake. It is not a listener-delivery or on-air guarantee. Lab probes independently decode the listener streams and inspect synthetic tone order and 20 ms RMS windows. The first 200 ms of decoded audio is excluded from the continuing-stream RMS checks to allow codec priming. This analysis does not prove every listener's wall-clock playback continuity.
+`SourceConnected` is an internal transport state. It is not independent proof of complete origin acceptance, listener delivery or on-air audio. Lab probes independently decode the listener streams and inspect synthetic tone order and 20 ms RMS windows. The first 200 ms of decoded audio is excluded from the continuing-stream RMS checks to allow codec priming. This analysis does not prove every listener's wall-clock playback continuity.
 
 The PCM timeline advances independently of network recovery. When an output exhausts its bounded queue, it discards stale queued blocks and rejoins the current program; it does not hold other outputs or replay a completed item. Outage time and discarded blocks remain observable. No finite buffer can retain an unlimited outage.
 
