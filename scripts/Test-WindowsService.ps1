@@ -68,10 +68,10 @@ try{
  $settings=@{Ffmpeg=$fakeExe;DataRoot=$engineData;PipeName='onair-next-dev-service';OperatorSid=$operatorSid.Value;Stations=@(@{Id='service-fixture';Playlist=@();Outputs=@();Repeat=$true;Enabled=$true;AutoStart=$false})}
  $settings|ConvertTo-Json -Depth 8|Set-Content -LiteralPath $config -Encoding UTF8;Protect $config $false
  $command='"'+$hostExe+'" --windows-service --config "'+$config+'"'
- Invoke-OwnedSc @('create',$serviceName,'binPath=',$command,'start=','auto','obj=','NT AUTHORITY\LocalService');$ownedService=$true
- Invoke-OwnedSc @('config',$serviceName,'start=','delayed-auto')
- Invoke-OwnedSc @('failure',$serviceName,'reset=','86400','actions=','restart/1000/restart/5000/restart/30000')
- Invoke-OwnedSc @('failureflag',$serviceName,'1')
+ Invoke-OwnedSc -values @('create',$serviceName,'binPath=',$command,'start=','auto','obj=','NT AUTHORITY\LocalService');$ownedService=$true
+ Invoke-OwnedSc -values @('config',$serviceName,'start=','delayed-auto')
+ Invoke-OwnedSc -values @('failure',$serviceName,'reset=','86400','actions=','restart/1000/restart/5000/restart/30000')
+ Invoke-OwnedSc -values @('failureflag',$serviceName,'1')
  $registry=Get-ItemProperty -LiteralPath ('HKLM:\SYSTEM\CurrentControlSet\Services\'+$serviceName)
  Check 'Automatic delayed startup is persisted' ($registry.Start -eq 2 -and $registry.DelayedAutoStart -eq 1 -and $registry.FailureActionsOnNonCrashFailures -eq 1)
  Start-Service -Name $serviceName;$state=Ready $false
@@ -101,12 +101,12 @@ try{
  Stop-Service -Name $serviceName;Stopped
 }catch{$failure=$_.Exception.Message;throw}
 finally{
- if($ownedService){try{if((Get-Service -Name $serviceName).Status -ne 'Stopped'){Stop-Service -Name $serviceName;Stopped};Invoke-OwnedSc @('delete',$serviceName)}catch{if(-not $failure){$failure=$_.Exception.Message}}}
+ if($ownedService){try{if((Get-Service -Name $serviceName).Status -ne 'Stopped'){Stop-Service -Name $serviceName;Stopped};Invoke-OwnedSc -values @('delete',$serviceName)}catch{if(-not $failure){$failure=$_.Exception.Message}}}
  # Retain fixture data on CI failure for runner-local diagnosis; upload only this sanitized summary.
  foreach($target in @(@{Path=$installRoot;Expected=$expectedInstall;Owned=$ownedInstall},@{Path=$dataRoot;Expected=$expectedData;Owned=$ownedData})){
   if($target.Owned -and -not $failure){$full=[IO.Path]::GetFullPath($target.Path);if($full -ne $target.Expected -or (Get-Item -LiteralPath $full).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Cleanup target validation failed'};Remove-Item -LiteralPath $full -Recurse -Force}
  }
  $null=New-Item -ItemType Directory -Path (Split-Path -Parent $summary) -Force
- @{Source=$env:GITHUB_SHA;Scope='Isolated Windows CI fixture; no real audio or target-PC commissioning';Passed=(-not $failure);Checks=@($checks);Error=$failure;ProductionChanged=$false}|ConvertTo-Json -Depth 5|Set-Content -LiteralPath $summary -Encoding UTF8
+ @{Source=$env:GITHUB_SHA;Scope='Isolated Windows CI fixture; no real audio or target-PC commissioning';Passed=(-not $failure);Checks=$checks.ToArray();Error=$failure;ProductionChanged=$false}|ConvertTo-Json -Depth 5|Set-Content -LiteralPath $summary -Encoding UTF8
  if($failure){Write-Error $failure}
 }
