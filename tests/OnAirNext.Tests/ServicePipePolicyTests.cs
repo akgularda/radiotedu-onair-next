@@ -56,8 +56,7 @@ public sealed class ServicePipePolicyTests
         if(identify)policy.Authorize(server);
         else
         {
-            var error=Record.Exception(()=>policy.Authorize(server));
-            Assert.NotNull(error);Assert.True(error is UnauthorizedAccessException or IOException);
+            Assert.Throws<UnauthorizedAccessException>(()=>policy.Authorize(server));
         }
     }
     [Fact]

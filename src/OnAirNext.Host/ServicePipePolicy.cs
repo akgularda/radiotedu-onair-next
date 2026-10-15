@@ -39,7 +39,14 @@ internal sealed class ServicePipePolicy
     {
         string? caller = null;
         // Query identity only. No file/database work executes under the client's token.
-        pipe.RunAsClient(() => { using var identity = WindowsIdentity.GetCurrent(ifImpersonating: true); caller = identity?.User?.Value; });
+        try
+        {
+            pipe.RunAsClient(() => { using var identity = WindowsIdentity.GetCurrent(ifImpersonating: true); caller = identity?.User?.Value; });
+        }
+        catch (Exception error) when (error is System.Security.SecurityException or System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
+        {
+            throw new UnauthorizedAccessException("The studio client identity could not be verified.", error);
+        }
         if (!Allows(caller)) throw new UnauthorizedAccessException("This Windows account is not an authorized studio operator.");
     }
 }
