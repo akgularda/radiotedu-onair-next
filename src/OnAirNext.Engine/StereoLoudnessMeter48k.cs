@@ -122,7 +122,7 @@ public sealed class StereoLoudnessMeter48k
         foreach (var energy in _integrated.AsSpan(0, _integratedCount))
             if (energy > gate) { sum += energy; included++; }
         var integrated = included == 0 ? null : Lufs(sum / included);
-        var rangeGate = Gate(_shortTerms.AsSpan(0, _shortTermCount), 0.01);
+        var rangeGate = Gate(_shortTerms.AsSpan(0, _shortTermCount), 0.01, includeAbsoluteBoundary: true);
         var rangeCount = 0;
         foreach (var energy in _shortTerms.AsSpan(0, _shortTermCount))
             if (energy >= rangeGate && energy > 0) _rangeScratch[rangeCount++] = energy;
@@ -139,10 +139,13 @@ public sealed class StereoLoudnessMeter48k
             _maximumShortTerm, Db(_samplePeak), Db(Math.Max(_samplePeak, _truePeak)), _frames >= SampleRate * 60L, _finished);
     }
 
-    private static double Gate(ReadOnlySpan<double> energies, double relativeFactor)
+    private static double Gate(ReadOnlySpan<double> energies, double relativeFactor, bool includeAbsoluteBoundary = false)
     {
         double sum = 0; var count = 0;
-        foreach (var energy in energies) if (energy > AbsoluteGateEnergy) { sum += energy; count++; }
+        // Annex 1 integrated gating uses >; Tech 3342 LRA's absolute-gate vector uses >=.
+        foreach (var energy in energies)
+            if (includeAbsoluteBoundary ? energy >= AbsoluteGateEnergy : energy > AbsoluteGateEnergy)
+            { sum += energy; count++; }
         return count == 0 ? AbsoluteGateEnergy : Math.Max(AbsoluteGateEnergy, sum / count * relativeFactor);
     }
     private static double? Lufs(double energy) => energy > 0 ? Offset + 10 * Math.Log10(energy) : null;

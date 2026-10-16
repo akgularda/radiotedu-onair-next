@@ -116,6 +116,20 @@ public sealed class LoudnessTests
         Near(-23, inverted.IntegratedLufs);
     }
 
+    [Theory]
+    [InlineData(-75, false)]
+    [InlineData(-65, true)]
+    public void AbsoluteGateDoesNotTreatAllQuietInputAsANormalizableProgramme(double level, bool included)
+    {
+        var reading = Measure(new ToneSegment(20, level));
+        Assert.Equal(included, reading.IntegratedLufs is not null);
+        Assert.Equal(included, reading.LoudnessRangeLu is not null);
+        Near(level, reading.MomentaryLufs);
+        Near(level, reading.ShortTermLufs);
+        Assert.NotNull(reading.TruePeakDbtp);
+        if (included) Near(level, reading.IntegratedLufs);
+    }
+
     [Fact]
     public void SilenceAndIncompleteWindowsAreExplicitAndJsonSafe()
     {
