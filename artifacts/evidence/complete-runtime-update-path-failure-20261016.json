@@ -1,0 +1,115 @@
+{
+  "AtUtc": "2026-10-16T18:32:51.561Z",
+  "Scope": "Disposable Windows full-provider installation and application update fixture; no actual-PC commissioning",
+  "Head": "5df512de7f7087ed679f442e9d8af7247b6d2f27",
+  "ExecutedSource": "9ba3d3c22109091d15ac0bb0fd85a2c214ecda40",
+  "Run": 38946735977,
+  "Url": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38946735977",
+  "OverallPassed": false,
+  "UnitPassed": 313,
+  "ServiceChecks": 49,
+  "RealRuntimePreparation": {
+    "Files": 20,
+    "ReferenceSha256": "2FF9772ED74AF0AB3A2C6B7CCED4FCAA23F09BB2D28205B5DB863AA919A629F2",
+    "Source": "9ba3d3c22109091d15ac0bb0fd85a2c214ecda40",
+    "Passed": true,
+    "ServiceChanged": false,
+    "Scope": "Actual CI codec-package hash and encoder-list preparation only; no service installation, target-PC, decoded-output or licensing determination"
+  },
+  "Package": {
+    "Files": 738,
+    "UniquePayloadBytes": 112997966,
+    "ManifestSha256": "163FE7F03545BE64E76BB7F195A5EB2C5055859EDAF21B5861D0B21F68CEB728",
+    "UncompressedBytes": 275102924,
+    "Source": "9ba3d3c22109091d15ac0bb0fd85a2c214ecda40",
+    "Commissioned": false,
+    "Scope": "Windows x64 self-contained development package; no FFmpeg, music, credentials or production configuration"
+  },
+  "Setup": {
+    "Passed": false,
+    "ChecksCompleted": 38,
+    "Checks": [
+      "Synthetic codec inventory excludes nested framework DLLs",
+      "Preparation keeps the service and machine roots absent",
+      "Preparation preserves the invoking operator SID",
+      "Elevated fresh installation rejects a changed ffprobe before creating machine roots",
+      "Installer records the exact plan and source version",
+      "Initial installation contains eight stopped channels and no outputs",
+      "Only the isolated LocalService image is registered",
+      "Installed engine is authenticated and all eight requested states are stopped",
+      "Installed service uses its packaged runtime without global dotnet",
+      "Runtime copy preserves the selected bytes",
+      "Installed ffprobe retains its reviewed bytes at the flat tools path",
+      "Installed codec document retains its reviewed bytes: windows-codec.lock.json",
+      "Installed codec document retains its reviewed bytes: Licenses/COPYING.LGPLv2.1",
+      "Installed codec document retains its reviewed bytes: Licenses/FDK-AAC-NOTICE.txt",
+      "Installed codec document retains its reviewed bytes: Licenses/LICENSE.md",
+      "Installed codec document retains its reviewed bytes: Sources/build-configurations.json",
+      "Installed codec document retains its reviewed bytes: Sources/build-windows-codecs.py",
+      "Installed codec document retains its reviewed bytes: Sources/fdk-v2.0.3.tar.gz",
+      "Installed codec document retains its reviewed bytes: Sources/ffmpeg-config.mak",
+      "Installed codec document retains its reviewed bytes: Sources/ffmpeg-n9.0.2.tar.gz",
+      "Installed codec document retains its reviewed bytes: Sources/toolchain.txt",
+      "Installed provider manifest retains its matching reference",
+      "Identical immutable runtimes share one installed file identity",
+      "Same reviewed plan retries without replacing configuration or restarting service",
+      "Packaged console starts without Codex or a global SDK",
+      "Anonymous loopback callers cannot obtain an operator session",
+      "Read-only folder browsing requires the authorized console session",
+      "Startup capability is stored without unlisted account access",
+      "Application update status rejects anonymous callers",
+      "Console health exposes the exact compiled build identity",
+      "Installed console exposes update status without enabling in-place maintenance",
+      "Installed console refuses update preparation from its own locked application image",
+      "Per-user shortcut targets the installed launcher with console arguments",
+      "Per-user shortcut targets the installed launcher with console arguments",
+      "Repeating shortcut creation preserves existing matching shortcut bytes",
+      "Visible console-close route releases its own web process",
+      "Closing the console preserves the same running engine service",
+      "Read-only maintenance review rejects the already installed package"
+    ],
+    "Error": "Setup check failed: External console prepares a read-back update review through its authenticated route"
+  },
+  "Diagnosis": "Original update image normalized provider bin paths to installed tools paths; replacement image retained raw initial paths. UpdateSwap correctly rejected the differing runtime inventory before maintenance. The correction clones the normalized original runtime inventory for replacement as well, preserving initial plan identity and retaining all codec bytes.",
+  "SevenOriginalEvidenceArchivesVerified": true,
+  "ArchiveChecks": [
+    {
+      "name": "windows-unit-results",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "windows-service-qualification",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "windows-setup-qualification",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "windows-runtime-package-evidence",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "loudness-reference-qualification",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "windows-real-audio-qualification",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "windows-codec-qualification",
+      "bytesMatch": true,
+      "digestMatch": true
+    }
+  ],
+  "ProductionGroupsMigrated": 0,
+  "ProductionChanged": false,
+  "FreshQualificationRequired": true
+}

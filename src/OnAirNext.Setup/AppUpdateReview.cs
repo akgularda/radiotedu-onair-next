@@ -49,7 +49,7 @@ internal static class AppUpdatePreparation
         var contractFile=nextBundle.Files.SingleOrDefault(f=>f.Path=="setup/maintenance-contract.json")??throw new IOException("The new package has no maintenance compatibility contract.");
         var contract=await SetupPaths.ReadVerifiedAsync<MaintenanceContract>(SetupPaths.Resolve(package,contractFile.Path),contractFile.Sha256,token);
         if(contract.ContractVersion!=1||contract.JournalSchemaVersion!=1||!contract.RetainsCurrentDataOnRollback)throw new InvalidOperationException("This package requires an explicit journal migration outside application-only maintenance.");
-        var replacement=new UpdateImage(nextHash,initial.RuntimeFiles.ToArray());
+        var replacement=new UpdateImage(nextHash,original.RuntimeFiles.ToArray());
         var files=new UpdateSwapReview(Guid.NewGuid().ToString("N"),original,replacement,DateTimeOffset.UtcNow);
         _=new UpdateSwap(installed,files.Id,original,replacement);
         // Verification may take time on a small PC. Read the authenticated status again

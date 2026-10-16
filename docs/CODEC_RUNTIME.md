@@ -16,9 +16,11 @@ The application package includes setup/codec-runtime-reference.json, a byte-exac
 
 The Windows packaging job also prepares a plan against the actual codec artifact and saves windows-real-runtime-preparation.json. This verifies package references, inventory hashes and encoder availability on a disposable runner; it does not install a service, qualify redistribution rights, or establish actual-PC/audio acceptance. The separate installer round-trip uses explicit synthetic codec documents and an encoder-listing test double. Neither evidence replaces the decoded codec and engine scenarios.
 
-Legacy installation plan serialization is unchanged. Application updates normalize the original runtime paths for installed-file verification and preserve that exact inventory. This fresh-setup change does not supplement a previously installed flat runtime.
+Legacy installation plan serialization is unchanged. Application updates use the same normalized installed-runtime inventory for both original and replacement images, preserving that exact inventory. This fresh-setup change does not supplement a previously installed flat runtime.
 
 The first full-inventory attempt (`8e891b9`, run 38943510328) passed 312 unit cases and the actual 20-file provider preparation, but its synthetic installer fixture failed before installing anything. The diagnostic follow-up (`9d2ded9`, run 38945249579) exposed `Unexpected runtime file`: the fixture had recursively included framework DLLs under bin/runtimes in its codec manifest. Provider binaries must be directly under bin. The correction narrows that fixture inventory, asserts the boundary before preparation and adds a nested-DLL rejection case; product validation is retained. Fresh complete qualification is required. [Failure evidence](../artifacts/evidence/complete-runtime-setup-first-failure-20261016.json).
+
+The corrected fixture (`5df512d`, run 38946735977) passed 313 unit cases and its first 38 setup checks, including copying the full provider and verifying service/console behavior. It then rejected application update review: the original image used installed runtime paths, but the replacement still used raw provider paths. The follow-up constructs both images from the normalized original inventory. No codec file is replaced and the initial plan identity remains unchanged. [Update-path failure evidence](../artifacts/evidence/complete-runtime-update-path-failure-20261016.json).
 
 ## Qualification boundary
 
