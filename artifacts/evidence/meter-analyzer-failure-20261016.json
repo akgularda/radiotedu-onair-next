@@ -1,0 +1,9 @@
+{
+  "source": "94a526f84d7481eb20957b358253d58d6dd473e3",
+  "run": "38860927274",
+  "passed": false,
+  "productionChanged": false,
+  "phase": "Compile unit tests",
+  "error": "xUnit2031: Assert.Single requires the predicate overload instead of filtering with Where.",
+  "correction": "Use Assert.Single(collection, predicate). No runtime audio qualification reached."
+}

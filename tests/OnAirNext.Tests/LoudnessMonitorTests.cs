@@ -40,7 +40,7 @@ public sealed class LoudnessMonitorTests
         Assert.True(view.Continuous); Assert.Equal(0, view.DroppedFrames);
         Assert.Equal(0, view.QueuedBlocks); Assert.Equal(0, view.PendingHistoryWrites);
         Assert.Equal(0, view.HistoryFailures); Assert.Equal("Stopped", view.State);
-        var finished = Assert.Single(history.Where(w => w.Phase == "Finished"));
+        var finished = Assert.Single(history, w => w.Phase == "Finished");
         Assert.Equal(96000, finished.Reading!.SampleFrames);
         Assert.Equal(0, finished.StartSample); Assert.Equal(96000, finished.EndSample);
         Assert.False(finished.HasMeasurementGap); Assert.False(finished.MissingTail);
