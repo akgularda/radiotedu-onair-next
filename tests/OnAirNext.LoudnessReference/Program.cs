@@ -48,12 +48,16 @@ foreach (var test in cases)
         var range = Parse(summary, @"\bLRA:\s*([-+\d.]+)\s*LU");
         var truePeak = Parse(summary, @"\bPeak:\s*([-+\d.]+)\s*dBFS");
         var integratedDelta = Math.Abs((reading.IntegratedLufs ?? throw new InvalidDataException("No integrated measurement.")) - integrated);
-        var rangeDelta = Math.Abs((reading.LoudnessRangeLu ?? throw new InvalidDataException("No range measurement.")) - range);
+        double? rangeDelta = reading.RangeSettled
+            ? Math.Abs((reading.LoudnessRangeLu ?? throw new InvalidDataException("No range measurement.")) - range)
+            : null;
         var peakDelta = Math.Abs((reading.TruePeakDbtp ?? throw new InvalidDataException("No true peak measurement.")) - truePeak);
-        var ok = integratedDelta <= 0.2 && rangeDelta <= 1 && peakDelta <= 0.4;
+        var ok = integratedDelta <= 0.2 && (rangeDelta is null || rangeDelta <= 1) && peakDelta <= 0.4;
         passed &= ok;
         results.Add(new { test.Name, Passed = ok, SampleSha256 = hash, Reading = reading,
             Reference = new { IntegratedLufs = integrated, LoudnessRangeLu = range, TruePeakDbtp = truePeak },
+            RangeCompared = reading.RangeSettled,
+            RangeComparisonNote = reading.RangeSettled ? "At least 60 seconds measured." : "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
             Difference = new { IntegratedLu = integratedDelta, RangeLu = rangeDelta, PeakDb = peakDelta } });
         Console.WriteLine($"{test.Name}: {(ok ? "passed" : "FAILED")}; I difference {integratedDelta:F3} LU, peak difference {peakDelta:F3} dB");
     }
