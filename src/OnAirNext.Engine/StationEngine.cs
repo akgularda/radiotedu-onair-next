@@ -70,7 +70,7 @@ public sealed partial class StationEngine : IStationSession
             current?.Title,Interlocked.Read(ref _late),Interlocked.Read(ref _auditRejected),_outputs.Select(x=>x.Snapshot()).ToArray(),
             current?.Id,cursor?.ItemSamples??0,_recovered,CurrentArtist:current?.Artist,CurrentDurationSeconds:current?.DurationSeconds,
             NextItem:next is null?null:new(next.Id,next.Artist,next.Title,next.Kind,next.DurationSeconds),Loudness:_loudness?.Snapshot(),
-            SourceGain:SourceNormalization.Decide(current?.Loudness),Limiter:Volatile.Read(ref _publishedLimiter));
+            SourceGain:SourceNormalization.Decide(current?.Loudness),Limiter:Volatile.Read(ref _publishedLimiter),PendingAuditCommits:Volatile.Read(ref _pendingAudit));
     }
     private async Task RunAsync()
     {
@@ -103,7 +103,7 @@ public sealed partial class StationEngine : IStationSession
             }
             foreach(var output in _outputs)output.Start();
             var connectDeadline=Stopwatch.StartNew();
-            while(_outputs.Count>0&&!_outputs.Any(x=>x.Snapshot().State=="SourceConnected")&&connectDeadline.Elapsed<TimeSpan.FromSeconds(1))
+            while(_settings.Outputs.Count>0&&!_outputs.Any(x=>x.Snapshot().State=="SourceConnected")&&connectDeadline.Elapsed<TimeSpan.FromSeconds(1))
                 await Task.Delay(10,_stop.Token);
             _anchor=DateTimeOffset.UtcNow.AddSeconds(-(double)_samples/AudioFormat.SampleRate);
             _loudness=new ProgrammeLoudnessMonitor(_settings.Id,_sessionId,_anchor,_samples,history:w=>_journal.SaveMeasurementAsync(w));

@@ -14,6 +14,7 @@ public sealed partial class StationEngine
     private Cursor? _audible;
     private MediaItem? _visibleNext;
     private PlayoutCheckpoint? _lastCheckpoint;
+    private int _pendingAudit;
 
     private Cursor PreparedCursor()=>new(_index,_selection!,_occurrence,_previousOccurrence,_itemSamples);
     private void TrackSelection(PlayoutSelection selection)
@@ -101,13 +102,13 @@ public sealed partial class StationEngine
     {
         ObserveAudit();
         if(_audits.Count>=MaximumAuditTickets){Interlocked.Increment(ref _auditRejected);throw new IOException("Playback history commit backlog exceeded its bounded limit.");}
-        _audits.Enqueue(new(submit(),releaseQueueEntry));
+        _audits.Enqueue(new(submit(),releaseQueueEntry));Volatile.Write(ref _pendingAudit,_audits.Count);
     }
     private void ObserveAudit()
     {
         while(_audits.TryPeek(out var ticket)&&ticket.Commit.IsCompleted)
         {
-            _audits.Dequeue();
+            _audits.Dequeue();Volatile.Write(ref _pendingAudit,_audits.Count);
             try{ticket.Commit.GetAwaiter().GetResult();}catch{Interlocked.Increment(ref _auditRejected);throw;}
             if(ticket.ReleaseQueueEntry is not null)_inflightQueue.Remove(ticket.ReleaseQueueEntry);
         }
@@ -123,7 +124,7 @@ public sealed partial class StationEngine
         {
             _audits.Dequeue();
             if(ticket.Commit.IsCompletedSuccessfully){if(ticket.ReleaseQueueEntry is not null)_inflightQueue.Remove(ticket.ReleaseQueueEntry);}
-            else{Interlocked.Increment(ref _auditRejected);failure??=ticket.Commit.Exception??new IOException("Playback history commit was cancelled.");}
+            else{Interlocked.Increment(ref _auditRejected);failure??=(Exception?)ticket.Commit.Exception??new IOException("Playback history commit was cancelled.");}
         }
         if(failure is not null)throw failure;
     }

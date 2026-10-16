@@ -4,8 +4,8 @@ public sealed record LimiterSnapshot(string State,double CeilingDbtp,int Lookahe
     long LimitedFrames,double GainReductionDb,double MaximumGainReductionDb);
 
 /// <summary>
-/// Linked-stereo float PCM, fixed memory and no I/O. The detector uses the actual four-times Annex-2 FIR,
-/// plus a conservative bound for gain variation over its 12-tap support. Original samples are multiplied,
+/// Linked-stereo float PCM, fixed memory and no I/O. The detector uses the eight-times 32-tap interpolation and the four-times Annex-2 FIR,
+/// plus a conservative bound for gain variation over each kernel support. Original samples are multiplied,
 /// never resampled or clipped. A 60 ms read-ahead is a processing delay, not invented programme silence.
 /// </summary>
 public sealed class TruePeakLimiter48k
@@ -14,12 +14,11 @@ public sealed class TruePeakLimiter48k
     public const int MaximumBlockFrames=960;
     public const double DefaultCeilingDbtp=-1.5;
     public const float MaximumMixedSample=128;
-    private const int Taps=12,Future=Taps-1,RingSize=4096,EnvelopeLookahead=LookaheadFrames-Future;
+    private const int Taps=LimiterTruePeakKernel48k.Taps,Future=Taps-1,RingSize=4096,EnvelopeLookahead=LookaheadFrames-Future;
     private const double AttackDbPerFrame=1.0/48,ReleaseDbPerFrame=0.05/48;
-    private static readonly double Variation=Math.Pow(10,AttackDbPerFrame*Future/20)-1;
     private readonly float[] _raw=new float[RingSize*2];
     private readonly double[] _left=new double[Taps*2],_right=new double[Taps*2];
-    private readonly MaximumWindow _support=new(16,Future),_envelope=new(4096,EnvelopeLookahead);
+    private readonly MaximumWindow _support=new(64,Future),_envelope=new(4096,EnvelopeLookahead);
     private readonly double _ceiling;
     private readonly double _ceilingDbtp;
     private long _inputFrames,_outputFrames,_detectorFrame,_limited;
@@ -29,11 +28,11 @@ public sealed class TruePeakLimiter48k
     private LimiterSnapshot _snapshot;
     public TruePeakLimiter48k(double ceilingDbtp=DefaultCeilingDbtp)
     {
-        if(!double.IsFinite(ceilingDbtp)||ceilingDbtp is < -10 or > -1.4)throw new ArgumentOutOfRangeException(nameof(ceilingDbtp));
+        if(!double.IsFinite(ceilingDbtp)||ceilingDbtp is < -8 or > -1.4)throw new ArgumentOutOfRangeException(nameof(ceilingDbtp));
         _ceilingDbtp=ceilingDbtp;_ceiling=Math.Pow(10,(ceilingDbtp-0.001)/20);
         // The finite input domain bounds the attack needed before a newly arriving peak enters the horizon.
-        var maximumNorm=TruePeakKernel48k.Interpolator.Max(row=>row.Sum(x=>Math.Abs(x)));
-        if(20*Math.Log10(MaximumMixedSample*maximumNorm*(1+Variation)/_ceiling)>=AttackDbPerFrame*EnvelopeLookahead)
+        var maximumNorm=LimiterTruePeakKernel48k.Filters.Max(row=>row.Coefficients.Sum(x=>Math.Abs(x))*(1+row.Variation));
+        if(20*Math.Log10(MaximumMixedSample*maximumNorm/_ceiling)>=AttackDbPerFrame*EnvelopeLookahead)
             throw new ArgumentException("The ceiling exceeds this limiter's bounded attack horizon.",nameof(ceilingDbtp));
         _snapshot=CreateSnapshot();
     }
@@ -72,16 +71,16 @@ public sealed class TruePeakLimiter48k
         var slot=(int)(n%RingSize)*2;_raw[slot]=left;_raw[slot+1]=right;
         _left[_historyIndex]=_left[_historyIndex+Taps]=left;_right[_historyIndex]=_right[_historyIndex+Taps]=right;
         double bound=Math.Max(Math.Abs(left),Math.Abs(right));
-        foreach(var phase in TruePeakKernel48k.Interpolator)
+        foreach(var phase in LimiterTruePeakKernel48k.Filters)
         {
             double l=0,r=0,absoluteLeft=0,absoluteRight=0;
-            for(var tap=0;tap<Taps;tap++)
+            for(var tap=0;tap<phase.Coefficients.Length;tap++)
             {
-                var at=_historyIndex+Taps-tap;
-                var a=phase[tap]*_left[at];var b=phase[tap]*_right[at];
+                var at=_historyIndex+Taps-phase.Offset-tap;
+                var a=phase.Coefficients[tap]*_left[at];var b=phase.Coefficients[tap]*_right[at];
                 l+=a;r+=b;absoluteLeft+=Math.Abs(a);absoluteRight+=Math.Abs(b);
             }
-            bound=Math.Max(bound,Math.Max(Math.Abs(l)+Variation*absoluteLeft,Math.Abs(r)+Variation*absoluteRight));
+            bound=Math.Max(bound,Math.Max(Math.Abs(l)+phase.Variation*absoluteLeft,Math.Abs(r)+phase.Variation*absoluteRight));
         }
         _historyIndex=(_historyIndex+1)%Taps;
         var required=bound>_ceiling?20*Math.Log10(bound/_ceiling):0;

@@ -99,7 +99,7 @@ internal static class ProcessingChecks
         try
         {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));var before=sink.Frames;await Task.Delay(350,deadline.Token);var after=sink.Frames;
-            Check(result,after-before>=12000,"Programme audio keeps advancing through a 350 ms journal-writer stall, including the checkpoint interval.");
+            Check(result,after-before>=12000&&engine.Snapshot().PendingAuditCommits>0,"Programme audio keeps advancing through a 350 ms journal-writer stall, including the checkpoint interval; pending durable writes remain visible.");
             result.Details["auditStall"]=new{BeforeFrames=before,AfterFrames=after,ElapsedMilliseconds=350};
         }
         finally{release.Set();await held;}

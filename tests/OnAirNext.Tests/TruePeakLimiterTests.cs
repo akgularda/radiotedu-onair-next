@@ -68,4 +68,9 @@ public sealed class TruePeakLimiterTests
         Assert.Throws<ArgumentOutOfRangeException>(()=>new TruePeakLimiter48k(-1));
         Assert.Equal(AudioFormat.SamplesPerBlock,TruePeakLimiter48k.MaximumBlockFrames);
     }
+    [Theory]
+    [InlineData(-8)][InlineData(-4)][InlineData(-1.4)]
+    public void EverySupportedCeilingFitsTheFixedAttackHorizon(double ceiling)
+    {Assert.Equal(ceiling,new TruePeakLimiter48k(ceiling).Snapshot().CeilingDbtp);}
+
 }

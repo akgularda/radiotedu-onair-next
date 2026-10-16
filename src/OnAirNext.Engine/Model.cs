@@ -92,7 +92,7 @@ public sealed record StationSnapshot(string Id, string State, long Samples, long
     string? CurrentAssetId = null, long CurrentItemSamples = 0, bool Recovered = false,
     bool Enabled = true, bool RequestedRunning = true, string? LastError = null, DateTimeOffset? RetryAtUtc = null,
     string? CurrentArtist = null, double? CurrentDurationSeconds = null, PlayoutItemSnapshot? NextItem = null,
-    ProgrammeLoudnessSnapshot? Loudness = null, SourceGain? SourceGain = null, LimiterSnapshot? Limiter = null);
+    ProgrammeLoudnessSnapshot? Loudness = null, SourceGain? SourceGain = null, LimiterSnapshot? Limiter = null, int PendingAuditCommits = 0);
 
 public interface IStationSession : IAsyncDisposable
 {

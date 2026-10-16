@@ -56,6 +56,9 @@
     $('source-processing').classList.toggle('warning',connected&&!!station?.CurrentTitle&&gain.warning);
     const processing=RadioTeduMeter.limiter(connected?station?.Limiter:null);text('limiter-processing',connected?processing.text:'Final-mix limiter status unavailable.');
     $('limiter-processing').classList.toggle('warning',connected&&processing.warning);
+    const pendingAudit=connected?station?.PendingAuditCommits:null;
+    text('playback-audit-note',Number.isInteger(pendingAudit)&&pendingAudit>=0?'Playback history · '+(pendingAudit?pendingAudit+' write(s) pending':'no pending writes'):'Playback history status unavailable.');
+    $('playback-audit-note').classList.toggle('warning',Number.isInteger(pendingAudit)&&pendingAudit>16);
     $('start-station').disabled=!connected||state.busy||!!pending()||!station||running||!station.Enabled||!station.Outputs?.length;
     $('stop-station').disabled=!connected||state.busy||!!pending()||!station||!running;
     const seconds=station?.CurrentDurationSeconds, elapsed=(station?.CurrentItemSamples??0)/48000;

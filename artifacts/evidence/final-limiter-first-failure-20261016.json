@@ -1,0 +1,136 @@
+{
+  "source": "742f07a38bacea1f65eadae2e83a8d05240f78e7",
+  "runId": "38845792581",
+  "conclusion": "failure",
+  "unitTestsRan": false,
+  "qualificationAccepted": false,
+  "compilerErrors": [
+    "build\tBuild browser console and engine\t2026-10-16T03:30:56.5216163Z ##[error]D:\\a\\radiotedu-onair-next\\radiotedu-onair-next\\src\\OnAirNext.Engine\\StationEngine.Timeline.cs(126,70): error CS0019: Operator '??' cannot be applied to operands of type 'AggregateException' and 'IOException' [D:\\a\\radiotedu-onair-next\\radiotedu-onair-next\\src\\OnAirNext.Engine\\OnAirNext.Engine.csproj]",
+    "build\tBuild browser console and engine\t2026-10-16T03:31:04.2419389Z ##[error]D:\\a\\radiotedu-onair-next\\radiotedu-onair-next\\src\\OnAirNext.Engine\\StationEngine.Timeline.cs(126,70): error CS0019: Operator '??' cannot be applied to operands of type 'AggregateException' and 'IOException' [D:\\a\\radiotedu-onair-next\\radiotedu-onair-next\\src\\OnAirNext.Engine\\OnAirNext.Engine.csproj]"
+  ],
+  "independentSignals": [
+    {
+      "Name": "limiter-phase12k",
+      "Passed": true,
+      "InputFrames": 192000,
+      "OutputFrames": 192000,
+      "NativeTruePeakDbtp": -1.8066371282757423,
+      "IndependentTruePeakDbtp": -1.3,
+      "IndependentFrames": 192000,
+      "Processing": {
+        "State": "Finished",
+        "CeilingDbtp": -1.5,
+        "LookaheadFrames": 2880,
+        "InputFrames": 192000,
+        "OutputFrames": 192000,
+        "LimitedFrames": 192000,
+        "GainReductionDb": 7.909885235174897,
+        "MaximumGainReductionDb": 7.909885235174897
+      },
+      "Error": null
+    },
+    {
+      "Name": "limiter-phase20k",
+      "Passed": true,
+      "InputFrames": 192000,
+      "OutputFrames": 192000,
+      "NativeTruePeakDbtp": -1.7342814093791004,
+      "IndependentTruePeakDbtp": -1.5,
+      "IndependentFrames": 192000,
+      "Processing": {
+        "State": "Finished",
+        "CeilingDbtp": -1.5,
+        "LookaheadFrames": 2880,
+        "InputFrames": 192000,
+        "OutputFrames": 192000,
+        "LimitedFrames": 192000,
+        "GainReductionDb": 8.331822680360801,
+        "MaximumGainReductionDb": 8.331822680360801
+      },
+      "Error": null
+    },
+    {
+      "Name": "limiter-near-nyquist",
+      "Passed": true,
+      "InputFrames": 192000,
+      "OutputFrames": 192000,
+      "NativeTruePeakDbtp": -1.500999957455706,
+      "IndependentTruePeakDbtp": -1.5,
+      "IndependentFrames": 192000,
+      "Processing": {
+        "State": "Finished",
+        "CeilingDbtp": -1.5,
+        "LookaheadFrames": 2880,
+        "InputFrames": 192000,
+        "OutputFrames": 192000,
+        "LimitedFrames": 192000,
+        "GainReductionDb": 7.510141579946382,
+        "MaximumGainReductionDb": 7.521599913279715
+      },
+      "Error": null
+    },
+    {
+      "Name": "limiter-impulse",
+      "Passed": true,
+      "InputFrames": 192000,
+      "OutputFrames": 192000,
+      "NativeTruePeakDbtp": -1.500999957455706,
+      "IndependentTruePeakDbtp": -1.5,
+      "IndependentFrames": 192000,
+      "Processing": {
+        "State": "Finished",
+        "CeilingDbtp": -1.5,
+        "LookaheadFrames": 2880,
+        "InputFrames": 192000,
+        "OutputFrames": 192000,
+        "LimitedFrames": 37936,
+        "GainReductionDb": 0,
+        "MaximumGainReductionDb": 37.62459947967773
+      },
+      "Error": null
+    },
+    {
+      "Name": "limiter-noise",
+      "Passed": false,
+      "InputFrames": 192000,
+      "OutputFrames": 192000,
+      "NativeTruePeakDbtp": -1.730166539715958,
+      "IndependentTruePeakDbtp": -0.9,
+      "IndependentFrames": 192000,
+      "Processing": {
+        "State": "Finished",
+        "CeilingDbtp": -1.5,
+        "LookaheadFrames": 2880,
+        "InputFrames": 192000,
+        "OutputFrames": 192000,
+        "LimitedFrames": 192000,
+        "GainReductionDb": 16.734489382426844,
+        "MaximumGainReductionDb": 18.717875317189737
+      },
+      "Error": null
+    },
+    {
+      "Name": "limiter-alternating",
+      "Passed": true,
+      "InputFrames": 192000,
+      "OutputFrames": 192000,
+      "NativeTruePeakDbtp": -1.500999957455706,
+      "IndependentTruePeakDbtp": -1.5,
+      "IndependentFrames": 192000,
+      "Processing": {
+        "State": "Finished",
+        "CeilingDbtp": -1.5,
+        "LookaheadFrames": 2880,
+        "InputFrames": 192000,
+        "OutputFrames": 192000,
+        "LimitedFrames": 192000,
+        "GainReductionDb": 25.58235798645204,
+        "MaximumGainReductionDb": 25.583399653118704
+      },
+      "Error": null
+    }
+  ],
+  "reason": "The four-times short detector under-read broadband programme peaks: independent peak -0.9 dBTP violated the required linear ceiling. A nullable exception coalescing expression also failed compilation. Next source adds a longer eight-times detector plus the standard kernels and repairs the exception cast; no tolerance is relaxed.",
+  "productionChanged": false,
+  "migratedGroups": 0
+}
