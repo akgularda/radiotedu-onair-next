@@ -1,0 +1,3781 @@
+{
+  "kind": "scoped-final-mix-limiter-audible-timeline-and-nonblocking-audit-qualification",
+  "source": "28638a57007adad6736553a592e6cd3738c429b5",
+  "runId": "38847512000",
+  "url": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38847512000",
+  "status": "completed",
+  "conclusion": "success",
+  "verifiedAt": "2026-10-16T04:09:51.405Z",
+  "unit": {
+    "total": 194,
+    "executed": 194,
+    "passed": 194,
+    "failed": 0,
+    "error": 0,
+    "timeout": 0,
+    "aborted": 0,
+    "inconclusive": 0,
+    "passedButRunAborted": 0,
+    "notRunnable": 0,
+    "notExecuted": 0,
+    "disconnected": 0,
+    "warning": 0,
+    "completed": 0,
+    "inProgress": 0,
+    "pending": 0
+  },
+  "browserModelCases": 9,
+  "realAudioChecks": 168,
+  "service": {
+    "source": "28638a57007adad6736553a592e6cd3738c429b5",
+    "checks": 35,
+    "completed": true,
+    "productionChanged": false
+  },
+  "setup": {
+    "source": "28638a57007adad6736553a592e6cd3738c429b5",
+    "checks": 20,
+    "completed": true,
+    "productionChanged": false
+  },
+  "package": {
+    "UncompressedBytes": 274681076,
+    "UniquePayloadBytes": 112576118,
+    "Commissioned": false,
+    "Source": "28638a57007adad6736553a592e6cd3738c429b5",
+    "Files": 736,
+    "Scope": "Windows x64 self-contained development package; no FFmpeg, music, credentials or production configuration",
+    "ManifestSha256": "26E0666893F9F9B55802CF4C2CF13D7998EB96A5735B3C3406F4944F0D7425DB"
+  },
+  "reference": {
+    "Source": "28638a57007adad6736553a592e6cd3738c429b5",
+    "AtUtc": "2026-10-16T03:51:11.9268747+00:00",
+    "Completed": true,
+    "Passed": true,
+    "Cases": [
+      {
+        "Name": "stereo-calibration",
+        "Passed": true,
+        "SampleSha256": "0DAC73B2224CB912D4C5F22C07B40627B33C6633AF9470901ACEEF8C3D75EDF5",
+        "Reading": {
+          "SampleFrames": 960000,
+          "IntegratedFrames": 960000,
+          "MomentaryLufs": -22.99329558036168,
+          "ShortTermLufs": -22.993295580361682,
+          "IntegratedLufs": -22.993297101682888,
+          "LoudnessRangeLu": 6.750292265873005e-15,
+          "MaximumMomentaryLufs": -22.993290068425228,
+          "MaximumShortTermLufs": -22.993294845436413,
+          "SamplePeakDbfs": -23.000000432125567,
+          "TruePeakDbtp": -22.993304465401287,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 960000
+        },
+        "Reference": {
+          "IntegratedLufs": -23,
+          "LoudnessRangeLu": 0,
+          "TruePeakDbtp": -23
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.006702898317112016,
+          "RangeLu": null,
+          "PeakDb": 0.006695534598712527
+        }
+      },
+      {
+        "Name": "absolute-and-relative-gates",
+        "Passed": true,
+        "SampleSha256": "2B3D060134854F497A40132E2532CA0CA2884A92A444EC30EB139D69C9E15D45",
+        "Reading": {
+          "SampleFrames": 4800000,
+          "IntegratedFrames": 4800000,
+          "MomentaryLufs": -71.99329547223726,
+          "ShortTermLufs": -71.99329547289443,
+          "IntegratedLufs": -23.013868674469784,
+          "LoudnessRangeLu": 12.999999977485114,
+          "MaximumMomentaryLufs": -22.99329130982563,
+          "MaximumShortTermLufs": -22.99329501095662,
+          "SamplePeakDbfs": -23.000000432125567,
+          "TruePeakDbtp": -22.993304465401287,
+          "RangeSettled": true,
+          "Finished": true,
+          "StatisticsSampleFrames": 4800000
+        },
+        "Reference": {
+          "IntegratedLufs": -23,
+          "LoudnessRangeLu": 13,
+          "TruePeakDbtp": -23
+        },
+        "RangeCompared": true,
+        "RangeComparisonNote": "At least 60 seconds measured.",
+        "Difference": {
+          "IntegratedLu": 0.01386867446978357,
+          "RangeLu": 2.2514885955615682e-8,
+          "PeakDb": 0.006695534598712527
+        }
+      },
+      {
+        "Name": "energy-gated-programme",
+        "Passed": true,
+        "SampleSha256": "589A8B6487216B180D1ABD22595E28BC1F90B85F576B501E335DE9FFBFF41FFB",
+        "Reading": {
+          "SampleFrames": 2884800,
+          "IntegratedFrames": 2884800,
+          "MomentaryLufs": -25.993295532240094,
+          "ShortTermLufs": -25.9932955322401,
+          "IntegratedLufs": -22.97865743657876,
+          "LoudnessRangeLu": 5.999999945639276,
+          "MaximumMomentaryLufs": -19.99329284786913,
+          "MaximumShortTermLufs": -19.9932952214365,
+          "SamplePeakDbfs": -19.99999987057016,
+          "TruePeakDbtp": -19.993303920245964,
+          "RangeSettled": true,
+          "Finished": true,
+          "StatisticsSampleFrames": 2884800
+        },
+        "Reference": {
+          "IntegratedLufs": -23,
+          "LoudnessRangeLu": 6,
+          "TruePeakDbtp": -20
+        },
+        "RangeCompared": true,
+        "RangeComparisonNote": "At least 60 seconds measured.",
+        "Difference": {
+          "IntegratedLu": 0.02134256342123919,
+          "RangeLu": 5.4360723922286525e-8,
+          "PeakDb": 0.006696079754036077
+        }
+      },
+      {
+        "Name": "loudness-range",
+        "Passed": true,
+        "SampleSha256": "E992A30C60BC949492FEF5D8F636CCF74E5E0FC078F50FD028DD20A5162C5011",
+        "Reading": {
+          "SampleFrames": 4800000,
+          "IntegratedFrames": 4800000,
+          "MomentaryLufs": -49.99329568842328,
+          "ShortTermLufs": -49.99329568843113,
+          "IntegratedLufs": -24.491887635789624,
+          "LoudnessRangeLu": 14.999999957082206,
+          "MaximumMomentaryLufs": -19.99329106109395,
+          "MaximumShortTermLufs": -19.99329498319964,
+          "SamplePeakDbfs": -19.99999987057016,
+          "TruePeakDbtp": -19.993303920245964,
+          "RangeSettled": true,
+          "Finished": true,
+          "StatisticsSampleFrames": 4800000
+        },
+        "Reference": {
+          "IntegratedLufs": -24.5,
+          "LoudnessRangeLu": 15,
+          "TruePeakDbtp": -20
+        },
+        "RangeCompared": true,
+        "RangeComparisonNote": "At least 60 seconds measured.",
+        "Difference": {
+          "IntegratedLu": 0.0081123642103762,
+          "RangeLu": 4.291779376330851e-8,
+          "PeakDb": 0.006696079754036077
+        }
+      },
+      {
+        "Name": "opposite-phase-stereo",
+        "Passed": true,
+        "SampleSha256": "22F423A9CC3BE892F9A6A3DBB1A0AC289FBE462E9B3BF3507E7C7815BBA59602",
+        "Reading": {
+          "SampleFrames": 960000,
+          "IntegratedFrames": 960000,
+          "MomentaryLufs": -22.99329558036168,
+          "ShortTermLufs": -22.993295580361682,
+          "IntegratedLufs": -22.993297101682888,
+          "LoudnessRangeLu": 6.750292265873005e-15,
+          "MaximumMomentaryLufs": -22.993290068425228,
+          "MaximumShortTermLufs": -22.993294845436413,
+          "SamplePeakDbfs": -23.000000432125567,
+          "TruePeakDbtp": -22.993304465401287,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 960000
+        },
+        "Reference": {
+          "IntegratedLufs": -23,
+          "LoudnessRangeLu": 0,
+          "TruePeakDbtp": -23
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.006702898317112016,
+          "RangeLu": null,
+          "PeakDb": 0.006695534598712527
+        }
+      },
+      {
+        "Name": "true-peak-phase-45",
+        "Passed": true,
+        "SampleSha256": "8EE3AFDB9A19BF6A1D0C0956B9E03E7D226A1D8FAFD38F3AD6A65EF622C51B89",
+        "Reading": {
+          "SampleFrames": 144000,
+          "IntegratedFrames": 144000,
+          "MomentaryLufs": -2.742026062965096,
+          "ShortTermLufs": -2.6883113835253676,
+          "IntegratedLufs": -2.6743094676631167,
+          "LoudnessRangeLu": 0,
+          "MaximumMomentaryLufs": -2.6689361129086335,
+          "MaximumShortTermLufs": -2.6883113835253676,
+          "SamplePeakDbfs": -9.030900018572105,
+          "TruePeakDbtp": -5.9759090337932275,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 144000
+        },
+        "Reference": {
+          "IntegratedLufs": -2.7,
+          "LoudnessRangeLu": 20,
+          "TruePeakDbtp": -6
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.025690532336883454,
+          "RangeLu": null,
+          "PeakDb": 0.024090966206772535
+        }
+      },
+      {
+        "Name": "true-peak-phase-60",
+        "Passed": true,
+        "SampleSha256": "BE65A2D4E4B700F2CFB0084D6B5B6B797ECD1FA7DEA33A254E57C027FDAB8689",
+        "Reading": {
+          "SampleFrames": 144000,
+          "IntegratedFrames": 144000,
+          "MomentaryLufs": -2.7451545931357884,
+          "ShortTermLufs": -2.6915633278587157,
+          "IntegratedLufs": -2.6775613959589943,
+          "LoudnessRangeLu": 0,
+          "MaximumMomentaryLufs": -2.6721880350283533,
+          "MaximumShortTermLufs": -2.6915633278587157,
+          "SamplePeakDbfs": -7.269987435258983,
+          "TruePeakDbtp": -6.3132751595923935,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 144000
+        },
+        "Reference": {
+          "IntegratedLufs": -2.7,
+          "LoudnessRangeLu": 20,
+          "TruePeakDbtp": -6
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.02243860404100584,
+          "RangeLu": null,
+          "PeakDb": 0.3132751595923935
+        }
+      },
+      {
+        "Name": "true-peak-phase-67.5",
+        "Passed": true,
+        "SampleSha256": "80BFB460D68143DBB00F3FE8746A6B4D1CFDCD676661195B697D4FF07937140F",
+        "Reading": {
+          "SampleFrames": 144000,
+          "IntegratedFrames": 144000,
+          "MomentaryLufs": -2.7549914295943245,
+          "ShortTermLufs": -2.7014518964216356,
+          "IntegratedLufs": -2.68744997551718,
+          "LoudnessRangeLu": 0,
+          "MaximumMomentaryLufs": -2.682076618753773,
+          "MaximumShortTermLufs": -2.7014518964216356,
+          "SamplePeakDbfs": -6.7082932609946955,
+          "TruePeakDbtp": -6.026489256977294,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 144000
+        },
+        "Reference": {
+          "IntegratedLufs": -2.7,
+          "LoudnessRangeLu": 20,
+          "TruePeakDbtp": -6
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.012550024482820277,
+          "RangeLu": null,
+          "PeakDb": 0.026489256977294318
+        }
+      },
+      {
+        "Name": "above-full-scale-float",
+        "Passed": true,
+        "SampleSha256": "F00FD36335EA9E6610A07A4195363E06F423B7009C928FE760A7204E3FB187AB",
+        "Reading": {
+          "SampleFrames": 144000,
+          "IntegratedFrames": 144000,
+          "MomentaryLufs": 6.262956088004012,
+          "ShortTermLufs": 6.3166707673259515,
+          "IntegratedLufs": 6.330672683157755,
+          "LoudnessRangeLu": 0,
+          "MaximumMomentaryLufs": 6.336046037900572,
+          "MaximumShortTermLufs": 6.3166707673259515,
+          "SamplePeakDbfs": -0.025917867762879594,
+          "TruePeakDbtp": 3.0290731170159995,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 144000
+        },
+        "Reference": {
+          "IntegratedLufs": 6.3,
+          "LoudnessRangeLu": 20,
+          "TruePeakDbtp": 3
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.030672683157755287,
+          "RangeLu": null,
+          "PeakDb": 0.02907311701599946
+        }
+      },
+      {
+        "Name": "limiter-phase12k",
+        "Passed": true,
+        "InputFrames": 192000,
+        "OutputFrames": 192000,
+        "NativeTruePeakDbtp": -2.4761172292702236,
+        "IndependentTruePeakDbtp": -2,
+        "IndependentFrames": 192000,
+        "Processing": {
+          "State": "Finished",
+          "CeilingDbtp": -1.5,
+          "LookaheadFrames": 2880,
+          "InputFrames": 192000,
+          "OutputFrames": 192000,
+          "LimitedFrames": 192000,
+          "GainReductionDb": 8.579364886061285,
+          "MaximumGainReductionDb": 8.57936488606138
+        },
+        "Error": null
+      },
+      {
+        "Name": "limiter-phase20k",
+        "Passed": true,
+        "InputFrames": 192000,
+        "OutputFrames": 192000,
+        "NativeTruePeakDbtp": -2.1130618262879337,
+        "IndependentTruePeakDbtp": -2.3,
+        "IndependentFrames": 192000,
+        "Processing": {
+          "State": "Finished",
+          "CeilingDbtp": -1.5,
+          "LookaheadFrames": 2880,
+          "InputFrames": 192000,
+          "OutputFrames": 192000,
+          "LimitedFrames": 192000,
+          "GainReductionDb": 8.710603135668407,
+          "MaximumGainReductionDb": 8.710603135668407
+        },
+        "Error": null
+      },
+      {
+        "Name": "limiter-near-nyquist",
+        "Passed": true,
+        "InputFrames": 192000,
+        "OutputFrames": 192000,
+        "NativeTruePeakDbtp": -1.901087219881405,
+        "IndependentTruePeakDbtp": -1.9,
+        "IndependentFrames": 192000,
+        "Processing": {
+          "State": "Finished",
+          "CeilingDbtp": -1.5,
+          "LookaheadFrames": 2880,
+          "InputFrames": 192000,
+          "OutputFrames": 192000,
+          "LimitedFrames": 192000,
+          "GainReductionDb": 8.635611751155466,
+          "MaximumGainReductionDb": 8.635611751155466
+        },
+        "Error": null
+      },
+      {
+        "Name": "limiter-impulse",
+        "Passed": true,
+        "InputFrames": 192000,
+        "OutputFrames": 192000,
+        "NativeTruePeakDbtp": -1.9202622171783614,
+        "IndependentTruePeakDbtp": -1.9,
+        "IndependentFrames": 192000,
+        "Processing": {
+          "State": "Finished",
+          "CeilingDbtp": -1.5,
+          "LookaheadFrames": 2880,
+          "InputFrames": 192000,
+          "OutputFrames": 192000,
+          "LimitedFrames": 38381,
+          "GainReductionDb": 0,
+          "MaximumGainReductionDb": 38.04386201760758
+        },
+        "Error": null
+      },
+      {
+        "Name": "limiter-noise",
+        "Passed": true,
+        "InputFrames": 192000,
+        "OutputFrames": 192000,
+        "NativeTruePeakDbtp": -2.1653766669570667,
+        "IndependentTruePeakDbtp": -2.2,
+        "IndependentFrames": 192000,
+        "Processing": {
+          "State": "Finished",
+          "CeilingDbtp": -1.5,
+          "LookaheadFrames": 2880,
+          "InputFrames": 192000,
+          "OutputFrames": 192000,
+          "LimitedFrames": 192000,
+          "GainReductionDb": 17.55000296405977,
+          "MaximumGainReductionDb": 19.61929924776541
+        },
+        "Error": null
+      },
+      {
+        "Name": "limiter-alternating",
+        "Passed": true,
+        "InputFrames": 192000,
+        "OutputFrames": 192000,
+        "NativeTruePeakDbtp": -1.9205457341948373,
+        "IndependentTruePeakDbtp": -1.9,
+        "IndependentFrames": 192000,
+        "Processing": {
+          "State": "Finished",
+          "CeilingDbtp": -1.5,
+          "LookaheadFrames": 2880,
+          "InputFrames": 192000,
+          "OutputFrames": 192000,
+          "LimitedFrames": 192000,
+          "GainReductionDb": 26.004140419824125,
+          "MaximumGainReductionDb": 26.004561291005054
+        },
+        "Error": null
+      }
+    ],
+    "ReferenceVersion": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+    "SampleRate": 48000,
+    "Channels": 2,
+    "Scope": "Synthetic stereo meter and six oversampled final-limiter signal comparisons only. No encoded-output limiter, broadcasting PC, UI, full programme loudness workflow or full EBU test-set acceptance."
+  },
+  "audio": {
+    "Source": "28638a57007adad6736553a592e6cd3738c429b5",
+    "Completed": true,
+    "Passed": true,
+    "ProductionChanged": false,
+    "Scope": "Real isolated AAC-LC/24-bit Ogg FLAC, synthetic live mix and recovery only. Includes five-signal fixed source gain and two low-crest normalized AAC-LC/FLAC branches. Includes synthetic final-mix limiter and prepared/audible recovery ownership. No HE-AAC/18-output/worst-case encoded limiter/headroom/actual-PC/24-72h or mouse acceptance.",
+    "HeAacTested": false,
+    "Cases": [
+      {
+        "SchemaVersion": 1,
+        "CreatedAtUtc": "2026-10-16T03:52:42.8680306+00:00",
+        "Machine": "runnervm0xl3a",
+        "OS": "Microsoft Windows 10.0.26100",
+        "Runtime": ".NET 10.0.13",
+        "Icecast": "2.5.0",
+        "TestProfiles": [
+          "AAC-LC 192 kbps",
+          "24-bit Ogg FLAC"
+        ],
+        "HeAacTested": false,
+        "Source": "New independent implementation; no production configuration or services accessed.",
+        "ExecutionSource": "28638a57007adad6736553a592e6cd3738c429b5",
+        "PcmFormat": "48k stereo float32 little-endian",
+        "ExecutionBuild": "1.0.0+28638a57007adad6736553a592e6cd3738c429b5",
+        "Results": [
+          {
+            "Name": "baseline",
+            "Passed": true,
+            "DurationSeconds": 13.035804,
+            "Checks": [
+              {
+                "Description": "The program continues across a full song/ad/sweeper cycle.",
+                "Passed": true
+              },
+              {
+                "Description": "Both encoders and source sessions remain persistent across content boundaries.",
+                "Passed": true
+              },
+              {
+                "Description": "Healthy outputs lose no PCM blocks.",
+                "Passed": true
+              },
+              {
+                "Description": "Audit work does not overflow or fail.",
+                "Passed": true
+              },
+              {
+                "Description": "No decoder error on /next-baseline-aac",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded listener audio exceeds 8 seconds on /next-baseline-aac",
+                "Passed": true
+              },
+              {
+                "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-baseline-aac",
+                "Passed": true
+              },
+              {
+                "Description": "Listener hears multiple actual content transitions on /next-baseline-aac",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded tone order has no skips or repeats on /next-baseline-aac",
+                "Passed": true
+              },
+              {
+                "Description": "No decoder error on /next-baseline-flac",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded listener audio exceeds 8 seconds on /next-baseline-flac",
+                "Passed": true
+              },
+              {
+                "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-baseline-flac",
+                "Passed": true
+              },
+              {
+                "Description": "Listener hears multiple actual content transitions on /next-baseline-flac",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded tone order has no skips or repeats on /next-baseline-flac",
+                "Passed": true
+              },
+              {
+                "Description": "Playback journal hash chain is valid.",
+                "Passed": true
+              },
+              {
+                "Description": "Event acknowledgements do not duplicate journal rows.",
+                "Passed": true
+              },
+              {
+                "Description": "Music, advertisements and sweepers produce separate occurrence records.",
+                "Passed": true
+              },
+              {
+                "Description": "Orderly stop leaves a terminal record for every started occurrence.",
+                "Passed": true
+              },
+              {
+                "Description": "Completed assets retain their exact sample counts, including boundaries inside a 20 ms block.",
+                "Passed": true
+              },
+              {
+                "Description": "Program sample positions never reset during output recovery: baseline",
+                "Passed": true
+              },
+              {
+                "Description": "No track is repeated or advanced by transport recovery: baseline",
+                "Passed": true
+              },
+              {
+                "Description": "Daily local report contains one record per station occurrence, independent of output variants.",
+                "Passed": true
+              }
+            ],
+            "Details": {
+              "station": {
+                "Id": "baseline",
+                "State": "Running",
+                "Samples": 597120,
+                "CompletedItems": 8,
+                "SkippedItems": 0,
+                "CurrentTitle": "song-a",
+                "LateBlocks": 0,
+                "AuditRejectedEvents": 0,
+                "Outputs": [
+                  {
+                    "Id": "baseline-aac",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 1,
+                    "Connections": 1,
+                    "FramesWritten": 621,
+                    "DroppedBlocks": 0,
+                    "QueuedBlocks": 1,
+                    "EncoderPid": 4984,
+                    "LastError": null
+                  },
+                  {
+                    "Id": "baseline-flac",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 1,
+                    "Connections": 1,
+                    "FramesWritten": 621,
+                    "DroppedBlocks": 0,
+                    "QueuedBlocks": 1,
+                    "EncoderPid": 5016,
+                    "LastError": null
+                  }
+                ],
+                "CurrentAssetId": "song-a",
+                "CurrentItemSamples": 19968,
+                "Recovered": false,
+                "Enabled": true,
+                "RequestedRunning": true,
+                "LastError": null,
+                "RetryAtUtc": null,
+                "CurrentArtist": "RadioTEDU synthetic fixture",
+                "CurrentDurationSeconds": null,
+                "NextItem": {
+                  "Id": "advert",
+                  "Artist": "RadioTEDU synthetic fixture",
+                  "Title": "advert",
+                  "Kind": "Advertisement",
+                  "DurationSeconds": null
+                },
+                "Loudness": {
+                  "State": "Measuring",
+                  "UpdatedAtUtc": "2026-10-16T03:52:42.6960835+00:00",
+                  "Current": {
+                    "Id": "9fdc333bbb6c442fbf457f0e531549eb",
+                    "StationId": "baseline",
+                    "SessionId": "c56cc1e564db4bdd86fdf9e692977d8e",
+                    "StartSample": 0,
+                    "EndSample": 595200,
+                    "StartedAtUtc": "2026-10-16T03:52:30.3125961+00:00",
+                    "Phase": "Live",
+                    "Reason": "ContinuousWindow",
+                    "MaximumFrames": 172800000,
+                    "HasMeasurementGap": false,
+                    "GapBeforeFrames": 0,
+                    "MissingTail": false,
+                    "Reading": {
+                      "SampleFrames": 595200,
+                      "IntegratedFrames": 576000,
+                      "MomentaryLufs": -14.081216793850327,
+                      "ShortTermLufs": -13.635637753108853,
+                      "IntegratedLufs": -13.616079219330977,
+                      "LoudnessRangeLu": 0.7556244727756902,
+                      "MaximumMomentaryLufs": -12.559930016892745,
+                      "MaximumShortTermLufs": -13.246895500410039,
+                      "SamplePeakDbfs": -13.407037898909222,
+                      "TruePeakDbtp": -12.441079148559389,
+                      "RangeSettled": false,
+                      "Finished": false,
+                      "StatisticsSampleFrames": 576000
+                    },
+                    "KnownEndAtUtc": "2026-10-16T03:52:42.7125961+00:00",
+                    "Scope": "pre_encoder_final_mix"
+                  },
+                  "LastClosed": null,
+                  "DroppedBlocks": 0,
+                  "DroppedFrames": 0,
+                  "InvalidBlocks": 0,
+                  "Gaps": 0,
+                  "HistoryFailures": 0,
+                  "Error": null,
+                  "HistoryError": null,
+                  "QueuedBlocks": 1,
+                  "Continuous": true
+                },
+                "SourceGain": {
+                  "TargetLufs": -23,
+                  "SourceCeilingDbtp": -1.4,
+                  "RequestedDb": 0,
+                  "AppliedDb": 0,
+                  "State": "Unmeasured",
+                  "PredictedLufs": null,
+                  "PredictedTruePeakDbtp": null,
+                  "Linear": 1
+                },
+                "Limiter": {
+                  "State": "Processing",
+                  "CeilingDbtp": -1.5,
+                  "LookaheadFrames": 2880,
+                  "InputFrames": 600000,
+                  "OutputFrames": 597120,
+                  "LimitedFrames": 0,
+                  "GainReductionDb": 0,
+                  "MaximumGainReductionDb": 0
+                },
+                "PendingAuditCommits": 0
+              },
+              "decodedListeners": [
+                {
+                  "Mount": "/next-baseline-aac",
+                  "DecodedSeconds": 12,
+                  "SilentWindows": 0,
+                  "LongestSilentRun": 0,
+                  "ToneTransitions": 8,
+                  "UnexpectedToneTransitions": 0,
+                  "LiveToneWindows": 0,
+                  "FirstTones": [
+                    440,
+                    880,
+                    1320,
+                    660,
+                    440,
+                    880,
+                    1320,
+                    660,
+                    440
+                  ],
+                  "Error": null
+                },
+                {
+                  "Mount": "/next-baseline-flac",
+                  "DecodedSeconds": 11.86,
+                  "SilentWindows": 0,
+                  "LongestSilentRun": 0,
+                  "ToneTransitions": 7,
+                  "UnexpectedToneTransitions": 0,
+                  "LiveToneWindows": 0,
+                  "FirstTones": [
+                    440,
+                    880,
+                    1320,
+                    660,
+                    440,
+                    880,
+                    1320,
+                    660
+                  ],
+                  "Error": null
+                }
+              ],
+              "report": {
+                "SchemaVersion": 1,
+                "LocalDate": "2026-10-16",
+                "Timezone": "Europe/Istanbul",
+                "Records": 9,
+                "IncompleteRecords": 0,
+                "Sha256": "9164a8280e892a95f07feb5d7a1b2ea5df7958dce0d860b90bbc22191c5ed808",
+                "FileName": "2026-10-16.csv",
+                "GeneratedAtUtc": "2026-10-16T03:52:42.8525733+00:00"
+              }
+            },
+            "Error": null
+          }
+        ],
+        "RemainingOwnedChildren": {}
+      },
+      {
+        "SchemaVersion": 1,
+        "CreatedAtUtc": "2026-10-16T03:52:48.3288083+00:00",
+        "Machine": "runnervm0xl3a",
+        "OS": "Microsoft Windows 10.0.26100",
+        "Runtime": ".NET 10.0.13",
+        "Icecast": "2.5.0",
+        "TestProfiles": [
+          "AAC-LC 192 kbps",
+          "24-bit Ogg FLAC"
+        ],
+        "HeAacTested": false,
+        "Source": "New independent implementation; no production configuration or services accessed.",
+        "ExecutionSource": "28638a57007adad6736553a592e6cd3738c429b5",
+        "PcmFormat": "48k stereo float32 little-endian",
+        "ExecutionBuild": "1.0.0+28638a57007adad6736553a592e6cd3738c429b5",
+        "Results": [
+          {
+            "Name": "precision",
+            "Passed": true,
+            "DurationSeconds": 5.2136967,
+            "Checks": [
+              {
+                "Description": "Real Ogg FLAC listener decoded at least two seconds of stereo PCM.",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded FLAC follows the original 24-bit sample sequence across repeated file boundaries.",
+                "Passed": true
+              },
+              {
+                "Description": "Sub-16-bit sample detail survives the entire decoder/mix/encoder/listener path.",
+                "Passed": true
+              },
+              {
+                "Description": "Distinct left and right channels remain distinct.",
+                "Passed": true
+              },
+              {
+                "Description": "Independent stream probe confirms 48 kHz stereo 24-bit FLAC.",
+                "Passed": true
+              },
+              {
+                "Description": "Real audio loop publishes continuous measured final-mix coverage without blocking outputs.",
+                "Passed": true
+              },
+              {
+                "Description": "Measured final-mix window closes durably with real sample boundaries.",
+                "Passed": true
+              }
+            ],
+            "Details": {
+              "listener": {
+                "ComparedFrames": 135808,
+                "MismatchedFrames": 0,
+                "SubSixteenBitFrames": 135805,
+                "StereoDifferentFrames": 135808,
+                "MaximumErrorLsb24": 0,
+                "FirstFixtureFrame": 8192
+              },
+              "stream": {
+                "codec_name": "flac",
+                "sample_rate": "48000",
+                "channels": 2,
+                "bits_per_raw_sample": "24"
+              },
+              "station": {
+                "Id": "precision",
+                "State": "Running",
+                "Samples": 225600,
+                "CompletedItems": 4,
+                "SkippedItems": 0,
+                "CurrentTitle": "24-bit stereo precision",
+                "LateBlocks": 49,
+                "AuditRejectedEvents": 0,
+                "Outputs": [
+                  {
+                    "Id": "precision",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 1,
+                    "Connections": 1,
+                    "FramesWritten": 184,
+                    "DroppedBlocks": 0,
+                    "QueuedBlocks": 51,
+                    "EncoderPid": 8512,
+                    "LastError": null
+                  }
+                ],
+                "CurrentAssetId": "stereo-detail",
+                "CurrentItemSamples": 33600,
+                "Recovered": false,
+                "Enabled": true,
+                "RequestedRunning": true,
+                "LastError": null,
+                "RetryAtUtc": null,
+                "CurrentArtist": "Synthetic engineering signal",
+                "CurrentDurationSeconds": 1,
+                "NextItem": {
+                  "Id": "stereo-detail",
+                  "Artist": "Synthetic engineering signal",
+                  "Title": "24-bit stereo precision",
+                  "Kind": "Music",
+                  "DurationSeconds": 1
+                },
+                "Loudness": {
+                  "State": "Measuring",
+                  "UpdatedAtUtc": "2026-10-16T03:52:48.2606893+00:00",
+                  "Current": {
+                    "Id": "686a6f1483a048f1b049f084dcf4be0a",
+                    "StationId": "precision",
+                    "SessionId": "dbe640949ded4258991050114c94da59",
+                    "StartSample": 0,
+                    "EndSample": 220800,
+                    "StartedAtUtc": "2026-10-16T03:52:43.5542048+00:00",
+                    "Phase": "Live",
+                    "Reason": "ContinuousWindow",
+                    "MaximumFrames": 172800000,
+                    "HasMeasurementGap": false,
+                    "GapBeforeFrames": 0,
+                    "MissingTail": false,
+                    "Reading": {
+                      "SampleFrames": 220800,
+                      "IntegratedFrames": 192000,
+                      "MomentaryLufs": -25.670551896442568,
+                      "ShortTermLufs": -25.670557042793657,
+                      "IntegratedLufs": -25.6705883267863,
+                      "LoudnessRangeLu": 1.0029005652154069e-13,
+                      "MaximumMomentaryLufs": -25.670544098225047,
+                      "MaximumShortTermLufs": -25.67055601829979,
+                      "SamplePeakDbfs": -24.08041183823007,
+                      "TruePeakDbtp": -24.067291628904577,
+                      "RangeSettled": false,
+                      "Finished": false,
+                      "StatisticsSampleFrames": 192000
+                    },
+                    "KnownEndAtUtc": "2026-10-16T03:52:48.1542047+00:00",
+                    "Scope": "pre_encoder_final_mix"
+                  },
+                  "LastClosed": null,
+                  "DroppedBlocks": 0,
+                  "DroppedFrames": 0,
+                  "InvalidBlocks": 0,
+                  "Gaps": 0,
+                  "HistoryFailures": 0,
+                  "Error": null,
+                  "HistoryError": null,
+                  "QueuedBlocks": 4,
+                  "Continuous": true
+                },
+                "SourceGain": {
+                  "TargetLufs": -23,
+                  "SourceCeilingDbtp": -1.4,
+                  "RequestedDb": 0,
+                  "AppliedDb": 0,
+                  "State": "Unmeasured",
+                  "PredictedLufs": null,
+                  "PredictedTruePeakDbtp": null,
+                  "Linear": 1
+                },
+                "Limiter": {
+                  "State": "Processing",
+                  "CeilingDbtp": -1.5,
+                  "LookaheadFrames": 2880,
+                  "InputFrames": 228480,
+                  "OutputFrames": 225600,
+                  "LimitedFrames": 0,
+                  "GainReductionDb": 0,
+                  "MaximumGainReductionDb": 0
+                },
+                "PendingAuditCommits": 3
+              },
+              "measurementHistory": [
+                {
+                  "Id": "686a6f1483a048f1b049f084dcf4be0a",
+                  "StationId": "precision",
+                  "SessionId": "dbe640949ded4258991050114c94da59",
+                  "StartSample": 0,
+                  "EndSample": 226560,
+                  "StartedAtUtc": "2026-10-16T03:52:43.5542048+00:00",
+                  "Phase": "Finished",
+                  "Reason": "SessionEnded",
+                  "MaximumFrames": 172800000,
+                  "HasMeasurementGap": false,
+                  "GapBeforeFrames": 0,
+                  "MissingTail": false,
+                  "Reading": {
+                    "SampleFrames": 226560,
+                    "IntegratedFrames": 225600,
+                    "MomentaryLufs": -25.670551232318015,
+                    "ShortTermLufs": -25.670557042793657,
+                    "IntegratedLufs": -25.670583408511707,
+                    "LoudnessRangeLu": 1.928654933106574e-15,
+                    "MaximumMomentaryLufs": -25.670544098225047,
+                    "MaximumShortTermLufs": -25.67055601829979,
+                    "SamplePeakDbfs": -24.08041183823007,
+                    "TruePeakDbtp": -23.392830382768857,
+                    "RangeSettled": false,
+                    "Finished": true,
+                    "StatisticsSampleFrames": 226560
+                  },
+                  "KnownEndAtUtc": "2026-10-16T03:52:48.2742047+00:00",
+                  "Scope": "pre_encoder_final_mix"
+                },
+                {
+                  "Id": "686a6f1483a048f1b049f084dcf4be0a",
+                  "StationId": "precision",
+                  "SessionId": "dbe640949ded4258991050114c94da59",
+                  "StartSample": 0,
+                  "EndSample": 0,
+                  "StartedAtUtc": "2026-10-16T03:52:43.5542048+00:00",
+                  "Phase": "Started",
+                  "Reason": "ContinuousWindow",
+                  "MaximumFrames": 172800000,
+                  "HasMeasurementGap": false,
+                  "GapBeforeFrames": 0,
+                  "MissingTail": false,
+                  "Reading": null,
+                  "KnownEndAtUtc": "2026-10-16T03:52:43.5542048+00:00",
+                  "Scope": "pre_encoder_final_mix"
+                }
+              ],
+              "scope": "Synthetic pre-encoder meter and 24-bit FLAC precision only; no normalization, true-peak limiting, HE-AAC or production compliance."
+            },
+            "Error": null
+          }
+        ],
+        "RemainingOwnedChildren": {}
+      },
+      {
+        "SchemaVersion": 1,
+        "CreatedAtUtc": "2026-10-16T03:53:01.7764016+00:00",
+        "Machine": "runnervm0xl3a",
+        "OS": "Microsoft Windows 10.0.26100",
+        "Runtime": ".NET 10.0.13",
+        "Icecast": "2.5.0",
+        "TestProfiles": [
+          "AAC-LC 192 kbps",
+          "24-bit Ogg FLAC"
+        ],
+        "HeAacTested": false,
+        "Source": "New independent implementation; no production configuration or services accessed.",
+        "ExecutionSource": "28638a57007adad6736553a592e6cd3738c429b5",
+        "PcmFormat": "48k stereo float32 little-endian",
+        "ExecutionBuild": "1.0.0+28638a57007adad6736553a592e6cd3738c429b5",
+        "Results": [
+          {
+            "Name": "normalization",
+            "Passed": true,
+            "DurationSeconds": 13.2503304,
+            "Checks": [
+              {
+                "Passed": true,
+                "Description": "Completed target scan binds the full source SHA-256."
+              },
+              {
+                "Passed": true,
+                "Description": "target: no added latency, samples or finite-EOF padding."
+              },
+              {
+                "Passed": true,
+                "Description": "target: independent native instrument agrees with FFmpeg source I within 0.15 LU."
+              },
+              {
+                "Passed": true,
+                "Description": "target: real decoder applies only the measured fixed stereo gain."
+              },
+              {
+                "Passed": true,
+                "Description": "target: measured source true peak stays below the linear ceiling."
+              },
+              {
+                "Passed": true,
+                "Description": "target: target/peak/boost/silence decision is explicit."
+              },
+              {
+                "Passed": true,
+                "Description": "target: independently measured processed programme is within -23 +/-0.2 LUFS."
+              },
+              {
+                "Passed": true,
+                "Description": "target: distinct stereo channels survive processing."
+              },
+              {
+                "Passed": true,
+                "Description": "target: original media is unchanged."
+              },
+              {
+                "Passed": true,
+                "Description": "Completed loud scan binds the full source SHA-256."
+              },
+              {
+                "Passed": true,
+                "Description": "loud: no added latency, samples or finite-EOF padding."
+              },
+              {
+                "Passed": true,
+                "Description": "loud: independent native instrument agrees with FFmpeg source I within 0.15 LU."
+              },
+              {
+                "Passed": true,
+                "Description": "loud: real decoder applies only the measured fixed stereo gain."
+              },
+              {
+                "Passed": true,
+                "Description": "loud: measured source true peak stays below the linear ceiling."
+              },
+              {
+                "Passed": true,
+                "Description": "loud: target/peak/boost/silence decision is explicit."
+              },
+              {
+                "Passed": true,
+                "Description": "loud: independently measured processed programme is within -23 +/-0.2 LUFS."
+              },
+              {
+                "Passed": true,
+                "Description": "loud: distinct stereo channels survive processing."
+              },
+              {
+                "Passed": true,
+                "Description": "loud: original media is unchanged."
+              },
+              {
+                "Passed": true,
+                "Description": "Completed quiet scan binds the full source SHA-256."
+              },
+              {
+                "Passed": true,
+                "Description": "quiet: no added latency, samples or finite-EOF padding."
+              },
+              {
+                "Passed": true,
+                "Description": "quiet: independent native instrument agrees with FFmpeg source I within 0.15 LU."
+              },
+              {
+                "Passed": true,
+                "Description": "quiet: real decoder applies only the measured fixed stereo gain."
+              },
+              {
+                "Passed": true,
+                "Description": "quiet: measured source true peak stays below the linear ceiling."
+              },
+              {
+                "Passed": true,
+                "Description": "quiet: target/peak/boost/silence decision is explicit."
+              },
+              {
+                "Passed": true,
+                "Description": "quiet: distinct stereo channels survive processing."
+              },
+              {
+                "Passed": true,
+                "Description": "quiet: original media is unchanged."
+              },
+              {
+                "Passed": true,
+                "Description": "Completed transient scan binds the full source SHA-256."
+              },
+              {
+                "Passed": true,
+                "Description": "transient: no added latency, samples or finite-EOF padding."
+              },
+              {
+                "Passed": true,
+                "Description": "transient: independent native instrument agrees with FFmpeg source I within 0.15 LU."
+              },
+              {
+                "Passed": true,
+                "Description": "transient: real decoder applies only the measured fixed stereo gain."
+              },
+              {
+                "Passed": true,
+                "Description": "transient: measured source true peak stays below the linear ceiling."
+              },
+              {
+                "Passed": true,
+                "Description": "transient: target/peak/boost/silence decision is explicit."
+              },
+              {
+                "Passed": true,
+                "Description": "transient: distinct stereo channels survive processing."
+              },
+              {
+                "Passed": true,
+                "Description": "transient: original media is unchanged."
+              },
+              {
+                "Passed": true,
+                "Description": "Completed silence scan binds the full source SHA-256."
+              },
+              {
+                "Passed": true,
+                "Description": "silence: no added latency, samples or finite-EOF padding."
+              },
+              {
+                "Passed": true,
+                "Description": "silence: real decoder applies only the measured fixed stereo gain."
+              },
+              {
+                "Passed": true,
+                "Description": "silence: measured source true peak stays below the linear ceiling."
+              },
+              {
+                "Passed": true,
+                "Description": "silence: target/peak/boost/silence decision is explicit."
+              },
+              {
+                "Passed": true,
+                "Description": "silence: original media is unchanged."
+              },
+              {
+                "Passed": true,
+                "Description": "Real finite station completes at the original exact sample boundary."
+              },
+              {
+                "Passed": true,
+                "Description": "Actual programme publication carries the normalized source."
+              },
+              {
+                "Passed": true,
+                "Description": "Actual attempt records preserve the gain used at start and completion."
+              },
+              {
+                "Passed": true,
+                "Description": "Attempt hash chain still verifies after source-gain evidence is added."
+              },
+              {
+                "Passed": true,
+                "Description": "AacLc192: listener measures exactly 192000 decoded stereo frames (observed 192000)."
+              },
+              {
+                "Passed": true,
+                "Description": "AacLc192: independently decoded synthetic output measures -23 +/-0.2 LUFS (observed -23)."
+              },
+              {
+                "Passed": true,
+                "Description": "AacLc192: independently decoded synthetic output stays below -1 dBTP (observed -19.4)."
+              },
+              {
+                "Passed": true,
+                "Description": "OggFlac: listener measures exactly 192000 decoded stereo frames (observed 192000)."
+              },
+              {
+                "Passed": true,
+                "Description": "OggFlac: independently decoded synthetic output measures -23 +/-0.2 LUFS (observed -23)."
+              },
+              {
+                "Passed": true,
+                "Description": "OggFlac: independently decoded synthetic output stays below -1 dBTP (observed -21.4)."
+              },
+              {
+                "Passed": true,
+                "Description": "Both normalized codec branches remain connected without encoder restarts or dropped blocks during sequential listener measurements."
+              },
+              {
+                "Passed": true,
+                "Description": "A changed source revision is rejected before a decoder starts."
+              },
+              {
+                "Passed": true,
+                "Description": "All real validation/decoder workers are confirmed closed."
+              }
+            ],
+            "Details": {
+              "sources": [
+                {
+                  "Name": "target",
+                  "Source": {
+                    "ContentSha256": "8303D49020E27A4FD15F6DFDC71122A0FB9A8D484D6A51659A8BE3A11306A91B",
+                    "Bytes": 768044,
+                    "ModifiedTicks": 639277195685396700,
+                    "Seconds": 2,
+                    "IntegratedLufs": -26,
+                    "TruePeakDbtp": -24.4,
+                    "LoudnessRangeLu": null,
+                    "MeasuredAtUtc": "2026-10-16T03:52:48.6781158+00:00",
+                    "Algorithm": "ffmpeg-ebur128-stereo48k-v1"
+                  },
+                  "Gain": {
+                    "TargetLufs": -23,
+                    "SourceCeilingDbtp": -1.4,
+                    "RequestedDb": 3,
+                    "AppliedDb": 3,
+                    "State": "Target gain",
+                    "PredictedLufs": -23,
+                    "PredictedTruePeakDbtp": -21.4,
+                    "Linear": 1.4125375446227544
+                  },
+                  "Before": {
+                    "SampleFrames": 96000,
+                    "IntegratedFrames": 96000,
+                    "MomentaryLufs": -26.02511936658443,
+                    "ShortTermLufs": null,
+                    "IntegratedLufs": -26.025187765317266,
+                    "LoudnessRangeLu": null,
+                    "MaximumMomentaryLufs": -26.02511168261045,
+                    "MaximumShortTermLufs": null,
+                    "SamplePeakDbfs": -24.43697518647189,
+                    "TruePeakDbtp": -24.424194625194676,
+                    "RangeSettled": false,
+                    "Finished": true,
+                    "StatisticsSampleFrames": 96000
+                  },
+                  "After": {
+                    "SampleFrames": 96000,
+                    "IntegratedFrames": 96000,
+                    "MomentaryLufs": -23.025119371622207,
+                    "ShortTermLufs": null,
+                    "IntegratedLufs": -23.025187770354144,
+                    "LoudnessRangeLu": null,
+                    "MaximumMomentaryLufs": -23.025111687648213,
+                    "MaximumShortTermLufs": null,
+                    "SamplePeakDbfs": -21.436974837502518,
+                    "TruePeakDbtp": -21.424194587631945,
+                    "RangeSettled": false,
+                    "Finished": true,
+                    "StatisticsSampleFrames": 96000
+                  },
+                  "MaximumPcmError": 3.587891539424959e-9
+                },
+                {
+                  "Name": "loud",
+                  "Source": {
+                    "ContentSha256": "514D2B4211AFA9A1C40CA7E2C77BE5AD3DA1EF150E0454B4EBD290F1F7E41B12",
+                    "Bytes": 768044,
+                    "ModifiedTicks": 639277195689961200,
+                    "Seconds": 2,
+                    "IntegratedLufs": -3.5,
+                    "TruePeakDbtp": -1.9,
+                    "LoudnessRangeLu": null,
+                    "MeasuredAtUtc": "2026-10-16T03:52:49.0881232+00:00",
+                    "Algorithm": "ffmpeg-ebur128-stereo48k-v1"
+                  },
+                  "Gain": {
+                    "TargetLufs": -23,
+                    "SourceCeilingDbtp": -1.4,
+                    "RequestedDb": -19.5,
+                    "AppliedDb": -19.5,
+                    "State": "Target gain",
+                    "PredictedLufs": -23,
+                    "PredictedTruePeakDbtp": -21.4,
+                    "Linear": 0.10592537251772889
+                  },
+                  "Before": {
+                    "SampleFrames": 96000,
+                    "IntegratedFrames": 96000,
+                    "MomentaryLufs": -3.526344627005651,
+                    "ShortTermLufs": null,
+                    "IntegratedLufs": -3.526413025738579,
+                    "LoudnessRangeLu": null,
+                    "MaximumMomentaryLufs": -3.526336943031545,
+                    "MaximumShortTermLufs": null,
+                    "SamplePeakDbfs": -1.9382001307312877,
+                    "TruePeakDbtp": -1.9254197560903008,
+                    "RangeSettled": false,
+                    "Finished": true,
+                    "StatisticsSampleFrames": 96000
+                  },
+                  "After": {
+                    "SampleFrames": 96000,
+                    "IntegratedFrames": 96000,
+                    "MomentaryLufs": -23.026344636188885,
+                    "ShortTermLufs": null,
+                    "IntegratedLufs": -23.026413034921713,
+                    "LoudnessRangeLu": null,
+                    "MaximumMomentaryLufs": -23.02633695221491,
+                    "MaximumShortTermLufs": null,
+                    "SamplePeakDbfs": -21.43820046597934,
+                    "TruePeakDbtp": -21.425419515431187,
+                    "RangeSettled": false,
+                    "Finished": true,
+                    "StatisticsSampleFrames": 96000
+                  },
+                  "MaximumPcmError": 3.717474328368553e-9
+                },
+                {
+                  "Name": "quiet",
+                  "Source": {
+                    "ContentSha256": "A0B780E266C1BB2015AE8D388FA6CC079B0DD4EB498964637D8F70A3713CFA2B",
+                    "Bytes": 768044,
+                    "ModifiedTicks": 639277195693290400,
+                    "Seconds": 2,
+                    "IntegratedLufs": -55.6,
+                    "TruePeakDbtp": -54,
+                    "LoudnessRangeLu": null,
+                    "MeasuredAtUtc": "2026-10-16T03:52:49.4263121+00:00",
+                    "Algorithm": "ffmpeg-ebur128-stereo48k-v1"
+                  },
+                  "Gain": {
+                    "TargetLufs": -23,
+                    "SourceCeilingDbtp": -1.4,
+                    "RequestedDb": 32.6,
+                    "AppliedDb": 12,
+                    "State": "Boost constrained",
+                    "PredictedLufs": -43.6,
+                    "PredictedTruePeakDbtp": -42,
+                    "Linear": 3.9810717055349722
+                  },
+                  "Before": {
+                    "SampleFrames": 96000,
+                    "IntegratedFrames": 96000,
+                    "MomentaryLufs": -55.56754444562579,
+                    "ShortTermLufs": null,
+                    "IntegratedLufs": -55.56761284435737,
+                    "LoudnessRangeLu": null,
+                    "MaximumMomentaryLufs": -55.56753676165238,
+                    "MaximumShortTermLufs": null,
+                    "SamplePeakDbfs": -53.97939967416277,
+                    "TruePeakDbtp": -53.966619235230546,
+                    "RangeSettled": false,
+                    "Finished": true,
+                    "StatisticsSampleFrames": 96000
+                  },
+                  "After": {
+                    "SampleFrames": 96000,
+                    "IntegratedFrames": 96000,
+                    "MomentaryLufs": -43.56754445394058,
+                    "ShortTermLufs": null,
+                    "IntegratedLufs": -43.567612852674486,
+                    "LoudnessRangeLu": null,
+                    "MaximumMomentaryLufs": -43.56753676996678,
+                    "MaximumShortTermLufs": null,
+                    "SamplePeakDbfs": -41.97939946611189,
+                    "TruePeakDbtp": -41.96661922766193,
+                    "RangeSettled": false,
+                    "Finished": true,
+                    "StatisticsSampleFrames": 96000
+                  },
+                  "MaximumPcmError": 4.648986716426773e-10
+                },
+                {
+                  "Name": "transient",
+                  "Source": {
+                    "ContentSha256": "C1831EA6709C2959B8EBA5FB5B2C2106A869E2DD83E3696EF14F182822CF4F20",
+                    "Bytes": 768044,
+                    "ModifiedTicks": 639277195696755300,
+                    "Seconds": 2,
+                    "IntegratedLufs": -37.1,
+                    "TruePeakDbtp": -0.4,
+                    "LoudnessRangeLu": null,
+                    "MeasuredAtUtc": "2026-10-16T03:52:49.7628399+00:00",
+                    "Algorithm": "ffmpeg-ebur128-stereo48k-v1"
+                  },
+                  "Gain": {
+                    "TargetLufs": -23,
+                    "SourceCeilingDbtp": -1.4,
+                    "RequestedDb": 14.100000000000001,
+                    "AppliedDb": -0.9999999999999999,
+                    "State": "Peak constrained",
+                    "PredictedLufs": -38.1,
+                    "PredictedTruePeakDbtp": -1.4,
+                    "Linear": 0.8912509381337456
+                  },
+                  "Before": {
+                    "SampleFrames": 96000,
+                    "IntegratedFrames": 96000,
+                    "MomentaryLufs": -61.58814435890562,
+                    "ShortTermLufs": null,
+                    "IntegratedLufs": -37.1146535885171,
+                    "LoudnessRangeLu": null,
+                    "MaximumMomentaryLufs": -37.11465352778503,
+                    "MaximumShortTermLufs": null,
+                    "SamplePeakDbfs": -0.4455280032165962,
+                    "TruePeakDbtp": -0.4455280032165962,
+                    "RangeSettled": false,
+                    "Finished": true,
+                    "StatisticsSampleFrames": 96000
+                  },
+                  "After": {
+                    "SampleFrames": 96000,
+                    "IntegratedFrames": 96000,
+                    "MomentaryLufs": -62.58814437608733,
+                    "ShortTermLufs": null,
+                    "IntegratedLufs": -38.11465349478496,
+                    "LoudnessRangeLu": null,
+                    "MaximumMomentaryLufs": -38.11465343405289,
+                    "MaximumShortTermLufs": null,
+                    "SamplePeakDbfs": -1.4455279090870354,
+                    "TruePeakDbtp": -1.4455279090870354,
+                    "RangeSettled": false,
+                    "Finished": true,
+                    "StatisticsSampleFrames": 96000
+                  },
+                  "MaximumPcmError": 9.175618043144596e-9
+                },
+                {
+                  "Name": "silence",
+                  "Source": {
+                    "ContentSha256": "4B780BE69DB79FB990C6B8D44D66A12A3C9DD2E80743107BAD2967E5015DD226",
+                    "Bytes": 768044,
+                    "ModifiedTicks": 639277195700155800,
+                    "Seconds": 2,
+                    "IntegratedLufs": null,
+                    "TruePeakDbtp": null,
+                    "LoudnessRangeLu": null,
+                    "MeasuredAtUtc": "2026-10-16T03:52:50.1036476+00:00",
+                    "Algorithm": "ffmpeg-ebur128-stereo48k-v1"
+                  },
+                  "Gain": {
+                    "TargetLufs": -23,
+                    "SourceCeilingDbtp": -1.4,
+                    "RequestedDb": 0,
+                    "AppliedDb": 0,
+                    "State": "No gated programme",
+                    "PredictedLufs": null,
+                    "PredictedTruePeakDbtp": null,
+                    "Linear": 1
+                  },
+                  "Before": {
+                    "SampleFrames": 96000,
+                    "IntegratedFrames": 96000,
+                    "MomentaryLufs": null,
+                    "ShortTermLufs": null,
+                    "IntegratedLufs": null,
+                    "LoudnessRangeLu": null,
+                    "MaximumMomentaryLufs": null,
+                    "MaximumShortTermLufs": null,
+                    "SamplePeakDbfs": null,
+                    "TruePeakDbtp": null,
+                    "RangeSettled": false,
+                    "Finished": true,
+                    "StatisticsSampleFrames": 96000
+                  },
+                  "After": {
+                    "SampleFrames": 96000,
+                    "IntegratedFrames": 96000,
+                    "MomentaryLufs": null,
+                    "ShortTermLufs": null,
+                    "IntegratedLufs": null,
+                    "LoudnessRangeLu": null,
+                    "MaximumMomentaryLufs": null,
+                    "MaximumShortTermLufs": null,
+                    "SamplePeakDbfs": null,
+                    "TruePeakDbtp": null,
+                    "RangeSettled": false,
+                    "Finished": true,
+                    "StatisticsSampleFrames": 96000
+                  },
+                  "MaximumPcmError": 0
+                }
+              ],
+              "engine": {
+                "State": {
+                  "Id": "normalized",
+                  "State": "Completed",
+                  "Samples": 96000,
+                  "CompletedItems": 1,
+                  "SkippedItems": 0,
+                  "CurrentTitle": null,
+                  "LateBlocks": 0,
+                  "AuditRejectedEvents": 0,
+                  "Outputs": [
+                    {
+                      "Id": "synthetic-sink",
+                      "State": "Ready",
+                      "EncoderStarts": 0,
+                      "Connections": 0,
+                      "FramesWritten": 0,
+                      "DroppedBlocks": 0,
+                      "QueuedBlocks": 0,
+                      "EncoderPid": null,
+                      "LastError": null
+                    }
+                  ],
+                  "CurrentAssetId": null,
+                  "CurrentItemSamples": 0,
+                  "Recovered": false,
+                  "Enabled": true,
+                  "RequestedRunning": true,
+                  "LastError": null,
+                  "RetryAtUtc": null,
+                  "CurrentArtist": null,
+                  "CurrentDurationSeconds": null,
+                  "NextItem": null,
+                  "Loudness": {
+                    "State": "Stopped",
+                    "UpdatedAtUtc": "2026-10-16T03:52:52.5734007+00:00",
+                    "Current": {
+                      "Id": "e5ffd3870bc74f52af643f115156bacf",
+                      "StationId": "normalized",
+                      "SessionId": "1a0ce6f5804a43bb9006f3111291533c",
+                      "StartSample": 0,
+                      "EndSample": 96000,
+                      "StartedAtUtc": "2026-10-16T03:52:50.5737766+00:00",
+                      "Phase": "Finished",
+                      "Reason": "SessionEnded",
+                      "MaximumFrames": 172800000,
+                      "HasMeasurementGap": false,
+                      "GapBeforeFrames": 0,
+                      "MissingTail": false,
+                      "Reading": {
+                        "SampleFrames": 96000,
+                        "IntegratedFrames": 96000,
+                        "MomentaryLufs": -23.025119371622207,
+                        "ShortTermLufs": null,
+                        "IntegratedLufs": -23.025187770354144,
+                        "LoudnessRangeLu": null,
+                        "MaximumMomentaryLufs": -23.025111687648213,
+                        "MaximumShortTermLufs": null,
+                        "SamplePeakDbfs": -21.436974837502518,
+                        "TruePeakDbtp": -21.424194587631945,
+                        "RangeSettled": false,
+                        "Finished": true,
+                        "StatisticsSampleFrames": 96000
+                      },
+                      "KnownEndAtUtc": "2026-10-16T03:52:52.5737766+00:00",
+                      "Scope": "pre_encoder_final_mix"
+                    },
+                    "LastClosed": {
+                      "Id": "e5ffd3870bc74f52af643f115156bacf",
+                      "StationId": "normalized",
+                      "SessionId": "1a0ce6f5804a43bb9006f3111291533c",
+                      "StartSample": 0,
+                      "EndSample": 96000,
+                      "StartedAtUtc": "2026-10-16T03:52:50.5737766+00:00",
+                      "Phase": "Finished",
+                      "Reason": "SessionEnded",
+                      "MaximumFrames": 172800000,
+                      "HasMeasurementGap": false,
+                      "GapBeforeFrames": 0,
+                      "MissingTail": false,
+                      "Reading": {
+                        "SampleFrames": 96000,
+                        "IntegratedFrames": 96000,
+                        "MomentaryLufs": -23.025119371622207,
+                        "ShortTermLufs": null,
+                        "IntegratedLufs": -23.025187770354144,
+                        "LoudnessRangeLu": null,
+                        "MaximumMomentaryLufs": -23.025111687648213,
+                        "MaximumShortTermLufs": null,
+                        "SamplePeakDbfs": -21.436974837502518,
+                        "TruePeakDbtp": -21.424194587631945,
+                        "RangeSettled": false,
+                        "Finished": true,
+                        "StatisticsSampleFrames": 96000
+                      },
+                      "KnownEndAtUtc": "2026-10-16T03:52:52.5737766+00:00",
+                      "Scope": "pre_encoder_final_mix"
+                    },
+                    "DroppedBlocks": 0,
+                    "DroppedFrames": 0,
+                    "InvalidBlocks": 0,
+                    "Gaps": 0,
+                    "HistoryFailures": 0,
+                    "Error": null,
+                    "HistoryError": null,
+                    "QueuedBlocks": 0,
+                    "Continuous": true
+                  },
+                  "SourceGain": {
+                    "TargetLufs": -23,
+                    "SourceCeilingDbtp": -1.4,
+                    "RequestedDb": 0,
+                    "AppliedDb": 0,
+                    "State": "Unmeasured",
+                    "PredictedLufs": null,
+                    "PredictedTruePeakDbtp": null,
+                    "Linear": 1
+                  },
+                  "Limiter": {
+                    "State": "Finished",
+                    "CeilingDbtp": -1.5,
+                    "LookaheadFrames": 2880,
+                    "InputFrames": 96000,
+                    "OutputFrames": 96000,
+                    "LimitedFrames": 0,
+                    "GainReductionDb": 0,
+                    "MaximumGainReductionDb": 0
+                  },
+                  "PendingAuditCommits": 1
+                },
+                "Reading": {
+                  "SampleFrames": 96000,
+                  "IntegratedFrames": 96000,
+                  "MomentaryLufs": -23.025119371622207,
+                  "ShortTermLufs": null,
+                  "IntegratedLufs": -23.025187770354144,
+                  "LoudnessRangeLu": null,
+                  "MaximumMomentaryLufs": -23.025111687648213,
+                  "MaximumShortTermLufs": null,
+                  "SamplePeakDbfs": -21.436974837502518,
+                  "TruePeakDbtp": -21.424194587631945,
+                  "RangeSettled": false,
+                  "Finished": true,
+                  "StatisticsSampleFrames": 96000
+                },
+                "Events": [
+                  {
+                    "EventId": "e6a4c16c158a40e1a377169792d89317",
+                    "OccurrenceId": "f0f61ad3ac3a4869951519c4ce168c3f",
+                    "StationId": "normalized",
+                    "Type": "started",
+                    "ItemId": "target",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "target",
+                    "Kind": "Music",
+                    "AtUtc": "2026-10-16T03:52:50.5737766+00:00",
+                    "SamplePosition": 0,
+                    "Detail": "",
+                    "QueueEntryId": null,
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 3,
+                      "AppliedDb": 3,
+                      "State": "Target gain",
+                      "PredictedLufs": -23,
+                      "PredictedTruePeakDbtp": -21.4,
+                      "Linear": 1.4125375446227544
+                    }
+                  },
+                  {
+                    "EventId": "1bdb08279f3f411e88c5fcf3daa7295a",
+                    "OccurrenceId": "f0f61ad3ac3a4869951519c4ce168c3f",
+                    "StationId": "normalized",
+                    "Type": "ended",
+                    "ItemId": "target",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "target",
+                    "Kind": "Music",
+                    "AtUtc": "2026-10-16T03:52:52.5737766+00:00",
+                    "SamplePosition": 96000,
+                    "Detail": "",
+                    "QueueEntryId": null,
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 3,
+                      "AppliedDb": 3,
+                      "State": "Target gain",
+                      "PredictedLufs": -23,
+                      "PredictedTruePeakDbtp": -21.4,
+                      "Linear": 1.4125375446227544
+                    }
+                  }
+                ]
+              },
+              "encodedListeners": [
+                {
+                  "Profile": "AacLc192",
+                  "Mount": "/next-normalized-aac",
+                  "RequestedSeconds": 4,
+                  "DecodedFrames": 192000,
+                  "SampleClock": "Decoded PCM count rebased to zero; no transport timestamp trimming",
+                  "IntegratedLufs": -23,
+                  "TruePeakDbtp": -19.4,
+                  "DiagnosticTail": "Input #0, aac, from 'http://127.0.0.1:55629/next-normalized-aac':\r\n  Metadata:\r\n    icy-name        : OnAir Next isolated test\r\n    icy-pub         : 0\r\n  Duration: N/A, bitrate: 169 kb/s\r\n  Stream #0:0: Audio: aac (LC), 48000 Hz, stereo, fltp, 169 kb/s\r\nStream mapping:\r\n  Stream #0:0 -> #0:0 (aac (native) -> pcm_s16le (native))\r\nOutput #0, null, to 'pipe:':\r\n  Metadata:\r\n    icy-name        : OnAir Next isolated test\r\n    icy-pub         : 0\r\n    encoder         : Lavf63.1.102\r\n  Stream #0:0: Audio: pcm_s16le, 48000 Hz, stereo, s16, 1536 kb/s\r\n    Metadata:\r\n      encoder         : Lavc63.1.102 pcm_s16le\r\n[Parsed_astats_5 @ 00000240aad20440] Overall\r\n[Parsed_astats_5 @ 00000240aad20440] Number of samples: 192000\r\n[Parsed_ebur128_4 @ 00000240aad20100] Summary:\r\n\r\n  Integrated loudness:\r\n    I:         -23.0 LUFS\r\n    Threshold: -33.0 LUFS\r\n\r\n  Loudness range:\r\n    LRA:         0.0 LU\r\n    Threshold: -43.0 LUFS\r\n    LRA low:   -23.1 LUFS\r\n    LRA high:  -23.0 LUFS\r\n\r\n  True peak:\r\n    Peak:      -19.4 dBFS\r\n[out#0/null @ 00000240aac68d00] video:0KiB audio:750KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown\r\nsize=N/A time=00:00:04.00 bitrate=N/A speed=1.06x elapsed=0:00:03.76    \r\n",
+                  "Scope": "Low-crest synthetic programme; not worst-case codec-headroom qualification"
+                },
+                {
+                  "Profile": "OggFlac",
+                  "Mount": "/next-normalized-flac",
+                  "RequestedSeconds": 4,
+                  "DecodedFrames": 192000,
+                  "SampleClock": "Decoded PCM count rebased to zero; no transport timestamp trimming",
+                  "IntegratedLufs": -23,
+                  "TruePeakDbtp": -21.4,
+                  "DiagnosticTail": "Input #0, ogg, from 'http://127.0.0.1:55629/next-normalized-flac':\r\n  Metadata:\r\n    icy-name        : OnAir Next isolated test\r\n    icy-pub         : 0\r\n  Duration: N/A, start: 0.000000, bitrate: N/A\r\n  Stream #0:0: Audio: flac, 48000 Hz, stereo, s32 (24 bit)\r\n    Metadata:\r\n      encoder         : Lavc63.1.102 flac\r\nStream mapping:\r\n  Stream #0:0 -> #0:0 (flac (native) -> pcm_s16le (native))\r\nOutput #0, null, to 'pipe:':\r\n  Metadata:\r\n    icy-name        : OnAir Next isolated test\r\n    icy-pub         : 0\r\n    encoder         : Lavf63.1.102\r\n  Stream #0:0: Audio: pcm_s16le, 48000 Hz, stereo, s16, 1536 kb/s\r\n    Metadata:\r\n      encoder         : Lavc63.1.102 pcm_s16le\r\n[Parsed_astats_5 @ 000001c4b2b3a080] Overall\r\n[Parsed_astats_5 @ 000001c4b2b3a080] Number of samples: 192000\r\n[Parsed_ebur128_4 @ 000001c4b2b38680] Summary:\r\n\r\n  Integrated loudness:\r\n    I:         -23.0 LUFS\r\n    Threshold: -33.0 LUFS\r\n\r\n  Loudness range:\r\n    LRA:         0.0 LU\r\n    Threshold: -43.0 LUFS\r\n    LRA low:   -23.0 LUFS\r\n    LRA high:  -23.0 LUFS\r\n\r\n  True peak:\r\n    Peak:      -21.4 dBFS\r\n[out#0/null @ 000001c4b2a98ec0] video:0KiB audio:750KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown\r\nsize=N/A time=00:00:04.00 bitrate=N/A speed=0.923x elapsed=0:00:04.33    \r\n",
+                  "Scope": "Low-crest synthetic programme; not worst-case codec-headroom qualification"
+                }
+              ],
+              "scope": "Synthetic full-file source measurement, fixed-gain PCM, finite playout and history only. Two loopback AAC-LC/FLAC branches use a low-crest synthetic programme only; no final-mix limiter, worst-case codec headroom, HE-AAC, all-18-output, production media or commissioning acceptance."
+            },
+            "Error": null
+          }
+        ],
+        "RemainingOwnedChildren": {}
+      },
+      {
+        "SchemaVersion": 1,
+        "CreatedAtUtc": "2026-10-16T03:53:08.1392123+00:00",
+        "Machine": "runnervm0xl3a",
+        "OS": "Microsoft Windows 10.0.26100",
+        "Runtime": ".NET 10.0.13",
+        "Icecast": "2.5.0",
+        "TestProfiles": [
+          "AAC-LC 192 kbps",
+          "24-bit Ogg FLAC"
+        ],
+        "HeAacTested": false,
+        "Source": "New independent implementation; no production configuration or services accessed.",
+        "ExecutionSource": "28638a57007adad6736553a592e6cd3738c429b5",
+        "PcmFormat": "48k stereo float32 little-endian",
+        "ExecutionBuild": "1.0.0+28638a57007adad6736553a592e6cd3738c429b5",
+        "Results": [
+          {
+            "Name": "processing",
+            "Passed": true,
+            "DurationSeconds": 6.1654032,
+            "Checks": [
+              {
+                "Passed": true,
+                "Description": "Preroll may prepare an entire short programme without committing its start or EOF."
+              },
+              {
+                "Passed": true,
+                "Description": "The finite processed programme preserves all 2,160 real frames without delay padding."
+              },
+              {
+                "Passed": true,
+                "Description": "No completed event precedes its actual output frame boundary."
+              },
+              {
+                "Passed": true,
+                "Description": "Prepared short music/ad/sweeper boundaries retain their exact output sample positions."
+              },
+              {
+                "Passed": true,
+                "Description": "Processed finite events preserve the immutable journal chain."
+              },
+              {
+                "Passed": true,
+                "Description": "Three in-flight queued sources are selected once even before any prior completion can commit."
+              },
+              {
+                "Passed": true,
+                "Description": "Queue consumption follows published terminal boundaries and their durable transactions."
+              },
+              {
+                "Passed": true,
+                "Description": "Stop after the first output block never announces the already prepared next source."
+              },
+              {
+                "Passed": true,
+                "Description": "Stop preserves the audible unfinished source, not a future prepared terminal/checkpoint."
+              },
+              {
+                "Passed": true,
+                "Description": "Restart adds the entire unfinished source and successor to the committed output clock."
+              },
+              {
+                "Passed": true,
+                "Description": "Recovery links a new attempt and restarts the unfinished source from its original first sample."
+              },
+              {
+                "Passed": true,
+                "Description": "A prepared but unheard successor is consumed only when actually published after restart."
+              },
+              {
+                "Passed": true,
+                "Description": "Skip observed in an already buffered EOF window never skips the unheard next item."
+              },
+              {
+                "Passed": true,
+                "Description": "A late accepted Skip is consumed by the finished occurrence instead of surviving into another item."
+              },
+              {
+                "Passed": true,
+                "Description": "Buffered Skip preserves immutable exact-boundary history."
+              },
+              {
+                "Passed": true,
+                "Description": "Programme audio keeps advancing through a 350 ms journal-writer stall, including the checkpoint interval; pending durable writes remain visible."
+              },
+              {
+                "Passed": true,
+                "Description": "The bounded audit backlog drains durably after storage returns."
+              },
+              {
+                "Passed": true,
+                "Description": "Synthetic mic/music mix retains exact finite programme length."
+              },
+              {
+                "Passed": true,
+                "Description": "The final mixed signal is genuinely oversampled and limited after microphone ducking/mixing."
+              },
+              {
+                "Passed": true,
+                "Description": "Processing qualification closes every owned decoder/validation worker."
+              }
+            ],
+            "Details": {
+              "finite": {
+                "State": {
+                  "Id": "processing-finite",
+                  "State": "Completed",
+                  "Samples": 2160,
+                  "CompletedItems": 3,
+                  "SkippedItems": 0,
+                  "CurrentTitle": null,
+                  "LateBlocks": 0,
+                  "AuditRejectedEvents": 0,
+                  "Outputs": [
+                    {
+                      "Id": "processing-sink",
+                      "State": "Ready",
+                      "EncoderStarts": 0,
+                      "Connections": 0,
+                      "FramesWritten": 2160,
+                      "DroppedBlocks": 0,
+                      "QueuedBlocks": 0,
+                      "EncoderPid": null,
+                      "LastError": null
+                    }
+                  ],
+                  "CurrentAssetId": null,
+                  "CurrentItemSamples": 0,
+                  "Recovered": false,
+                  "Enabled": true,
+                  "RequestedRunning": true,
+                  "LastError": null,
+                  "RetryAtUtc": null,
+                  "CurrentArtist": null,
+                  "CurrentDurationSeconds": null,
+                  "NextItem": null,
+                  "Loudness": {
+                    "State": "Stopped",
+                    "UpdatedAtUtc": "2026-10-16T03:53:02.4505212+00:00",
+                    "Current": {
+                      "Id": "c567e5331a81498aae5e13a1575fca08",
+                      "StationId": "processing-finite",
+                      "SessionId": "f4d4565e6e7e478b9c1213a917f6a78f",
+                      "StartSample": 0,
+                      "EndSample": 2160,
+                      "StartedAtUtc": "2026-10-16T03:53:02.3095058+00:00",
+                      "Phase": "Finished",
+                      "Reason": "SessionEnded",
+                      "MaximumFrames": 172800000,
+                      "HasMeasurementGap": false,
+                      "GapBeforeFrames": 0,
+                      "MissingTail": false,
+                      "Reading": {
+                        "SampleFrames": 2160,
+                        "IntegratedFrames": 0,
+                        "MomentaryLufs": null,
+                        "ShortTermLufs": null,
+                        "IntegratedLufs": null,
+                        "LoudnessRangeLu": null,
+                        "MaximumMomentaryLufs": null,
+                        "MaximumShortTermLufs": null,
+                        "SamplePeakDbfs": -30.457579953372043,
+                        "TruePeakDbtp": -30.444794652458146,
+                        "RangeSettled": false,
+                        "Finished": true,
+                        "StatisticsSampleFrames": 2160
+                      },
+                      "KnownEndAtUtc": "2026-10-16T03:53:02.3545058+00:00",
+                      "Scope": "pre_encoder_final_mix"
+                    },
+                    "LastClosed": {
+                      "Id": "c567e5331a81498aae5e13a1575fca08",
+                      "StationId": "processing-finite",
+                      "SessionId": "f4d4565e6e7e478b9c1213a917f6a78f",
+                      "StartSample": 0,
+                      "EndSample": 2160,
+                      "StartedAtUtc": "2026-10-16T03:53:02.3095058+00:00",
+                      "Phase": "Finished",
+                      "Reason": "SessionEnded",
+                      "MaximumFrames": 172800000,
+                      "HasMeasurementGap": false,
+                      "GapBeforeFrames": 0,
+                      "MissingTail": false,
+                      "Reading": {
+                        "SampleFrames": 2160,
+                        "IntegratedFrames": 0,
+                        "MomentaryLufs": null,
+                        "ShortTermLufs": null,
+                        "IntegratedLufs": null,
+                        "LoudnessRangeLu": null,
+                        "MaximumMomentaryLufs": null,
+                        "MaximumShortTermLufs": null,
+                        "SamplePeakDbfs": -30.457579953372043,
+                        "TruePeakDbtp": -30.444794652458146,
+                        "RangeSettled": false,
+                        "Finished": true,
+                        "StatisticsSampleFrames": 2160
+                      },
+                      "KnownEndAtUtc": "2026-10-16T03:53:02.3545058+00:00",
+                      "Scope": "pre_encoder_final_mix"
+                    },
+                    "DroppedBlocks": 0,
+                    "DroppedFrames": 0,
+                    "InvalidBlocks": 0,
+                    "Gaps": 0,
+                    "HistoryFailures": 0,
+                    "Error": null,
+                    "HistoryError": null,
+                    "QueuedBlocks": 0,
+                    "Continuous": true
+                  },
+                  "SourceGain": {
+                    "TargetLufs": -23,
+                    "SourceCeilingDbtp": -1.4,
+                    "RequestedDb": 0,
+                    "AppliedDb": 0,
+                    "State": "Unmeasured",
+                    "PredictedLufs": null,
+                    "PredictedTruePeakDbtp": null,
+                    "Linear": 1
+                  },
+                  "Limiter": {
+                    "State": "Finished",
+                    "CeilingDbtp": -1.5,
+                    "LookaheadFrames": 2880,
+                    "InputFrames": 2160,
+                    "OutputFrames": 2160,
+                    "LimitedFrames": 0,
+                    "GainReductionDb": 0,
+                    "MaximumGainReductionDb": 0
+                  },
+                  "PendingAuditCommits": 6
+                },
+                "Events": [
+                  {
+                    "EventId": "0de3a5cae06e448ab3405f71a2446db4",
+                    "OccurrenceId": "f9602d4f96aa4e46af99fdfcec55f918",
+                    "StationId": "processing-finite",
+                    "Type": "started",
+                    "ItemId": "a",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "a",
+                    "Kind": "Music",
+                    "AtUtc": "2026-10-16T03:53:02.3095058+00:00",
+                    "SamplePosition": 0,
+                    "Detail": "",
+                    "QueueEntryId": null,
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  },
+                  {
+                    "EventId": "b511e3911e5e4d6b8f6d5cdff1c3f226",
+                    "OccurrenceId": "f9602d4f96aa4e46af99fdfcec55f918",
+                    "StationId": "processing-finite",
+                    "Type": "ended",
+                    "ItemId": "a",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "a",
+                    "Kind": "Music",
+                    "AtUtc": "2026-10-16T03:53:02.3345058+00:00",
+                    "SamplePosition": 1200,
+                    "Detail": "",
+                    "QueueEntryId": null,
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  },
+                  {
+                    "EventId": "0c11d393ba9f45ada3722d70dfa7d093",
+                    "OccurrenceId": "c5c52197f54c4d6cb3e6961e65466863",
+                    "StationId": "processing-finite",
+                    "Type": "started",
+                    "ItemId": "b",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "b",
+                    "Kind": "Advertisement",
+                    "AtUtc": "2026-10-16T03:53:02.3345058+00:00",
+                    "SamplePosition": 1200,
+                    "Detail": "",
+                    "QueueEntryId": null,
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  },
+                  {
+                    "EventId": "712f37af891b485ea36668f247d71230",
+                    "OccurrenceId": "c5c52197f54c4d6cb3e6961e65466863",
+                    "StationId": "processing-finite",
+                    "Type": "ended",
+                    "ItemId": "b",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "b",
+                    "Kind": "Advertisement",
+                    "AtUtc": "2026-10-16T03:53:02.3445058+00:00",
+                    "SamplePosition": 1680,
+                    "Detail": "",
+                    "QueueEntryId": null,
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  },
+                  {
+                    "EventId": "72bc2e3c35d04325a365526e63ba0e24",
+                    "OccurrenceId": "38e66892feab4abea32565e024dc962a",
+                    "StationId": "processing-finite",
+                    "Type": "started",
+                    "ItemId": "c",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "c",
+                    "Kind": "Sweeper",
+                    "AtUtc": "2026-10-16T03:53:02.3445058+00:00",
+                    "SamplePosition": 1680,
+                    "Detail": "",
+                    "QueueEntryId": null,
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  },
+                  {
+                    "EventId": "560ec9a293394b95be4a4e3f4f30c6fa",
+                    "OccurrenceId": "38e66892feab4abea32565e024dc962a",
+                    "StationId": "processing-finite",
+                    "Type": "ended",
+                    "ItemId": "c",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "c",
+                    "Kind": "Sweeper",
+                    "AtUtc": "2026-10-16T03:53:02.3545058+00:00",
+                    "SamplePosition": 2160,
+                    "Detail": "",
+                    "QueueEntryId": null,
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  }
+                ],
+                "OutputFrames": 2160
+              },
+              "preparedQueue": {
+                "MaximumExclusions": 3,
+                "CompletedRows": 3,
+                "Events": [
+                  {
+                    "EventId": "b55176812502447b9d272a1b113acc10",
+                    "OccurrenceId": "adc9e74b1bf2454fb5959ef14209d7b6",
+                    "StationId": "processing-queue",
+                    "Type": "started",
+                    "ItemId": "a",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "a",
+                    "Kind": "Music",
+                    "AtUtc": "2026-10-16T03:53:02.677969+00:00",
+                    "SamplePosition": 0,
+                    "Detail": "",
+                    "QueueEntryId": "q0",
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  },
+                  {
+                    "EventId": "64d79409edf5415d9156048bec5a1bf6",
+                    "OccurrenceId": "adc9e74b1bf2454fb5959ef14209d7b6",
+                    "StationId": "processing-queue",
+                    "Type": "ended",
+                    "ItemId": "a",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "a",
+                    "Kind": "Music",
+                    "AtUtc": "2026-10-16T03:53:02.702969+00:00",
+                    "SamplePosition": 1200,
+                    "Detail": "",
+                    "QueueEntryId": "q0",
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  },
+                  {
+                    "EventId": "738b58b09c7b4c788fefa20abf1511d1",
+                    "OccurrenceId": "c82dbab2c5eb449988f488d9cf6ccf3b",
+                    "StationId": "processing-queue",
+                    "Type": "started",
+                    "ItemId": "b",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "b",
+                    "Kind": "Advertisement",
+                    "AtUtc": "2026-10-16T03:53:02.702969+00:00",
+                    "SamplePosition": 1200,
+                    "Detail": "",
+                    "QueueEntryId": "q1",
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  },
+                  {
+                    "EventId": "fb49ebb3e4ae43abacafdb3d5b11b78a",
+                    "OccurrenceId": "c82dbab2c5eb449988f488d9cf6ccf3b",
+                    "StationId": "processing-queue",
+                    "Type": "ended",
+                    "ItemId": "b",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "b",
+                    "Kind": "Advertisement",
+                    "AtUtc": "2026-10-16T03:53:02.712969+00:00",
+                    "SamplePosition": 1680,
+                    "Detail": "",
+                    "QueueEntryId": "q1",
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  },
+                  {
+                    "EventId": "27e27d8dba1f4e7d9c29a63c82d146fc",
+                    "OccurrenceId": "582301d67f9b4f79903efd08ce9eabe6",
+                    "StationId": "processing-queue",
+                    "Type": "started",
+                    "ItemId": "c",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "c",
+                    "Kind": "Sweeper",
+                    "AtUtc": "2026-10-16T03:53:02.712969+00:00",
+                    "SamplePosition": 1680,
+                    "Detail": "",
+                    "QueueEntryId": "q2",
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  },
+                  {
+                    "EventId": "32fbfc2d44404b518e35ee56f8454b72",
+                    "OccurrenceId": "582301d67f9b4f79903efd08ce9eabe6",
+                    "StationId": "processing-queue",
+                    "Type": "ended",
+                    "ItemId": "c",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "c",
+                    "Kind": "Sweeper",
+                    "AtUtc": "2026-10-16T03:53:02.722969+00:00",
+                    "SamplePosition": 2160,
+                    "Detail": "",
+                    "QueueEntryId": "q2",
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  }
+                ]
+              },
+              "stopRecovery": {
+                "Checkpoint": {
+                  "StationId": "processing-stop",
+                  "State": "Stopped",
+                  "RotationIndex": 0,
+                  "Item": {
+                    "Id": "a",
+                    "Path": "C:\\Users\\runneradmin\\AppData\\Local\\RadioTEDU\\OnAirNext-Dev\\runs\\20261016-035301-7764b4f7\\processing\\a.wav",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "a",
+                    "Kind": "Music",
+                    "DurationSeconds": 0.025,
+                    "Loudness": null
+                  },
+                  "OccurrenceId": "8bf0a8c1c8b24cc19be7f4aa475fa6f2",
+                  "ItemSamples": 960,
+                  "ProgramSamples": 960,
+                  "Announced": true,
+                  "SavedAtUtc": "2026-10-16T03:53:02.9077039+00:00",
+                  "QueueEntryId": null,
+                  "SessionId": "fc5197af4ddf47b4baec2c9232e3b75c",
+                  "PreviousOccurrenceId": null
+                },
+                "Events": [
+                  {
+                    "EventId": "4376cd4c8a0440fd8b9aa3732bfe83d8",
+                    "OccurrenceId": "8bf0a8c1c8b24cc19be7f4aa475fa6f2",
+                    "StationId": "processing-stop",
+                    "Type": "started",
+                    "ItemId": "a",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "a",
+                    "Kind": "Music",
+                    "AtUtc": "2026-10-16T03:53:02.9033938+00:00",
+                    "SamplePosition": 0,
+                    "Detail": "",
+                    "QueueEntryId": null,
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  },
+                  {
+                    "EventId": "5b57f2a3b5864b89ba09d053212f69a6",
+                    "OccurrenceId": "8bf0a8c1c8b24cc19be7f4aa475fa6f2",
+                    "StationId": "processing-stop",
+                    "Type": "interrupted",
+                    "ItemId": "a",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "a",
+                    "Kind": "Music",
+                    "AtUtc": "2026-10-16T03:53:02.9233938+00:00",
+                    "SamplePosition": 960,
+                    "Detail": "Explicit stop discards only unread preparation; restart begins a new attempt at the item's beginning.",
+                    "QueueEntryId": null,
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  },
+                  {
+                    "EventId": "a0bbb59bbac34a269cac7b419ef012ae",
+                    "OccurrenceId": "50668f093881485f880fbe60e1f45908",
+                    "StationId": "processing-stop",
+                    "Type": "started",
+                    "ItemId": "a",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "a",
+                    "Kind": "Music",
+                    "AtUtc": "2026-10-16T03:53:03.0097651+00:00",
+                    "SamplePosition": 960,
+                    "Detail": "",
+                    "QueueEntryId": null,
+                    "PreviousOccurrenceId": "8bf0a8c1c8b24cc19be7f4aa475fa6f2",
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  },
+                  {
+                    "EventId": "7630e598c87a4e25a7d0a84b72903345",
+                    "OccurrenceId": "50668f093881485f880fbe60e1f45908",
+                    "StationId": "processing-stop",
+                    "Type": "ended",
+                    "ItemId": "a",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "a",
+                    "Kind": "Music",
+                    "AtUtc": "2026-10-16T03:53:03.0347651+00:00",
+                    "SamplePosition": 2160,
+                    "Detail": "",
+                    "QueueEntryId": null,
+                    "PreviousOccurrenceId": "8bf0a8c1c8b24cc19be7f4aa475fa6f2",
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  },
+                  {
+                    "EventId": "6cce6e99f39a401aafb3585d8a918fd7",
+                    "OccurrenceId": "a46d7ca10a6e44d683bc28786340310d",
+                    "StationId": "processing-stop",
+                    "Type": "started",
+                    "ItemId": "b",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "b",
+                    "Kind": "Advertisement",
+                    "AtUtc": "2026-10-16T03:53:03.0347651+00:00",
+                    "SamplePosition": 2160,
+                    "Detail": "",
+                    "QueueEntryId": null,
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  },
+                  {
+                    "EventId": "1d7a07c4a0cd4315b628c0f33a86b399",
+                    "OccurrenceId": "a46d7ca10a6e44d683bc28786340310d",
+                    "StationId": "processing-stop",
+                    "Type": "ended",
+                    "ItemId": "b",
+                    "Artist": "Synthetic engineering signal",
+                    "Title": "b",
+                    "Kind": "Advertisement",
+                    "AtUtc": "2026-10-16T03:53:03.0447651+00:00",
+                    "SamplePosition": 2640,
+                    "Detail": "",
+                    "QueueEntryId": null,
+                    "PreviousOccurrenceId": null,
+                    "TimingQuality": "sample_clock",
+                    "SourceGain": {
+                      "TargetLufs": -23,
+                      "SourceCeilingDbtp": -1.4,
+                      "RequestedDb": 0,
+                      "AppliedDb": 0,
+                      "State": "Unmeasured",
+                      "PredictedLufs": null,
+                      "PredictedTruePeakDbtp": null,
+                      "Linear": 1
+                    }
+                  }
+                ]
+              },
+              "bufferedSkip": [
+                {
+                  "EventId": "543aa4c3363e47a29e653d5c1040a043",
+                  "OccurrenceId": "91d84cf9da23498db7dfa9e22d58287a",
+                  "StationId": "processing-skip",
+                  "Type": "started",
+                  "ItemId": "a",
+                  "Artist": "Synthetic engineering signal",
+                  "Title": "a",
+                  "Kind": "Music",
+                  "AtUtc": "2026-10-16T03:53:03.235388+00:00",
+                  "SamplePosition": 0,
+                  "Detail": "",
+                  "QueueEntryId": null,
+                  "PreviousOccurrenceId": null,
+                  "TimingQuality": "sample_clock",
+                  "SourceGain": {
+                    "TargetLufs": -23,
+                    "SourceCeilingDbtp": -1.4,
+                    "RequestedDb": 0,
+                    "AppliedDb": 0,
+                    "State": "Unmeasured",
+                    "PredictedLufs": null,
+                    "PredictedTruePeakDbtp": null,
+                    "Linear": 1
+                  }
+                },
+                {
+                  "EventId": "4e2f4cc6cc9549d6aeb2fbbea3797923",
+                  "OccurrenceId": "91d84cf9da23498db7dfa9e22d58287a",
+                  "StationId": "processing-skip",
+                  "Type": "ended",
+                  "ItemId": "a",
+                  "Artist": "Synthetic engineering signal",
+                  "Title": "a",
+                  "Kind": "Music",
+                  "AtUtc": "2026-10-16T03:53:03.260388+00:00",
+                  "SamplePosition": 1200,
+                  "Detail": "",
+                  "QueueEntryId": null,
+                  "PreviousOccurrenceId": null,
+                  "TimingQuality": "sample_clock",
+                  "SourceGain": {
+                    "TargetLufs": -23,
+                    "SourceCeilingDbtp": -1.4,
+                    "RequestedDb": 0,
+                    "AppliedDb": 0,
+                    "State": "Unmeasured",
+                    "PredictedLufs": null,
+                    "PredictedTruePeakDbtp": null,
+                    "Linear": 1
+                  }
+                },
+                {
+                  "EventId": "7c48fcbf9db54116abec4652383adf36",
+                  "OccurrenceId": "27c8fd8abdff46e299d47cf1e5dbf207",
+                  "StationId": "processing-skip",
+                  "Type": "started",
+                  "ItemId": "b",
+                  "Artist": "Synthetic engineering signal",
+                  "Title": "b",
+                  "Kind": "Advertisement",
+                  "AtUtc": "2026-10-16T03:53:03.260388+00:00",
+                  "SamplePosition": 1200,
+                  "Detail": "",
+                  "QueueEntryId": null,
+                  "PreviousOccurrenceId": null,
+                  "TimingQuality": "sample_clock",
+                  "SourceGain": {
+                    "TargetLufs": -23,
+                    "SourceCeilingDbtp": -1.4,
+                    "RequestedDb": 0,
+                    "AppliedDb": 0,
+                    "State": "Unmeasured",
+                    "PredictedLufs": null,
+                    "PredictedTruePeakDbtp": null,
+                    "Linear": 1
+                  }
+                },
+                {
+                  "EventId": "aa5beb20d13e4190a147179ae951074f",
+                  "OccurrenceId": "27c8fd8abdff46e299d47cf1e5dbf207",
+                  "StationId": "processing-skip",
+                  "Type": "ended",
+                  "ItemId": "b",
+                  "Artist": "Synthetic engineering signal",
+                  "Title": "b",
+                  "Kind": "Advertisement",
+                  "AtUtc": "2026-10-16T03:53:03.270388+00:00",
+                  "SamplePosition": 1680,
+                  "Detail": "",
+                  "QueueEntryId": null,
+                  "PreviousOccurrenceId": null,
+                  "TimingQuality": "sample_clock",
+                  "SourceGain": {
+                    "TargetLufs": -23,
+                    "SourceCeilingDbtp": -1.4,
+                    "RequestedDb": 0,
+                    "AppliedDb": 0,
+                    "State": "Unmeasured",
+                    "PredictedLufs": null,
+                    "PredictedTruePeakDbtp": null,
+                    "Linear": 1
+                  }
+                }
+              ],
+              "auditStall": {
+                "BeforeFrames": 5760,
+                "AfterFrames": 21120,
+                "ElapsedMilliseconds": 350
+              },
+              "mixedPeak": {
+                "Reading": {
+                  "SampleFrames": 192000,
+                  "IntegratedFrames": 192000,
+                  "MomentaryLufs": -16.240113793219134,
+                  "ShortTermLufs": -16.317111635067587,
+                  "IntegratedLufs": -16.31659868168087,
+                  "LoudnessRangeLu": 0.20951698565558122,
+                  "MaximumMomentaryLufs": -15.206525983992375,
+                  "MaximumShortTermLufs": -16.24785011532032,
+                  "SamplePeakDbfs": -2.949978248578484,
+                  "TruePeakDbtp": -2.6682920154232854,
+                  "RangeSettled": false,
+                  "Finished": true,
+                  "StatisticsSampleFrames": 192000
+                },
+                "State": {
+                  "Id": "processing-mix",
+                  "State": "Completed",
+                  "Samples": 192000,
+                  "CompletedItems": 1,
+                  "SkippedItems": 0,
+                  "CurrentTitle": null,
+                  "LateBlocks": 0,
+                  "AuditRejectedEvents": 0,
+                  "Outputs": [
+                    {
+                      "Id": "processing-sink",
+                      "State": "Ready",
+                      "EncoderStarts": 0,
+                      "Connections": 0,
+                      "FramesWritten": 192000,
+                      "DroppedBlocks": 0,
+                      "QueuedBlocks": 0,
+                      "EncoderPid": null,
+                      "LastError": null
+                    }
+                  ],
+                  "CurrentAssetId": null,
+                  "CurrentItemSamples": 0,
+                  "Recovered": false,
+                  "Enabled": true,
+                  "RequestedRunning": true,
+                  "LastError": null,
+                  "RetryAtUtc": null,
+                  "CurrentArtist": null,
+                  "CurrentDurationSeconds": null,
+                  "NextItem": null,
+                  "Loudness": {
+                    "State": "Stopped",
+                    "UpdatedAtUtc": "2026-10-16T03:53:08.0976829+00:00",
+                    "Current": {
+                      "Id": "33a8589261e04708b50f19258e5cd2f0",
+                      "StationId": "processing-mix",
+                      "SessionId": "ec41a1cdd719473abb516b7b98248b78",
+                      "StartSample": 0,
+                      "EndSample": 192000,
+                      "StartedAtUtc": "2026-10-16T03:53:04.095066+00:00",
+                      "Phase": "Finished",
+                      "Reason": "SessionEnded",
+                      "MaximumFrames": 172800000,
+                      "HasMeasurementGap": false,
+                      "GapBeforeFrames": 0,
+                      "MissingTail": false,
+                      "Reading": {
+                        "SampleFrames": 192000,
+                        "IntegratedFrames": 192000,
+                        "MomentaryLufs": -16.240113793219134,
+                        "ShortTermLufs": -16.317111635067587,
+                        "IntegratedLufs": -16.31659868168087,
+                        "LoudnessRangeLu": 0.20951698565558122,
+                        "MaximumMomentaryLufs": -15.206525983992375,
+                        "MaximumShortTermLufs": -16.24785011532032,
+                        "SamplePeakDbfs": -2.949978248578484,
+                        "TruePeakDbtp": -2.6682920154232854,
+                        "RangeSettled": false,
+                        "Finished": true,
+                        "StatisticsSampleFrames": 192000
+                      },
+                      "KnownEndAtUtc": "2026-10-16T03:53:08.095066+00:00",
+                      "Scope": "pre_encoder_final_mix"
+                    },
+                    "LastClosed": {
+                      "Id": "33a8589261e04708b50f19258e5cd2f0",
+                      "StationId": "processing-mix",
+                      "SessionId": "ec41a1cdd719473abb516b7b98248b78",
+                      "StartSample": 0,
+                      "EndSample": 192000,
+                      "StartedAtUtc": "2026-10-16T03:53:04.095066+00:00",
+                      "Phase": "Finished",
+                      "Reason": "SessionEnded",
+                      "MaximumFrames": 172800000,
+                      "HasMeasurementGap": false,
+                      "GapBeforeFrames": 0,
+                      "MissingTail": false,
+                      "Reading": {
+                        "SampleFrames": 192000,
+                        "IntegratedFrames": 192000,
+                        "MomentaryLufs": -16.240113793219134,
+                        "ShortTermLufs": -16.317111635067587,
+                        "IntegratedLufs": -16.31659868168087,
+                        "LoudnessRangeLu": 0.20951698565558122,
+                        "MaximumMomentaryLufs": -15.206525983992375,
+                        "MaximumShortTermLufs": -16.24785011532032,
+                        "SamplePeakDbfs": -2.949978248578484,
+                        "TruePeakDbtp": -2.6682920154232854,
+                        "RangeSettled": false,
+                        "Finished": true,
+                        "StatisticsSampleFrames": 192000
+                      },
+                      "KnownEndAtUtc": "2026-10-16T03:53:08.095066+00:00",
+                      "Scope": "pre_encoder_final_mix"
+                    },
+                    "DroppedBlocks": 0,
+                    "DroppedFrames": 0,
+                    "InvalidBlocks": 0,
+                    "Gaps": 0,
+                    "HistoryFailures": 0,
+                    "Error": null,
+                    "HistoryError": null,
+                    "QueuedBlocks": 0,
+                    "Continuous": true
+                  },
+                  "SourceGain": {
+                    "TargetLufs": -23,
+                    "SourceCeilingDbtp": -1.4,
+                    "RequestedDb": 0,
+                    "AppliedDb": 0,
+                    "State": "Unmeasured",
+                    "PredictedLufs": null,
+                    "PredictedTruePeakDbtp": null,
+                    "Linear": 1
+                  },
+                  "Limiter": {
+                    "State": "Finished",
+                    "CeilingDbtp": -1.5,
+                    "LookaheadFrames": 2880,
+                    "InputFrames": 192000,
+                    "OutputFrames": 192000,
+                    "LimitedFrames": 192000,
+                    "GainReductionDb": 4.177823748657006,
+                    "MaximumGainReductionDb": 7.522072261557025
+                  },
+                  "PendingAuditCommits": 2
+                }
+              },
+              "scope": "Synthetic final-mix limiting, prepared/audible EOF and Stop/Skip/recovery ownership, and bounded asynchronous audit only. No physical mic/cue/recording, encoded worst-case headroom, HE-AAC/all18 or production acceptance."
+            },
+            "Error": null
+          }
+        ],
+        "RemainingOwnedChildren": {}
+      },
+      {
+        "SchemaVersion": 1,
+        "CreatedAtUtc": "2026-10-16T03:53:18.125726+00:00",
+        "Machine": "runnervm0xl3a",
+        "OS": "Microsoft Windows 10.0.26100",
+        "Runtime": ".NET 10.0.13",
+        "Icecast": "2.5.0",
+        "TestProfiles": [
+          "AAC-LC 192 kbps",
+          "24-bit Ogg FLAC"
+        ],
+        "HeAacTested": false,
+        "Source": "New independent implementation; no production configuration or services accessed.",
+        "ExecutionSource": "28638a57007adad6736553a592e6cd3738c429b5",
+        "PcmFormat": "48k stereo float32 little-endian",
+        "ExecutionBuild": "1.0.0+28638a57007adad6736553a592e6cd3738c429b5",
+        "Results": [
+          {
+            "Name": "live",
+            "Passed": true,
+            "DurationSeconds": 9.7825998,
+            "Checks": [
+              {
+                "Description": "Synthetic live PCM takeover, input loss and return keep one encoder/source session.",
+                "Passed": true
+              },
+              {
+                "Description": "The listener actually receives at least 600 ms of the distinct synthetic microphone tone.",
+                "Passed": true
+              },
+              {
+                "Description": "No decoder error on /next-live",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded listener audio exceeds 4 seconds on /next-live",
+                "Passed": true
+              },
+              {
+                "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-live",
+                "Passed": true
+              },
+              {
+                "Description": "Playback journal hash chain is valid.",
+                "Passed": true
+              },
+              {
+                "Description": "Event acknowledgements do not duplicate journal rows.",
+                "Passed": true
+              },
+              {
+                "Description": "Music, advertisements and sweepers produce separate occurrence records.",
+                "Passed": true
+              },
+              {
+                "Description": "Orderly stop leaves a terminal record for every started occurrence.",
+                "Passed": true
+              },
+              {
+                "Description": "Completed assets retain their exact sample counts, including boundaries inside a 20 ms block.",
+                "Passed": true
+              },
+              {
+                "Description": "Program sample positions never reset during output recovery: live",
+                "Passed": true
+              },
+              {
+                "Description": "No track is repeated or advanced by transport recovery: live",
+                "Passed": true
+              },
+              {
+                "Description": "Daily local report contains one record per station occurrence, independent of output variants.",
+                "Passed": true
+              }
+            ],
+            "Details": {
+              "station": {
+                "Id": "live",
+                "State": "Running",
+                "Samples": 396480,
+                "CompletedItems": 5,
+                "SkippedItems": 0,
+                "CurrentTitle": "advert",
+                "LateBlocks": 0,
+                "AuditRejectedEvents": 0,
+                "Outputs": [
+                  {
+                    "Id": "live",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 1,
+                    "Connections": 1,
+                    "FramesWritten": 413,
+                    "DroppedBlocks": 0,
+                    "QueuedBlocks": 0,
+                    "EncoderPid": 8812,
+                    "LastError": null
+                  }
+                ],
+                "CurrentAssetId": "advert",
+                "CurrentItemSamples": 10128,
+                "Recovered": false,
+                "Enabled": true,
+                "RequestedRunning": true,
+                "LastError": null,
+                "RetryAtUtc": null,
+                "CurrentArtist": "RadioTEDU synthetic fixture",
+                "CurrentDurationSeconds": null,
+                "NextItem": {
+                  "Id": "sweeper",
+                  "Artist": "RadioTEDU synthetic fixture",
+                  "Title": "sweeper",
+                  "Kind": "Sweeper",
+                  "DurationSeconds": null
+                },
+                "Loudness": {
+                  "State": "Measuring",
+                  "UpdatedAtUtc": "2026-10-16T03:53:16.9592764+00:00",
+                  "Current": {
+                    "Id": "3a88f162053a4e7099075a60d978b4db",
+                    "StationId": "live",
+                    "SessionId": "fc1af79e12984ab8805d6e9c4e2113c8",
+                    "StartSample": 0,
+                    "EndSample": 393600,
+                    "StartedAtUtc": "2026-10-16T03:53:08.7694498+00:00",
+                    "Phase": "Live",
+                    "Reason": "ContinuousWindow",
+                    "MaximumFrames": 172800000,
+                    "HasMeasurementGap": false,
+                    "GapBeforeFrames": 0,
+                    "MissingTail": false,
+                    "Reading": {
+                      "SampleFrames": 393600,
+                      "IntegratedFrames": 384000,
+                      "MomentaryLufs": -13.913526554611542,
+                      "ShortTermLufs": -14.024982340579479,
+                      "IntegratedLufs": -12.763855389065435,
+                      "LoudnessRangeLu": 2.6208368670896247,
+                      "MaximumMomentaryLufs": -9.820780157298856,
+                      "MaximumShortTermLufs": -11.214440574712443,
+                      "SamplePeakDbfs": -6.730164207187077,
+                      "TruePeakDbtp": -6.708988804898583,
+                      "RangeSettled": false,
+                      "Finished": false,
+                      "StatisticsSampleFrames": 384000
+                    },
+                    "KnownEndAtUtc": "2026-10-16T03:53:16.9694497+00:00",
+                    "Scope": "pre_encoder_final_mix"
+                  },
+                  "LastClosed": null,
+                  "DroppedBlocks": 0,
+                  "DroppedFrames": 0,
+                  "InvalidBlocks": 0,
+                  "Gaps": 0,
+                  "HistoryFailures": 0,
+                  "Error": null,
+                  "HistoryError": null,
+                  "QueuedBlocks": 0,
+                  "Continuous": true
+                },
+                "SourceGain": {
+                  "TargetLufs": -23,
+                  "SourceCeilingDbtp": -1.4,
+                  "RequestedDb": 0,
+                  "AppliedDb": 0,
+                  "State": "Unmeasured",
+                  "PredictedLufs": null,
+                  "PredictedTruePeakDbtp": null,
+                  "Linear": 1
+                },
+                "Limiter": {
+                  "State": "Processing",
+                  "CeilingDbtp": -1.5,
+                  "LookaheadFrames": 2880,
+                  "InputFrames": 399360,
+                  "OutputFrames": 396480,
+                  "LimitedFrames": 0,
+                  "GainReductionDb": 0,
+                  "MaximumGainReductionDb": 0
+                },
+                "PendingAuditCommits": 3
+              },
+              "decodedListeners": [
+                {
+                  "Mount": "/next-live",
+                  "DecodedSeconds": 8.14,
+                  "SilentWindows": 0,
+                  "LongestSilentRun": 0,
+                  "ToneTransitions": 5,
+                  "UnexpectedToneTransitions": 0,
+                  "LiveToneWindows": 75,
+                  "FirstTones": [
+                    440,
+                    880,
+                    1320,
+                    660,
+                    440,
+                    880
+                  ],
+                  "Error": null
+                }
+              ],
+              "limitation": "Synthetic audio-agent input only; physical WASAPI microphone capture and listening QA remain future work.",
+              "report": {
+                "SchemaVersion": 1,
+                "LocalDate": "2026-10-16",
+                "Timezone": "Europe/Istanbul",
+                "Records": 6,
+                "IncompleteRecords": 0,
+                "Sha256": "47dc3a9ae2f309e4fea8481f3847408e1cd1d9920d25c957cd98fd75864c9d28",
+                "FileName": "2026-10-16.csv",
+                "GeneratedAtUtc": "2026-10-16T03:53:17.9876618+00:00"
+              }
+            },
+            "Error": null
+          }
+        ],
+        "RemainingOwnedChildren": {}
+      },
+      {
+        "SchemaVersion": 1,
+        "CreatedAtUtc": "2026-10-16T03:53:36.3102622+00:00",
+        "Machine": "runnervm0xl3a",
+        "OS": "Microsoft Windows 10.0.26100",
+        "Runtime": ".NET 10.0.13",
+        "Icecast": "2.5.0",
+        "TestProfiles": [
+          "AAC-LC 192 kbps",
+          "24-bit Ogg FLAC"
+        ],
+        "HeAacTested": false,
+        "Source": "New independent implementation; no production configuration or services accessed.",
+        "ExecutionSource": "28638a57007adad6736553a592e6cd3738c429b5",
+        "PcmFormat": "48k stereo float32 little-endian",
+        "ExecutionBuild": "1.0.0+28638a57007adad6736553a592e6cd3738c429b5",
+        "Results": [
+          {
+            "Name": "recovery",
+            "Passed": true,
+            "DurationSeconds": 17.9869814,
+            "Checks": [
+              {
+                "Description": "Fault injection targets an owned encoder only.",
+                "Passed": true
+              },
+              {
+                "Description": "Killing a peer encoder leaves the healthy encoder and source connection unchanged.",
+                "Passed": true
+              },
+              {
+                "Description": "No decoder error on /next-recovery-main",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded listener audio exceeds 3 seconds on /next-recovery-main",
+                "Passed": true
+              },
+              {
+                "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-recovery-main",
+                "Passed": true
+              },
+              {
+                "Description": "Listener hears multiple actual content transitions on /next-recovery-main",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded tone order has no skips or repeats on /next-recovery-main",
+                "Passed": true
+              },
+              {
+                "Description": "Recovered source delivers newly decoded listener audio.",
+                "Passed": true
+              },
+              {
+                "Description": "Origin outage never restarts or rewinds the program timeline.",
+                "Passed": true
+              },
+              {
+                "Description": "Playback journal hash chain is valid.",
+                "Passed": true
+              },
+              {
+                "Description": "Event acknowledgements do not duplicate journal rows.",
+                "Passed": true
+              },
+              {
+                "Description": "Music, advertisements and sweepers produce separate occurrence records.",
+                "Passed": true
+              },
+              {
+                "Description": "Orderly stop leaves a terminal record for every started occurrence.",
+                "Passed": true
+              },
+              {
+                "Description": "Completed assets retain their exact sample counts, including boundaries inside a 20 ms block.",
+                "Passed": true
+              },
+              {
+                "Description": "Program sample positions never reset during output recovery: recovery",
+                "Passed": true
+              },
+              {
+                "Description": "No track is repeated or advanced by transport recovery: recovery",
+                "Passed": true
+              },
+              {
+                "Description": "Daily local report contains one record per station occurrence, independent of output variants.",
+                "Passed": true
+              }
+            ],
+            "Details": {
+              "decodedListeners": [
+                {
+                  "Mount": "/next-recovery-main",
+                  "DecodedSeconds": 7,
+                  "SilentWindows": 0,
+                  "LongestSilentRun": 0,
+                  "ToneTransitions": 4,
+                  "UnexpectedToneTransitions": 0,
+                  "LiveToneWindows": 0,
+                  "FirstTones": [
+                    440,
+                    880,
+                    1320,
+                    660,
+                    440
+                  ],
+                  "Error": null
+                }
+              ],
+              "station": {
+                "Id": "recovery",
+                "State": "Running",
+                "Samples": 650880,
+                "CompletedItems": 8,
+                "SkippedItems": 0,
+                "CurrentTitle": "song-a",
+                "LateBlocks": 0,
+                "AuditRejectedEvents": 0,
+                "Outputs": [
+                  {
+                    "Id": "recovery-main",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 2,
+                    "Connections": 2,
+                    "FramesWritten": 658,
+                    "DroppedBlocks": 20,
+                    "QueuedBlocks": 0,
+                    "EncoderPid": 7084,
+                    "LastError": null
+                  },
+                  {
+                    "Id": "recovery-peer",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 3,
+                    "Connections": 3,
+                    "FramesWritten": 615,
+                    "DroppedBlocks": 62,
+                    "QueuedBlocks": 0,
+                    "EncoderPid": 9480,
+                    "LastError": null
+                  }
+                ],
+                "CurrentAssetId": "song-a",
+                "CurrentItemSamples": 73728,
+                "Recovered": false,
+                "Enabled": true,
+                "RequestedRunning": true,
+                "LastError": null,
+                "RetryAtUtc": null,
+                "CurrentArtist": "RadioTEDU synthetic fixture",
+                "CurrentDurationSeconds": null,
+                "NextItem": {
+                  "Id": "advert",
+                  "Artist": "RadioTEDU synthetic fixture",
+                  "Title": "advert",
+                  "Kind": "Advertisement",
+                  "DurationSeconds": null
+                },
+                "Loudness": {
+                  "State": "Measuring",
+                  "UpdatedAtUtc": "2026-10-16T03:53:36.1500492+00:00",
+                  "Current": {
+                    "Id": "f04c9b977bf344e8840f4e83a55fb868",
+                    "StationId": "recovery",
+                    "SessionId": "d8883064c655411c9f62348ae42da751",
+                    "StartSample": 0,
+                    "EndSample": 648000,
+                    "StartedAtUtc": "2026-10-16T03:53:22.6611301+00:00",
+                    "Phase": "Live",
+                    "Reason": "ContinuousWindow",
+                    "MaximumFrames": 172800000,
+                    "HasMeasurementGap": false,
+                    "GapBeforeFrames": 0,
+                    "MissingTail": false,
+                    "Reading": {
+                      "SampleFrames": 648000,
+                      "IntegratedFrames": 624000,
+                      "MomentaryLufs": -14.090634045992521,
+                      "ShortTermLufs": -14.012201380984342,
+                      "IntegratedLufs": -13.649690718450362,
+                      "LoudnessRangeLu": 0.7513150250155952,
+                      "MaximumMomentaryLufs": -12.559930016892745,
+                      "MaximumShortTermLufs": -13.246895500410039,
+                      "SamplePeakDbfs": -13.407037898909222,
+                      "TruePeakDbtp": -12.441079148559389,
+                      "RangeSettled": false,
+                      "Finished": false,
+                      "StatisticsSampleFrames": 624000
+                    },
+                    "KnownEndAtUtc": "2026-10-16T03:53:36.1611301+00:00",
+                    "Scope": "pre_encoder_final_mix"
+                  },
+                  "LastClosed": null,
+                  "DroppedBlocks": 0,
+                  "DroppedFrames": 0,
+                  "InvalidBlocks": 0,
+                  "Gaps": 0,
+                  "HistoryFailures": 0,
+                  "Error": null,
+                  "HistoryError": null,
+                  "QueuedBlocks": 0,
+                  "Continuous": true
+                },
+                "SourceGain": {
+                  "TargetLufs": -23,
+                  "SourceCeilingDbtp": -1.4,
+                  "RequestedDb": 0,
+                  "AppliedDb": 0,
+                  "State": "Unmeasured",
+                  "PredictedLufs": null,
+                  "PredictedTruePeakDbtp": null,
+                  "Linear": 1
+                },
+                "Limiter": {
+                  "State": "Processing",
+                  "CeilingDbtp": -1.5,
+                  "LookaheadFrames": 2880,
+                  "InputFrames": 653760,
+                  "OutputFrames": 650880,
+                  "LimitedFrames": 0,
+                  "GainReductionDb": 0,
+                  "MaximumGainReductionDb": 0
+                },
+                "PendingAuditCommits": 0
+              },
+              "report": {
+                "SchemaVersion": 1,
+                "LocalDate": "2026-10-16",
+                "Timezone": "Europe/Istanbul",
+                "Records": 9,
+                "IncompleteRecords": 0,
+                "Sha256": "39157b0cab708782b3f6c3b5ca26a38eeea56dc872c9d5b65a1b5bf49a4a0bcb",
+                "FileName": "2026-10-16.csv",
+                "GeneratedAtUtc": "2026-10-16T03:53:36.293674+00:00"
+              }
+            },
+            "Error": null
+          }
+        ],
+        "RemainingOwnedChildren": {}
+      },
+      {
+        "SchemaVersion": 1,
+        "CreatedAtUtc": "2026-10-16T03:53:39.9144291+00:00",
+        "Machine": "runnervm0xl3a",
+        "OS": "Microsoft Windows 10.0.26100",
+        "Runtime": ".NET 10.0.13",
+        "Icecast": "2.5.0",
+        "TestProfiles": [
+          "AAC-LC 192 kbps",
+          "24-bit Ogg FLAC"
+        ],
+        "HeAacTested": false,
+        "Source": "New independent implementation; no production configuration or services accessed.",
+        "ExecutionSource": "28638a57007adad6736553a592e6cd3738c429b5",
+        "PcmFormat": "48k stereo float32 little-endian",
+        "ExecutionBuild": "1.0.0+28638a57007adad6736553a592e6cd3738c429b5",
+        "Results": [
+          {
+            "Name": "finite",
+            "Passed": true,
+            "DurationSeconds": 3.4151171,
+            "Checks": [
+              {
+                "Description": "Finite programme has exactly one real start and one committed completion.",
+                "Passed": true
+              },
+              {
+                "Description": "The finite programme reached a real encoder/source before completion.",
+                "Passed": true
+              },
+              {
+                "Description": "Restart at committed EOF cannot replay the completed finite playlist.",
+                "Passed": true
+              },
+              {
+                "Description": "Exhausted recovery does not open a duplicate encoder/source session.",
+                "Passed": true
+              },
+              {
+                "Description": "EOF recovery preserves the complete event hash chain.",
+                "Passed": true
+              }
+            ],
+            "Details": {},
+            "Error": null
+          }
+        ],
+        "RemainingOwnedChildren": {}
+      },
+      {
+        "SchemaVersion": 1,
+        "CreatedAtUtc": "2026-10-16T03:53:50.6374298+00:00",
+        "Machine": "runnervm0xl3a",
+        "OS": "Microsoft Windows 10.0.26100",
+        "Runtime": ".NET 10.0.13",
+        "Icecast": "2.5.0",
+        "TestProfiles": [
+          "AAC-LC 192 kbps",
+          "24-bit Ogg FLAC"
+        ],
+        "HeAacTested": false,
+        "Source": "New independent implementation; no production configuration or services accessed.",
+        "ExecutionSource": "28638a57007adad6736553a592e6cd3738c429b5",
+        "PcmFormat": "48k stereo float32 little-endian",
+        "ExecutionBuild": "1.0.0+28638a57007adad6736553a592e6cd3738c429b5",
+        "Results": [
+          {
+            "Name": "backpressure",
+            "Passed": true,
+            "DurationSeconds": 10.559588,
+            "Checks": [
+              {
+                "Description": "A real non-reading source transport reaches bounded recovery.",
+                "Passed": true
+              },
+              {
+                "Description": "The blocked output cannot grow its PCM queue.",
+                "Passed": true
+              },
+              {
+                "Description": "Network backpressure does not restart or drop audio on the healthy sibling.",
+                "Passed": true
+              },
+              {
+                "Description": "No decoder error on /next-survivor",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded listener audio exceeds 6 seconds on /next-survivor",
+                "Passed": true
+              },
+              {
+                "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-survivor",
+                "Passed": true
+              },
+              {
+                "Description": "Listener hears multiple actual content transitions on /next-survivor",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded tone order has no skips or repeats on /next-survivor",
+                "Passed": true
+              },
+              {
+                "Description": "Playback journal hash chain is valid.",
+                "Passed": true
+              },
+              {
+                "Description": "Event acknowledgements do not duplicate journal rows.",
+                "Passed": true
+              },
+              {
+                "Description": "Music, advertisements and sweepers produce separate occurrence records.",
+                "Passed": true
+              },
+              {
+                "Description": "Orderly stop leaves a terminal record for every started occurrence.",
+                "Passed": true
+              },
+              {
+                "Description": "Completed assets retain their exact sample counts, including boundaries inside a 20 ms block.",
+                "Passed": true
+              },
+              {
+                "Description": "Program sample positions never reset during output recovery: backpressure",
+                "Passed": true
+              },
+              {
+                "Description": "No track is repeated or advanced by transport recovery: backpressure",
+                "Passed": true
+              },
+              {
+                "Description": "Daily local report contains one record per station occurrence, independent of output variants.",
+                "Passed": true
+              }
+            ],
+            "Details": {
+              "station": {
+                "Id": "backpressure",
+                "State": "Running",
+                "Samples": 480960,
+                "CompletedItems": 7,
+                "SkippedItems": 0,
+                "CurrentTitle": "song-b",
+                "LateBlocks": 0,
+                "AuditRejectedEvents": 0,
+                "Outputs": [
+                  {
+                    "Id": "survivor",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 1,
+                    "Connections": 1,
+                    "FramesWritten": 501,
+                    "DroppedBlocks": 0,
+                    "QueuedBlocks": 0,
+                    "EncoderPid": 9820,
+                    "LastError": null
+                  },
+                  {
+                    "Id": "blocked",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 5,
+                    "Connections": 5,
+                    "FramesWritten": 207,
+                    "DroppedBlocks": 293,
+                    "QueuedBlocks": 0,
+                    "EncoderPid": 9124,
+                    "LastError": null
+                  }
+                ],
+                "CurrentAssetId": "song-b",
+                "CurrentItemSamples": 336,
+                "Recovered": false,
+                "Enabled": true,
+                "RequestedRunning": true,
+                "LastError": null,
+                "RetryAtUtc": null,
+                "CurrentArtist": "RadioTEDU synthetic fixture",
+                "CurrentDurationSeconds": null,
+                "NextItem": {
+                  "Id": "song-a",
+                  "Artist": "RadioTEDU synthetic fixture",
+                  "Title": "song-a",
+                  "Kind": "Music",
+                  "DurationSeconds": null
+                },
+                "Loudness": {
+                  "State": "Measuring",
+                  "UpdatedAtUtc": "2026-10-16T03:53:50.4747173+00:00",
+                  "Current": {
+                    "Id": "a12b676bba5542148a500fb093e2984c",
+                    "StationId": "backpressure",
+                    "SessionId": "7d382fdd741943bd8eb499b5228a0b6e",
+                    "StartSample": 0,
+                    "EndSample": 480000,
+                    "StartedAtUtc": "2026-10-16T03:53:40.4936702+00:00",
+                    "Phase": "Live",
+                    "Reason": "ContinuousWindow",
+                    "MaximumFrames": 172800000,
+                    "HasMeasurementGap": false,
+                    "GapBeforeFrames": 0,
+                    "MissingTail": false,
+                    "Reading": {
+                      "SampleFrames": 480000,
+                      "IntegratedFrames": 480000,
+                      "MomentaryLufs": -12.559933299573563,
+                      "ShortTermLufs": -13.29792074573937,
+                      "IntegratedLufs": -13.57772740684092,
+                      "LoudnessRangeLu": 0.758102936873142,
+                      "MaximumMomentaryLufs": -12.559930016892745,
+                      "MaximumShortTermLufs": -13.246895500410039,
+                      "SamplePeakDbfs": -13.407037898909222,
+                      "TruePeakDbtp": -12.441079148559389,
+                      "RangeSettled": false,
+                      "Finished": false,
+                      "StatisticsSampleFrames": 480000
+                    },
+                    "KnownEndAtUtc": "2026-10-16T03:53:50.4936702+00:00",
+                    "Scope": "pre_encoder_final_mix"
+                  },
+                  "LastClosed": null,
+                  "DroppedBlocks": 0,
+                  "DroppedFrames": 0,
+                  "InvalidBlocks": 0,
+                  "Gaps": 0,
+                  "HistoryFailures": 0,
+                  "Error": null,
+                  "HistoryError": null,
+                  "QueuedBlocks": 0,
+                  "Continuous": true
+                },
+                "SourceGain": {
+                  "TargetLufs": -23,
+                  "SourceCeilingDbtp": -1.4,
+                  "RequestedDb": 0,
+                  "AppliedDb": 0,
+                  "State": "Unmeasured",
+                  "PredictedLufs": null,
+                  "PredictedTruePeakDbtp": null,
+                  "Linear": 1
+                },
+                "Limiter": {
+                  "State": "Processing",
+                  "CeilingDbtp": -1.5,
+                  "LookaheadFrames": 2880,
+                  "InputFrames": 483840,
+                  "OutputFrames": 480960,
+                  "LimitedFrames": 0,
+                  "GainReductionDb": 0,
+                  "MaximumGainReductionDb": 0
+                },
+                "PendingAuditCommits": 2
+              },
+              "decodedListeners": [
+                {
+                  "Mount": "/next-survivor",
+                  "DecodedSeconds": 9.88,
+                  "SilentWindows": 0,
+                  "LongestSilentRun": 0,
+                  "ToneTransitions": 6,
+                  "UnexpectedToneTransitions": 0,
+                  "LiveToneWindows": 0,
+                  "FirstTones": [
+                    440,
+                    880,
+                    1320,
+                    660,
+                    440,
+                    880,
+                    1320
+                  ],
+                  "Error": null
+                }
+              ],
+              "report": {
+                "SchemaVersion": 1,
+                "LocalDate": "2026-10-16",
+                "Timezone": "Europe/Istanbul",
+                "Records": 8,
+                "IncompleteRecords": 0,
+                "Sha256": "25a71aed0a908877799df3f66dbe61a2352e4e69d413cc7e14d5cbf9604b30b6",
+                "FileName": "2026-10-16.csv",
+                "GeneratedAtUtc": "2026-10-16T03:53:50.6175205+00:00"
+              }
+            },
+            "Error": null
+          }
+        ],
+        "RemainingOwnedChildren": {}
+      },
+      {
+        "SchemaVersion": 1,
+        "CreatedAtUtc": "2026-10-16T03:53:59.8994444+00:00",
+        "Machine": "runnervm0xl3a",
+        "OS": "Microsoft Windows 10.0.26100",
+        "Runtime": ".NET 10.0.13",
+        "Icecast": "2.5.0",
+        "TestProfiles": [
+          "AAC-LC 192 kbps",
+          "24-bit Ogg FLAC"
+        ],
+        "HeAacTested": false,
+        "Source": "New independent implementation; no production configuration or services accessed.",
+        "ExecutionSource": "28638a57007adad6736553a592e6cd3738c429b5",
+        "PcmFormat": "48k stereo float32 little-endian",
+        "ExecutionBuild": "1.0.0+28638a57007adad6736553a592e6cd3738c429b5",
+        "Results": [
+          {
+            "Name": "corrupt",
+            "Passed": true,
+            "DurationSeconds": 9.0662767,
+            "Checks": [
+              {
+                "Description": "A corrupt upcoming file is rejected without restarting the source or stalling its successor.",
+                "Passed": true
+              },
+              {
+                "Description": "No decoder error on /next-corrupt",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded listener audio exceeds 5 seconds on /next-corrupt",
+                "Passed": true
+              },
+              {
+                "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-corrupt",
+                "Passed": true
+              },
+              {
+                "Description": "Listener hears multiple actual content transitions on /next-corrupt",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded tone order has no skips or repeats on /next-corrupt",
+                "Passed": true
+              },
+              {
+                "Description": "Rejected media has an explicit incident event.",
+                "Passed": true
+              },
+              {
+                "Description": "Playback journal hash chain is valid.",
+                "Passed": true
+              },
+              {
+                "Description": "Event acknowledgements do not duplicate journal rows.",
+                "Passed": true
+              },
+              {
+                "Description": "Music, advertisements and sweepers produce separate occurrence records.",
+                "Passed": true
+              },
+              {
+                "Description": "Orderly stop leaves a terminal record for every started occurrence.",
+                "Passed": true
+              },
+              {
+                "Description": "Completed assets retain their exact sample counts, including boundaries inside a 20 ms block.",
+                "Passed": true
+              },
+              {
+                "Description": "Program sample positions never reset during output recovery: corrupt",
+                "Passed": true
+              },
+              {
+                "Description": "No track is repeated or advanced by transport recovery: corrupt",
+                "Passed": true
+              },
+              {
+                "Description": "Daily local report contains one record per station occurrence, independent of output variants.",
+                "Passed": true
+              }
+            ],
+            "Details": {
+              "station": {
+                "Id": "corrupt",
+                "State": "Running",
+                "Samples": 410880,
+                "CompletedItems": 5,
+                "SkippedItems": 0,
+                "CurrentTitle": "advert",
+                "LateBlocks": 0,
+                "AuditRejectedEvents": 0,
+                "Outputs": [
+                  {
+                    "Id": "corrupt",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 1,
+                    "Connections": 1,
+                    "FramesWritten": 427,
+                    "DroppedBlocks": 0,
+                    "QueuedBlocks": 1,
+                    "EncoderPid": 8368,
+                    "LastError": null
+                  }
+                ],
+                "CurrentAssetId": "advert",
+                "CurrentItemSamples": 24528,
+                "Recovered": false,
+                "Enabled": true,
+                "RequestedRunning": true,
+                "LastError": null,
+                "RetryAtUtc": null,
+                "CurrentArtist": "RadioTEDU synthetic fixture",
+                "CurrentDurationSeconds": null,
+                "NextItem": {
+                  "Id": "sweeper",
+                  "Artist": "RadioTEDU synthetic fixture",
+                  "Title": "sweeper",
+                  "Kind": "Sweeper",
+                  "DurationSeconds": null
+                },
+                "Loudness": {
+                  "State": "Measuring",
+                  "UpdatedAtUtc": "2026-10-16T03:53:59.7272254+00:00",
+                  "Current": {
+                    "Id": "069f88abe5154972ad74027376cb31c5",
+                    "StationId": "corrupt",
+                    "SessionId": "9ae98906ce9049c9a05695cb5f2e1845",
+                    "StartSample": 0,
+                    "EndSample": 408000,
+                    "StartedAtUtc": "2026-10-16T03:53:51.2405325+00:00",
+                    "Phase": "Live",
+                    "Reason": "ContinuousWindow",
+                    "MaximumFrames": 172800000,
+                    "HasMeasurementGap": false,
+                    "GapBeforeFrames": 0,
+                    "MissingTail": false,
+                    "Reading": {
+                      "SampleFrames": 408000,
+                      "IntegratedFrames": 384000,
+                      "MomentaryLufs": -13.642267119261343,
+                      "ShortTermLufs": -13.993913432863069,
+                      "IntegratedLufs": -13.723822325470156,
+                      "LoudnessRangeLu": 0.7607219547760579,
+                      "MaximumMomentaryLufs": -12.55993217334244,
+                      "MaximumShortTermLufs": -13.246895500410039,
+                      "SamplePeakDbfs": -13.407037898909222,
+                      "TruePeakDbtp": -12.441079148559389,
+                      "RangeSettled": false,
+                      "Finished": false,
+                      "StatisticsSampleFrames": 384000
+                    },
+                    "KnownEndAtUtc": "2026-10-16T03:53:59.7405325+00:00",
+                    "Scope": "pre_encoder_final_mix"
+                  },
+                  "LastClosed": null,
+                  "DroppedBlocks": 0,
+                  "DroppedFrames": 0,
+                  "InvalidBlocks": 0,
+                  "Gaps": 0,
+                  "HistoryFailures": 0,
+                  "Error": null,
+                  "HistoryError": null,
+                  "QueuedBlocks": 1,
+                  "Continuous": true
+                },
+                "SourceGain": {
+                  "TargetLufs": -23,
+                  "SourceCeilingDbtp": -1.4,
+                  "RequestedDb": 0,
+                  "AppliedDb": 0,
+                  "State": "Unmeasured",
+                  "PredictedLufs": null,
+                  "PredictedTruePeakDbtp": null,
+                  "Linear": 1
+                },
+                "Limiter": {
+                  "State": "Processing",
+                  "CeilingDbtp": -1.5,
+                  "LookaheadFrames": 2880,
+                  "InputFrames": 413760,
+                  "OutputFrames": 410880,
+                  "LimitedFrames": 0,
+                  "GainReductionDb": 0,
+                  "MaximumGainReductionDb": 0
+                },
+                "PendingAuditCommits": 0
+              },
+              "decodedListeners": [
+                {
+                  "Mount": "/next-corrupt",
+                  "DecodedSeconds": 8.46,
+                  "SilentWindows": 0,
+                  "LongestSilentRun": 0,
+                  "ToneTransitions": 5,
+                  "UnexpectedToneTransitions": 0,
+                  "LiveToneWindows": 0,
+                  "FirstTones": [
+                    440,
+                    880,
+                    1320,
+                    660,
+                    440,
+                    880
+                  ],
+                  "Error": null
+                }
+              ],
+              "report": {
+                "SchemaVersion": 1,
+                "LocalDate": "2026-10-16",
+                "Timezone": "Europe/Istanbul",
+                "Records": 6,
+                "IncompleteRecords": 0,
+                "Sha256": "433370e087d827a7adb4a606cc5982b1a9ffe4accaafe7e32b24f9e6f9785a59",
+                "FileName": "2026-10-16.csv",
+                "GeneratedAtUtc": "2026-10-16T03:53:59.8824631+00:00"
+              }
+            },
+            "Error": null
+          }
+        ],
+        "RemainingOwnedChildren": {}
+      }
+    ],
+    "Tools": [
+      {
+        "Url": "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-essentials_build.7z",
+        "Sha256": "4705843ccaaf54257c16ad90f3e952ece33c17df964ecf7bfdbb0f49c7171077",
+        "Name": "ffmpeg-9.0.2-essentials_build.7z"
+      },
+      {
+        "Url": "https://downloads.xiph.org/releases/icecast/icecast_win64_2.5.0.exe",
+        "Sha256": "ad412cbe5d3d3804ea6208dfb4be8d8a25ecb94d62f46bc5a9aa8fa0f2f647c9",
+        "Name": "icecast_win64_2.5.0.exe"
+      }
+    ],
+    "Error": null,
+    "FfmpegVersion": "ffmpeg version 9.0.2-essentials_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers"
+  },
+  "artifacts": [
+    {
+      "name": "windows-unit-results",
+      "digest": "sha256:2178ba91611a852162c9af531084ba0c786a09bb68b8fd4d7c17112224eb3baa",
+      "bytes": 46832
+    },
+    {
+      "name": "windows-service-qualification",
+      "digest": "sha256:935ef9d24f8aec8cd9c25bd92148c828b18f734cbbe6b10cd398fb473d40116c",
+      "bytes": 1155
+    },
+    {
+      "name": "windows-setup-qualification",
+      "digest": "sha256:198d692b554126c75b2fed8a2eedabb4930e169c26880db521dd48834effb333",
+      "bytes": 938
+    },
+    {
+      "name": "windows-runtime-package-evidence",
+      "digest": "sha256:720e6c02586a81863d5751237114bad640342f78ed1c463b66ef33559a20cb72",
+      "bytes": 4234
+    },
+    {
+      "name": "loudness-reference-qualification",
+      "digest": "sha256:46eb151fdbe12ee7e734fba6aa87dd4e1957f1fae7189761d5a11e173b2b69ef",
+      "bytes": 2653
+    },
+    {
+      "name": "windows-real-audio-qualification",
+      "digest": "sha256:b1739329eb4fe84d6be364eafcc39ca1fb6d9815ded16f74d4bf1fa9fd6d64e5",
+      "bytes": 16167
+    }
+  ],
+  "retainedFailures": [
+    "final-limiter-first-failure-20261016.json",
+    "final-limiter-browser-expectation-failure-20261016.json"
+  ],
+  "mousePreview": {
+    "connectedEngine": false,
+    "operationalConfigurationChanged": false,
+    "actions": [
+      "Mouse selected Classic",
+      "Mouse selected Energize",
+      "Checked unknown limiter/history/source-gain readouts"
+    ],
+    "browserErrors": 0,
+    "screenshot": "final-limiter-preview-20261016.png"
+  },
+  "productionChanged": false,
+  "migratedGroups": 0,
+  "scope": "Disposable Windows real synthetic decoder/audio and service/setup, standalone independent instruments, two low-crest normalized AAC-LC/FLAC listeners and unconnected local UI preview only. No worst-case encoded limiter/headroom, HE-AAC/all18, full official corpus, actual-PC installation/boot/media/device/resource, connected mouse or24/72h commissioning acceptance."
+}

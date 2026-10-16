@@ -6,7 +6,7 @@ The user rejected the WPF prototype and requested a browser app. [The browser in
 
 The current development branch also adds [non-destructive source gain](docs/SOURCE_NORMALIZATION.md): complete-file loudness analysis, bounded fixed gain, revision-bound persistence and Library reanalysis controls. Exact source cf39fd9c passed 179 unit cases and 148 real audio checks, including two independently decoded normalized synthetic AAC-LC/FLAC branches in run 38842202973. See [qualified source scope](artifacts/evidence/source-normalization-179-20261016.json). Final-mix limiting, full codec headroom and all-stream acceptance remain unfinished.
 
-The next continuation adds [final-mix limiting and delayed output ownership](docs/FINAL_MIX_LIMITER.md), currently under qualification. Its new engine, limiter, journal and UI readouts require fresh exact-source validation; the preceding 179/148 evidence does not qualify these changes.
+The [final-mix limiter and audible output timeline](docs/FINAL_MIX_LIMITER.md) passed exact-source qualification at 28638a57: 194 unit cases, 9 browser-model cases, 168 real audio checks, 35 SCM checks, 20 setup checks and 15 independent synthetic signals. See [scoped evidence](artifacts/evidence/final-limiter-194-20261016.json). Exact finite EOF/Stop/Skip/queue ownership, nonblocking journal writes and unchanged low-level 24-bit FLAC precision were verified. Full encoded headroom/all18, target-PC and connected operational acceptance remain unfinished.
 
 ## Current interface
 

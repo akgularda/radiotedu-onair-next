@@ -1,6 +1,6 @@
 # Final-mix true-peak processing and output ownership
 
-This continuation is under qualification. It does not authorize production migration. The final eight AAC-LC/eight HE-AAC/two FLAC roster, decoded codec headroom, reference corpus, actual-PC installation/device/resource/boot, connected mouse and 24/72-hour gates remain open.
+Exact source `28638a57` passed 194 unit cases, 9 browser-model cases, 168 real audio checks across nine scenarios, 35 SCM checks, 20 setup checks and 15 independent synthetic signal comparisons in [run 38847512000](https://github.com/akgularda/radiotedu-onair-next/actions/runs/38847512000). All six evidence archive digests and execution source identities were verified. See [scoped evidence](../artifacts/evidence/final-limiter-194-20261016.json). This is scoped software/loopback acceptance and does not authorize production migration. The final eight AAC-LC/eight HE-AAC/two FLAC roster, decoded codec headroom, reference corpus, actual-PC installation/device/resource/boot, connected mouse and 24/72-hour gates remain open.
 
 The engine applies a native linked-stereo true-peak limiter after microphone ducking/mixing and before its existing final-mix meter/output fanout. Original float samples are multiplied by one shared gain; the processor does not downsample, clip, quantize to 16-bit or alter media files. The initial preset is -1.5 dBTP, a provisional engineering reserve below the required -1 dBTP linear maximum, not a measured codec-specific allowance. No output compliance verdict comes from this setting.
 
@@ -10,7 +10,7 @@ The processing detector combines an eight-times 32-tap windowed-sinc grid with t
 
 A 60 ms fixed read-ahead covers the detector support and attack horizon; source/microphone samples outside +/-64 are explicitly rejected as malformed, so their valid mixed sum is bounded to +/-128. The horizon check rejects unsupported settings. A 0.001 dB numerical reserve covers float output rounding. Scratch/history/deque storage is fixed and processing performs no file, database or network I/O. Exact input/output frame counts are exposed. Finite drain advances only detector/lookahead zeros and emits only real input samples; it never appends programme silence. Unity-gain material retains its original float samples and 24bit precision.
 
-Independent reference tests include intersample 12 kHz, 20/23.5 kHz, impulses, broadband and alternating transients, in addition to the existing nine instrument comparisons. Passing those signals is not the full official corpus or a universal encoded-output proof. This source is not qualified until its exact CI evidence is accepted.
+Independent reference tests include intersample 12 kHz, 20/23.5 kHz, impulses, broadband and alternating transients, in addition to the existing nine instrument comparisons. Passing those signals is not the full official corpus or a universal encoded-output proof. The six corrected independent limiter signals each contained exactly 192,000 decoded frames and measured no higher than -1.9 dBTP. The earlier short-detector broadband failure remains recorded.
 
 ## Prepared versus published ownership
 
@@ -24,4 +24,6 @@ The browser shows actual last-output reduction/maximum and its configured proces
 
 Disposable real Windows scenarios cover short finite items, Stop/restart before prepared EOF, buffered Skip, a 350 ms stalled journal and overloaded synthetic mic/music. Generated references and microphone samples are engineering fixtures; no programme/listener/private-microphone recording is saved. Preserve failed and successful evidence. Do not start a duplicate fleet or run heavy tests on the broadcasting PC without new capacity admission.
 
-The first source failed compilation from a nullable exception-type expression and independently failed the broadband limiter case at -0.9 dBTP. Both failures are retained. The corrected detector is under fresh exact-source qualification; no tolerance or output ceiling was relaxed.
+The first source failed compilation from a nullable exception-type expression and independently failed the broadband limiter case at -0.9 dBTP. Both failures are retained. The corrected detector passed the exact-source run above; no tolerance or output ceiling was relaxed.
+
+Real processing evidence: short music/ad/sweeper output remained exactly 2,160 frames; three in-flight queue entries were consumed once after output; Stop retained the audible item at 960 frames and linked restart began at its first sample. During the 350 ms injected writer hold, output advanced from 5,760 to 21,120 frames and pending writes stayed visible. The deliberately overloaded synthetic mic/music mix retained 192,000 frames with native peak -2.668 dBTP. The unchanged low-level FLAC transport fixture compared 135,808 stereo frames with zero sample/24-bit-LSB error. These are not physical-mic or worst-case encoded-output acceptance.
