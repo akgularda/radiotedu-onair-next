@@ -9,6 +9,11 @@ using OnAirNext.ServiceControl;
 if(!OperatingSystem.IsWindows())return 2;
 try
 {
+    if(args.Length==3&&args[0] is "--apply-update" or "--rollback-update")
+    {
+        WindowsOwnedJob.AttachCurrentProcess();
+        return await WindowsAppUpdater.RunAsync(args[1],args[2],args[0]=="--apply-update"?UpdateDirection.Apply:UpdateDirection.Rollback);
+    }
     if(args.Length==1&&args[0]=="--prepare-update")
     {
         WindowsOwnedJob.AttachCurrentProcess();

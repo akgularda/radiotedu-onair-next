@@ -5,6 +5,11 @@ using System.IO.Pipes;
 using OnAirNext.Engine;
 using OnAirNext.Lab;
 
+if (args.Length == 2 && args[0] is "--service-maintenance-mark" or "--service-maintenance-check-mark")
+{
+    if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Disposable Windows CI setup fixture only.");
+    return await ServiceProbe.MaintenanceMarkerAsync(args[1],args[0]=="--service-maintenance-check-mark");
+}
 if (args.Length == 1 && args[0] == "--service-maintenance-probe")
 {
     if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Disposable Windows CI setup fixture only.");

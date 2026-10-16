@@ -14,7 +14,7 @@ internal static class MaintenanceJournalProbe
         database=Path.GetFullPath(database);var current=Path.Combine(ServiceEndpoint.EngineData,"playback.db");
         var updates=Path.Combine(ServiceEndpoint.DataRoot,"updates");
         var relative=Path.GetRelativePath(updates,database).Split(Path.DirectorySeparatorChar);
-        var snapshot=relative.Length==5&&Guid.TryParseExact(relative[0],"N",out _)&&relative[1]=="snapshot"&&relative[2]=="data"&&relative[3]=="journal"&&relative[4]=="playback.db";
+        var snapshot=relative.Length==5&&Guid.TryParseExact(relative[0],"N",out _)&&(relative[1]=="snapshot"||relative[1].StartsWith("snapshot-",StringComparison.Ordinal)&&Guid.TryParseExact(relative[1][9..],"N",out _))&&relative[2]=="data"&&relative[3]=="journal"&&relative[4]=="playback.db";
         if(!string.Equals(database,current,StringComparison.OrdinalIgnoreCase)&&!snapshot)
             throw new InvalidOperationException("Inspect only the retained new playback journal or its reviewed maintenance snapshot.");
         ServiceEndpoint.RequirePath(database,database);

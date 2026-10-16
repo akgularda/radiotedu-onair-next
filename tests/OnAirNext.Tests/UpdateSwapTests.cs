@@ -218,4 +218,22 @@ public sealed class UpdateSwapTests
         Assert.Equal(UpdateDiskState.Prepared,await f.Swap.InspectAsync());
     }
 
+    [Fact]
+    public async Task ProtectionFailurePreventsIntentPublicationAndImageMutation()
+    {
+        var f=new Fixture();await f.CreateAsync();var folder=Path.Combine(f.Root,"protected-callback-operation");Directory.CreateDirectory(folder);
+        var id=Path.GetFileName(f.Swap.CandidateRoot).Split(".candidate-")[1];var protectedFiles=new List<string>();
+        void Protect(string path)
+        {
+            Assert.True(File.Exists(path));using(var readable=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.None)){Assert.True(readable.CanRead);}
+            if(Path.GetFileName(path).Contains(".intent.json.partial-",StringComparison.Ordinal))throw new UnauthorizedAccessException("simulated owner protection failure");
+            protectedFiles.Add(path);
+        }
+        var store=new UpdateOperationStore(f.Swap.InstallRoot,folder,Protect);var hash=await store.SaveReviewAsync(new(id,f.Old,f.Next,DateTimeOffset.UtcNow));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(()=>store.RunAsync(id,hash,UpdateDirection.Apply,Stopped));
+        Assert.Null(await store.ReadIntentAsync(id,hash));Assert.Equal(UpdateDiskState.Prepared,await f.Swap.InspectAsync());
+        Assert.Contains(protectedFiles,p=>p.Contains(".snapshot.lock.partial-",StringComparison.Ordinal));
+        Assert.Contains(protectedFiles,p=>p.Contains(".review.json.partial-",StringComparison.Ordinal));
+    }
+
 }

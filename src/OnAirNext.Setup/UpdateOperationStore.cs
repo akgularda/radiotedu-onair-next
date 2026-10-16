@@ -12,8 +12,10 @@ public sealed record UpdateIntent(string ReviewSha256,UpdateDirection Direction,
 public sealed class UpdateOperationStore
 {
     private readonly string _install,_folder;
-    public UpdateOperationStore(string trustedInstallRoot,string protectedOperationFolder)
+    private readonly Action<string>? _protectNewFile;
+    public UpdateOperationStore(string trustedInstallRoot,string protectedOperationFolder,Action<string>? protectNewFile=null)
     {
+        _protectNewFile=protectNewFile;
         _install=SetupPaths.CanonicalRoot(trustedInstallRoot);_folder=SetupPaths.CanonicalRoot(protectedOperationFolder);
         if(!Directory.Exists(_folder))throw new DirectoryNotFoundException("Create the protected update record folder first.");
         var comparison=OperatingSystem.IsWindows()?StringComparison.OrdinalIgnoreCase:StringComparison.Ordinal;
@@ -32,8 +34,7 @@ public sealed class UpdateOperationStore
         if(bytes.Length>524288)throw new ArgumentException("The update review is too large.");
         await using var held=Lock(review.Id);
         var snapshotGuard=FilePath(review.Id,".snapshot.lock");SetupPaths.RequireNoLinks(snapshotGuard);
-        if(!File.Exists(snapshotGuard))
-        {await using var created=new FileStream(snapshotGuard,FileMode.CreateNew,FileAccess.Write,FileShare.None);created.Flush(true);}
+        CreateGuard(snapshotGuard);
         if(File.Exists(path))
         {
             var existing=await SetupPaths.ReadVerifiedAsync<UpdateSwapReview>(path,Convert.ToHexString(SHA256.HashData(bytes)),token);
@@ -42,10 +43,18 @@ public sealed class UpdateOperationStore
         else await WriteAtomicAsync(path,bytes,false,token);
         return Convert.ToHexString(SHA256.HashData(bytes));
     }
+    private void CreateGuard(string path)
+    {
+        if(File.Exists(path))return;
+        var temporary=path+".partial-"+Guid.NewGuid().ToString("N");SetupPaths.RequireNoLinks(temporary);
+        using(var created=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)){created.Flush(true);}
+        _protectNewFile?.Invoke(temporary);SetupPaths.RequireNoLinks(path);File.Move(temporary,path,false);
+    }
     private FileStream Lock(string id)
     {
         var path=FilePath(id,".lock");SetupPaths.RequireNoLinks(path);
-        return new FileStream(path,FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);
+        CreateGuard(path);
+        return new FileStream(path,FileMode.Open,FileAccess.ReadWrite,FileShare.None);
     }
     public async Task<UpdateIntent?> ReadIntentAsync(string id,string expectedReview,CancellationToken token=default)
     {
@@ -106,12 +115,13 @@ public sealed class UpdateOperationStore
         await Persist(requested==UpdateDirection.Apply?"Application files updated":"Original application files restored");
         return latest!;
     }
-    private static async Task WriteAtomicAsync(string path,byte[] bytes,bool replace,CancellationToken token)
+    private async Task WriteAtomicAsync(string path,byte[] bytes,bool replace,CancellationToken token)
     {
         SetupPaths.RequireNoLinks(path);
         var temporary=path+".partial-"+Guid.NewGuid().ToString("N");SetupPaths.RequireNoLinks(temporary);
         await using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None,65536,FileOptions.Asynchronous|FileOptions.WriteThrough))
         {await stream.WriteAsync(bytes,token);await stream.FlushAsync(token);stream.Flush(true);}
+        _protectNewFile?.Invoke(temporary);
         // Incomplete records are retained for diagnosis; an orphan partial never becomes
         // authoritative simply because its timestamp is newer than the committed record.
         SetupPaths.RequireNoLinks(path);

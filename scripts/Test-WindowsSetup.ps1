@@ -73,9 +73,15 @@ try{
  $allowed=@([Security.Principal.WindowsIdentity]::GetCurrent().User.Value,'S-1-5-18','S-1-5-32-544');$rules=(Get-Acl -LiteralPath $endpointPath).GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])
  Check 'Startup capability is stored without unlisted account access' (@($rules|Where-Object {$_.AccessControlType -eq 'Allow' -and $_.IdentityReference.Value -notin $allowed}).Count -eq 0)
 
+ $updateAnonymousRejected=$false;try{$null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update' -TimeoutSec 3}catch{$updateAnonymousRejected=([int]$_.Exception.Response.StatusCode -eq 403)}
+ Check 'Application update status rejects anonymous callers' $updateAnonymousRejected
  $health=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/health' -TimeoutSec 3
  Check 'Console health exposes the exact compiled build identity' ($health.product -eq 'RadioTEDU-OnAirNext' -and $health.version.EndsWith($env:GITHUB_SHA))
  $headers=@{'X-Studio-Token'=$session.token;Origin='http://127.0.0.1:18121'}
+ $updateStatus=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update' -WebSession $setupWebSession -Headers $headers -TimeoutSec 5
+ Check 'Installed console exposes update status without enabling in-place maintenance' (-not $updateStatus.packageAvailable -and -not $updateStatus.canApply -and -not $updateStatus.canRollback)
+ $inPlaceRejected=$false;try{$null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update/review' -Method Post -WebSession $setupWebSession -Headers $headers -TimeoutSec 5}catch{$inPlaceRejected=([int]$_.Exception.Response.StatusCode -eq 400)}
+ Check 'Installed console refuses update preparation from its own locked application image' $inPlaceRejected
  $created=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/setup/shortcuts' -Method Post -WebSession $setupWebSession -Headers $headers -TimeoutSec 10
  $shell=New-Object -ComObject WScript.Shell
  try{foreach($path in $shortcutPaths){$shortcut=$shell.CreateShortcut($path);try{Check 'Per-user shortcut targets the installed launcher with console arguments' ($shortcut.TargetPath -eq [IO.Path]::GetFullPath((Join-Path $install 'setup/OnAirNext.Setup.exe')) -and $shortcut.Arguments -eq '--open-console')}finally{[Runtime.InteropServices.Marshal]::FinalReleaseComObject($shortcut)|Out-Null}}}finally{[Runtime.InteropServices.Marshal]::FinalReleaseComObject($shell)|Out-Null}
@@ -96,6 +102,66 @@ try{
  $review=(Run $setup @('--prepare-update'))|ConvertFrom-Json
  Check 'Read-only maintenance review binds both manifests and schema-one rollback contract' ($review.Files.Original.BundleSha256 -eq $plan.BundleSha256 -and $review.Files.Replacement.BundleSha256 -eq (Get-FileHash -LiteralPath (Join-Path $fixture 'bundle.json') -Algorithm SHA256).Hash -and $review.JournalSchemaVersion -eq 1)
  Check 'Read-only review retains original operator configuration and exact service process' ($review.OperatorSid -eq $plan.OperatorSid -and $review.ConfigurationSha256 -eq $before -and $review.ServiceProcessId -eq $service.ProcessId -and (Get-FileHash -LiteralPath (Join-Path $data 'host.json') -Algorithm SHA256).Hash -eq $before)
+ $reviewPath=Join-Path $fixture 'update-review.json';$review|ConvertTo-Json -Depth 24|Set-Content -LiteralPath $reviewPath -Encoding utf8NoBOM
+ $reviewHash=(Get-FileHash -LiteralPath $reviewPath -Algorithm SHA256).Hash
+ $null=Run $setup @('--apply-update',$reviewPath,$reviewHash)
+ $operationFolder=Join-Path $data ('updates/'+$review.Files.Id)
+ $completion=Get-Content -LiteralPath (Join-Path $operationFolder 'apply.completed.json') -Raw|ConvertFrom-Json
+ $snapshot=Get-Content -LiteralPath (Join-Path $operationFolder 'snapshot.json') -Raw|ConvertFrom-Json
+ Check 'Completed snapshot names a retained operation-local attempt' ($snapshot.Folder -match '^snapshot-[a-f0-9]{32}
+ Check 'Reviewed update retains the original image and a verified metadata snapshot' ((Test-Path -LiteralPath ($install+'.previous-'+$review.Files.Id)) -and (Test-Path -LiteralPath (Join-Path $operationFolder ($snapshot.Folder+'/data/journal/playback.db'))) -and $completion.ImageSha256 -eq $review.Files.Replacement.BundleSha256)
+ $updatedService=Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")
+ $null=Run $setup @('--apply-update',$reviewPath,$reviewHash)
+ Check 'Completed update retry does not restart the verified service' ((Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")).ProcessId -eq $updatedService.ProcessId)
+ $marker=[Guid]::NewGuid().ToString('N')
+ $marked=(Run $lab @('--service-maintenance-mark',$marker))|ConvertFrom-Json
+ Check 'Real service commits a new stopped-intent receipt after the snapshot' $marked.Marked
+ # Relocating an unchanged complete package must not require editing its saved review.
+ $relocated=[IO.Path]::GetFullPath($fixture+'-relocated')
+ if([IO.Path]::GetFullPath($fixture) -ne $expectedFixture -or [IO.Path]::GetDirectoryName($relocated) -ne [IO.Path]::GetDirectoryName($expectedFixture) -or (Test-Path -LiteralPath $relocated) -or (Get-Item -LiteralPath $fixture).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Owned package relocation validation failed'}
+ Move-Item -LiteralPath $fixture -Destination $relocated
+ $fixture=$relocated;$expectedFixture=$relocated;$setup=Join-Path $fixture 'setup/OnAirNext.Setup.exe';$reviewPath=Join-Path $fixture 'update-review.json'
+ $null=Run $setup @('--rollback-update',$reviewPath,$reviewHash)
+ $rollback=Get-Content -LiteralPath (Join-Path $operationFolder 'rollback.completed.json') -Raw|ConvertFrom-Json
+ $retained=(Run $lab @('--service-maintenance-check-mark',$marker))|ConvertFrom-Json
+ Check 'Relocated matching package rolls back original bytes while retaining later real journal receipts' ($rollback.ImageSha256 -eq $plan.BundleSha256 -and $retained.Marked -and (Get-FileHash -LiteralPath (Join-Path $install 'bundle.json') -Algorithm SHA256).Hash -eq $plan.BundleSha256)
+ $rollbackService=Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")
+ $staleApplyRejected=$false;try{$null=Run $setup @('--apply-update',$reviewPath,$reviewHash)}catch{$staleApplyRejected=$true}
+ Check 'Retained rollback rejects stale Apply without restarting the original service' ($staleApplyRejected -and (Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")).ProcessId -eq $rollbackService.ProcessId)
+ $maintenance=(Run $lab @('--service-maintenance-probe'))|ConvertFrom-Json
+ foreach($check in $maintenance.Checks){Check $check.Description $check.Passed}
+ Check 'Maintenance fixture completed and restored its owned service' $maintenance.Passed
+ $completed=$true
+}catch{$failure=$_.Exception.Message;throw}
+finally{
+ if($webProcess){try{if(-not $webProcess.HasExited){$webProcess.Kill($true);$webProcess.WaitForExit(10000)|Out-Null}}finally{$webProcess.Dispose()}}
+ foreach($path in $shortcutPaths){if(Test-Path -LiteralPath $path){$full=[IO.Path]::GetFullPath($path);if([IO.Path]::GetFileName($full) -ne 'RadioTEDU OnAir Next.lnk' -or (Get-Item -LiteralPath $full).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Shortcut cleanup validation failed'};Remove-Item -LiteralPath $full -Force}}
+ $env:ONAIR_SETUP_TEST_RUNTIME=$null
+ if(-not $completed -and -not $failure){$failure='Setup fixture interrupted before completion'}
+ if($owned -and (Test-Path -LiteralPath (Join-Path $data 'setup-ownership.json'))){
+  $owner=Get-Content -LiteralPath (Join-Path $data 'setup-ownership.json') -Raw|ConvertFrom-Json
+  if($owner.PlanId -ne $plan.Id){throw 'Setup fixture ownership mismatch; cleanup refused'}
+  if(Get-Service -Name $serviceName -ErrorAction SilentlyContinue){Stop-Service -Name $serviceName -ErrorAction SilentlyContinue;& "$env:SystemRoot/System32/sc.exe" delete $serviceName|Out-Null}
+  if($completed -and -not $failure){foreach($target in @(@{Path=$install;Expected=(Join-Path $env:ProgramFiles 'RadioTEDU-OnAirNext-Development')},@{Path=$data;Expected=(Join-Path $env:ProgramData 'RadioTEDU-OnAirNext-Development')})){$full=[IO.Path]::GetFullPath($target.Path);if($full -ne [IO.Path]::GetFullPath($target.Expected) -or (Get-Item -LiteralPath $full).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Setup cleanup target validation failed'};Remove-Item -LiteralPath $full -Recurse -Force}}
+ }
+ $null=New-Item -ItemType Directory -Path (Split-Path -Parent $summary) -Force
+ @{Source=$env:GITHUB_SHA;Scope='Disposable Windows installer software fixture; runtime encoder listing is an explicit test double, no real audio or broadcasting-PC commissioning';Completed=$completed;Passed=($completed -and -not $failure);Checks=$checks.ToArray();Maintenance=$maintenance;UpdateReview=$review;Error=$failure;ProductionChanged=$false}|ConvertTo-Json -Depth 8|Set-Content -LiteralPath $summary -Encoding utf8NoBOM
+}
+)
+ Check 'Reviewed update retains the original image and a verified metadata snapshot' ((Test-Path -LiteralPath ($install+'.previous-'+$review.Files.Id)) -and (Test-Path -LiteralPath (Join-Path $operationFolder 'snapshot/data/journal/playback.db')) -and $completion.ImageSha256 -eq $review.Files.Replacement.BundleSha256)
+ $updatedService=Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")
+ $null=Run $setup @('--apply-update',$reviewPath,$reviewHash)
+ Check 'Completed update retry does not restart the verified service' ((Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")).ProcessId -eq $updatedService.ProcessId)
+ $marker=[Guid]::NewGuid().ToString('N')
+ $marked=(Run $lab @('--service-maintenance-mark',$marker))|ConvertFrom-Json
+ Check 'Real service commits a new stopped-intent receipt after the snapshot' $marked.Marked
+ $null=Run $setup @('--rollback-update',$reviewPath,$reviewHash)
+ $rollback=Get-Content -LiteralPath (Join-Path $operationFolder 'rollback.completed.json') -Raw|ConvertFrom-Json
+ $retained=(Run $lab @('--service-maintenance-check-mark',$marker))|ConvertFrom-Json
+ Check 'Application rollback restores original bytes while retaining later real journal receipts' ($rollback.ImageSha256 -eq $plan.BundleSha256 -and $retained.Marked -and (Get-FileHash -LiteralPath (Join-Path $install 'bundle.json') -Algorithm SHA256).Hash -eq $plan.BundleSha256)
+ $rollbackService=Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")
+ $staleApplyRejected=$false;try{$null=Run $setup @('--apply-update',$reviewPath,$reviewHash)}catch{$staleApplyRejected=$true}
+ Check 'Retained rollback rejects stale Apply without restarting the original service' ($staleApplyRejected -and (Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")).ProcessId -eq $rollbackService.ProcessId)
  $maintenance=(Run $lab @('--service-maintenance-probe'))|ConvertFrom-Json
  foreach($check in $maintenance.Checks){Check $check.Description $check.Passed}
  Check 'Maintenance fixture completed and restored its owned service' $maintenance.Passed

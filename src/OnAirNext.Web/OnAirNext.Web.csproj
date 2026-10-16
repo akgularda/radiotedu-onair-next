@@ -12,6 +12,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../OnAirNext.Setup/ConsoleEndpoint.cs" Link="Protocol/ConsoleEndpoint.cs" />
+    <Compile Include="../OnAirNext.Setup/AppUpdateModels.cs" Link="Installation/AppUpdateModels.cs" />
+    <Compile Include="../OnAirNext.Setup/UpdateSwap.cs" Link="Installation/UpdateSwap.cs" />
+    <Compile Include="../OnAirNext.Setup/UpdateOperationStore.cs" Link="Installation/UpdateOperationStore.cs" />
     <Compile Include="../OnAirNext.Setup/SetupModels.cs" Link="Installation/SetupModels.cs" />
     <Compile Include="../OnAirNext.Setup/SetupService.cs" Link="Installation/SetupService.cs" />
     <Compile Include="../OnAirNext.Host/ServiceEndpoint.cs" Link="ServiceControl/ServiceEndpoint.cs" />

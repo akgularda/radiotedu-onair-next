@@ -59,7 +59,7 @@ internal static class AppUpdatePreparation
             !ownershipHash.Equals(await SetupPaths.HashAsync(ownershipPath,token),StringComparison.OrdinalIgnoreCase)||
             !initialHash.Equals(await SetupPaths.HashAsync(initialPath,token),StringComparison.OrdinalIgnoreCase))
             throw new IOException("The service or installation changed during review. Prepare a fresh review.");
-        return new(files,sid,package,configHash,ownershipHash,initialHash,service.ProcessId,started,1);
+        return new(files,sid,package,configHash,ownershipHash,initialHash,service.ProcessId,started,1,currentBundle.Source,nextBundle.Source);
     }
     private static void RequireRunningOwned(SetupServiceState service)
     {
@@ -67,7 +67,7 @@ internal static class AppUpdatePreparation
         if(service.State!=4||service.ProcessId==0||service.StartType!=2||!service.Delayed||!service.FailureFlag||service.RecoveryActions!=3)
             throw new InvalidOperationException("Connect the healthy installed service with its verified automatic startup and recovery settings before reviewing an update.");
     }
-    private static async Task<JsonElement> StatusAsync(CancellationToken token)
+    internal static async Task<JsonElement> StatusAsync(CancellationToken token)
     {
         using var deadline=CancellationTokenSource.CreateLinkedTokenSource(token);deadline.CancelAfter(TimeSpan.FromSeconds(4));
         await using var pipe=ServicePipeClient.Create(ServiceEndpoint.Pipe);

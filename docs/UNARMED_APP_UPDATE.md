@@ -41,3 +41,9 @@ The next source adds a read-only external-package review binding the original op
 A separate early Host inspection mode reads only the fixed new journal or a fixed reviewed-operation snapshot path. It verifies the actual schema_info version, exact eight persisted stopped intents, preserved enabled states and SQLite quick_check without opening EventJournal, setting pragmas, checkpointing WAL or changing schema/state. Regression cases include committed running intent still in WAL, unsupported schema, missing/unknown channels and byte preservation. The disposable service fixture holds writer.lock during actual packaged inspection after service exit.
 
 Fresh CI is required for these additions. They do not expose a complete update/apply workflow or establish production readiness.
+
+## Execution and System controls under fresh qualification
+
+Newer source now integrates protected staging, the unarmed new-service maintenance fence, a writer-lock-held schema/stopped-intent inspection and verified metadata snapshot, durable image transitions, canonical service restoration and authenticated readback. System provides review, Apply/Resume, targeted application rollback and retained progress/completion/failure readback. Elevated record files receive explicit Administrator ownership before publication. The helper runs below normal priority and never touches the former service or music. See [operator workflow and scope](WINDOWS_APP_UPDATES.md).
+
+These changes are pending fresh compilation, disposable setup round-trip tests and actual-PC mouse/UAC acceptance. Earlier foundation evidence does not qualify this newer integration. The existing installed b39 engine has not been updated and zero production groups have migrated.

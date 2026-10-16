@@ -1,0 +1,141 @@
+{
+  "head": "55a88ca67fe9f33e58862429455521fec34beb35",
+  "executionSource": "8be7b3c9fb69317ec3d47f188062b76c9da175e8",
+  "tree": "eb9f84dfad92138cd50547b6c5e2f25c6cfeffc3",
+  "reviewedAndExecutedTreesMatch": true,
+  "run": 38911582084,
+  "url": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38911582084",
+  "conclusion": "success",
+  "unit": {
+    "total": 285,
+    "executed": 285,
+    "passed": 285,
+    "failed": 0,
+    "error": 0,
+    "timeout": 0,
+    "aborted": 0,
+    "inconclusive": 0,
+    "passedButRunAborted": 0,
+    "notRunnable": 0,
+    "notExecuted": 0,
+    "disconnected": 0,
+    "warning": 0,
+    "completed": 0,
+    "inProgress": 0,
+    "pending": 0
+  },
+  "service": {
+    "passed": true,
+    "checks": 49
+  },
+  "setup": {
+    "passed": true,
+    "checks": 37,
+    "maintenance": true
+  },
+  "audio": {
+    "passed": true,
+    "cases": [
+      {
+        "name": "baseline",
+        "passed": true,
+        "checks": 22
+      },
+      {
+        "name": "precision",
+        "passed": true,
+        "checks": 7
+      },
+      {
+        "name": "normalization",
+        "passed": true,
+        "checks": 53
+      },
+      {
+        "name": "processing",
+        "passed": true,
+        "checks": 20
+      },
+      {
+        "name": "roster18",
+        "passed": true,
+        "checks": 197
+      },
+      {
+        "name": "live",
+        "passed": true,
+        "checks": 13
+      },
+      {
+        "name": "recovery",
+        "passed": true,
+        "checks": 17
+      },
+      {
+        "name": "finite",
+        "passed": true,
+        "checks": 5
+      },
+      {
+        "name": "backpressure",
+        "passed": true,
+        "checks": 16
+      },
+      {
+        "name": "corrupt",
+        "passed": true,
+        "checks": 15
+      }
+    ],
+    "totalChecks": 365
+  },
+  "reference": {
+    "passed": true,
+    "signals": 15
+  },
+  "codecs": {
+    "passed": true,
+    "profiles": 3
+  },
+  "originalArchives": [
+    {
+      "name": "windows-unit-results",
+      "digest": "sha256:b2721d27524edc430b2fc3a35735013089ef10e76edc48c1797f48af78f9daac",
+      "bytes": 70708
+    },
+    {
+      "name": "windows-service-qualification",
+      "digest": "sha256:c5d7400b726fbcb0fabfca3f56a4a64b29c1663e54e6d5dc46e81d4f15259c6c",
+      "bytes": 1473
+    },
+    {
+      "name": "windows-setup-qualification",
+      "digest": "sha256:7973e466abbc0c6131acf2294f4e84e1a8f03c1e506d161aa51ec0586b9f0cee",
+      "bytes": 2707
+    },
+    {
+      "name": "windows-runtime-package-evidence",
+      "digest": "sha256:f0dc048a7d7186223a721921aee0dc76735ed61431bb38643e356696f8d18598",
+      "bytes": 4235
+    },
+    {
+      "name": "loudness-reference-qualification",
+      "digest": "sha256:ee17e7c8bea4ffc8076728c4024e6d2adec243ef27e706e9edd59a899b9b67f6",
+      "bytes": 2656
+    },
+    {
+      "name": "windows-real-audio-qualification",
+      "digest": "sha256:a07d78becfb07c09804e106bd0ea0fb7d6a40cadedaf474aea9a53d375ed7cb3",
+      "bytes": 49857
+    },
+    {
+      "name": "windows-codec-qualification",
+      "digest": "sha256:6761241efcb8c07b79b57473a7c3997f9c0a3fb1c4b05d40a6b973f427043851",
+      "bytes": 15688
+    }
+  ],
+  "allSevenOriginalArchiveByteCountsAndSha256Verified": true,
+  "scope": "Disposable Windows software fixtures, low-crest 48 kHz synthetic audio, exact 8-station/18-output loopback. Not target-PC, physical devices/UAC, worst-case codec headroom, complete official corpus, UI mouse, 24/72h or production commissioning.",
+  "productionGroupsMigrated": 0,
+  "newerSource": "Application update execution and System controls are newer, pending fresh qualification; this evidence does not qualify them."
+}

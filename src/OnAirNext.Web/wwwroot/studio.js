@@ -43,7 +43,7 @@
     $('stations').replaceChildren(...stations.map(station=>{const button=element('button','station-tab');button.role='tab';button.setAttribute('aria-selected',String(station.id===state.station));button.setAttribute('aria-label',station.name+' channel');button.append(element('span','dot'),document.createTextNode(station.name));button.addEventListener('click',()=>selectStation(station.id));return button;}));
   }
   function selectStation(id){state.station=id;state.library=null;state.offset=0;stationTabs();renderStatus();resetLibrary();if(state.page==='library')void loadLibrary();}
-  function navigate(page){if(!names[page])return;state.page=page;document.querySelectorAll('[data-view]').forEach(section=>section.hidden=section.dataset.view!==page);document.querySelectorAll('.nav-item[data-page]').forEach(button=>{button.classList.toggle('selected',button.dataset.page===page);button.setAttribute('aria-current',button.dataset.page===page?'page':'false');});text('breadcrumb',names[page]);if(page==='library')void loadLibrary();if(page==='system')void loadSetup();if(page==='reports')void loadReports();}
+  function navigate(page){if(!names[page])return;state.page=page;document.querySelectorAll('[data-view]').forEach(section=>section.hidden=section.dataset.view!==page);document.querySelectorAll('.nav-item[data-page]').forEach(button=>{button.classList.toggle('selected',button.dataset.page===page);button.setAttribute('aria-current',button.dataset.page===page?'page':'false');});text('breadcrumb',names[page]);if(page==='library')void loadLibrary();if(page==='system'){void loadSetup();void loadAppUpdates();}if(page==='reports')void loadReports();}
   document.querySelectorAll('[data-page]:not(:disabled)').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();navigate(button.dataset.page);}));
   document.addEventListener('keydown',event=>{if(event.altKey && (event.key==='1'||event.key==='2')){event.preventDefault();navigate(event.key==='1'?'air':'library');}});
   function renderStatus(){
@@ -364,6 +364,57 @@
   $('confirm-folder').addEventListener('click',()=>void submitFolder());
   $('folder-retry').addEventListener('click',()=>{const saved=pending();if(!folderContext()||!['library-root','library-legacy-root'].includes(saved?.request.Action)||saved.request.Path!==state.folder)return;void submitFolder(saved);});
   $('folder-dialog').addEventListener('close',()=>{state.folderGeneration++;state.folderSource=null;state.folderTarget=null;$('folder-mapping-note').hidden=true;$('confirm-folder').textContent='Use this folder';});
+  let appUpdateState=null,appUpdateLoading=false,appUpdateBusy=false,appUpdateTarget=null;
+  function appUpdateControls(){
+    const enabled=!!state.session&&!state.session.preview&&!state.consoleClosed;
+    const busy=appUpdateLoading||appUpdateBusy||appUpdateState?.busy;
+    $('app-update-check').disabled=!enabled||busy||!appUpdateState?.packageAvailable;
+    $('app-update-apply').disabled=!enabled||busy||!appUpdateState?.canApply;
+    $('app-update-rollback').disabled=!enabled||busy||!appUpdateState?.canRollback;
+    $('app-update-refresh').disabled=!enabled||appUpdateLoading;
+    $('app-update-apply').textContent=appUpdateState?.intent&&!appUpdateState?.completion?'Resume update…':'Apply update…';
+  }
+  async function loadAppUpdates(){
+    if(appUpdateLoading||state.consoleClosed)return;
+    if(state.session?.preview){text('app-update-phase','Preview');text('app-update-detail','Application maintenance is unavailable in the unconnected visual preview.');appUpdateControls();return;}
+    appUpdateLoading=true;appUpdateControls();
+    try{
+      appUpdateState=await api('/api/app-update');const review=appUpdateState.review,intent=appUpdateState.intent,receipt=appUpdateState.completion;
+      text('app-update-phase',appUpdateState.phase);text('app-update-detail',appUpdateState.detail);
+      $('app-update-review').hidden=!review;
+      const values=review?[['Current build',review.from??'Saved installation'],['New build',review.to??'Reviewed package'],['Package folder',review.package],['Rollback data','Current data retained · schema '+review.schema],['Operation',review.id]]:[];
+      $('app-update-review').replaceChildren(...values.map(([name,value])=>{const row=element('div');row.append(element('dt','',name),element('dd','',String(value)));return row;}));
+      text('app-update-progress',intent?'Saved '+intent.direction+' · '+intent.phase+' · revision '+intent.revision:'No update direction has been committed.');
+      text('app-update-receipt',receipt?'Last verified '+receipt.direction+' · '+new Date(receipt.at).toLocaleString('en-GB'):'No verified completion receipt.');
+      const failure=appUpdateState.failure;const failureAt=failure?.AtUtc??failure?.atUtc;
+      text('app-update-error',appUpdateState.readError??(failure&&(!receipt||new Date(failureAt)>new Date(receipt.at))?((failure.Detail??failure.detail??'Update needs attention')+' '+(failure.Recovery??failure.recovery??'')):''));
+    }catch(error){appUpdateState=null;text('app-update-phase','Unavailable');text('app-update-detail','Open the complete new package to use its update controls. '+error.message);}
+    finally{appUpdateLoading=false;appUpdateControls();}
+  }
+  $('app-update-check').addEventListener('click',async()=>{
+    if(appUpdateBusy)return;appUpdateBusy=true;appUpdateControls();
+    try{await api('/api/app-update/review',{method:'POST'});await loadAppUpdates();}
+    catch(error){text('app-update-error',error.message);}
+    finally{appUpdateBusy=false;appUpdateControls();}
+  });
+  function showAppUpdate(direction){
+    const review=appUpdateState?.review;if(!review||appUpdateBusy||!(direction==='apply'?appUpdateState.canApply:appUpdateState.canRollback))return;
+    appUpdateTarget={id:review.id,direction};text('app-update-dialog-heading',direction==='apply'?'Apply reviewed update?':'Roll back this application update?');
+    text('app-update-dialog-detail',direction==='apply'?'The stopped, unarmed new service will enter maintenance while application files are replaced. Its metadata will be backed up and both images retained. The former broadcasts keep their current owner.':'The original application image will be restored. Current library, queue and play history will be retained; the database will not be rewound to its backup.');
+    $('app-update-confirm').textContent=direction==='apply'?'Apply reviewed update':'Roll back application';$('app-update-dialog').showModal();
+  }
+  $('app-update-apply').addEventListener('click',()=>showAppUpdate('apply'));
+  $('app-update-rollback').addEventListener('click',()=>showAppUpdate('rollback'));
+  $('app-update-confirm').addEventListener('click',async()=>{
+    const target=appUpdateTarget;if(!target||target.id!==appUpdateState?.review?.id||appUpdateBusy)return;
+    $('app-update-dialog').close();appUpdateBusy=true;appUpdateControls();text('app-update-error','');
+    try{await api('/api/app-update/'+target.direction,{method:'POST',body:{Id:target.id}});await loadAppUpdates();}
+    catch(error){text('app-update-error','Confirmation unavailable: '+error.message+' Refresh this same saved operation before retrying.');}
+    finally{appUpdateBusy=false;appUpdateControls();}
+  });
+  $('app-update-refresh').addEventListener('click',()=>void loadAppUpdates());
+  $('app-update-dialog').addEventListener('close',()=>{appUpdateTarget=null;});
+
   let setupState=null,setupPath=null,setupParent=null,setupLoading=false,setupInputDirty=false;
   function setupControls(){
     const available=!state.session?.preview&&setupState?.supported&&setupState.packageAvailable;
@@ -486,7 +537,7 @@
   });
 
   async function initialize(){stationTabs();renderStatus();try{state.session=await api('/api/session');text('build-label',state.session.preview?'UI PREVIEW':'DEVELOPMENT');}catch(error){message('Console connection unavailable: '+error.message);}await discover();}
-  let ticks=0;setInterval(()=>{if(document.hidden||state.consoleClosed)return;text('clock',clock.format(new Date()));renderStatus();if(++ticks%2===0){void poll();void pollFolderCheck();}if(ticks%4===0&&state.page==='library')void loadLibrary();if(ticks%4===0&&state.page==='system'){void loadSetup();void loadMigration();}},1000);text('clock',clock.format(new Date()));document.addEventListener('visibilitychange',()=>{if(!document.hidden){text('clock',clock.format(new Date()));void poll();}});void initialize();
+  let ticks=0;setInterval(()=>{if(document.hidden||state.consoleClosed)return;text('clock',clock.format(new Date()));renderStatus();if(++ticks%2===0){void poll();void pollFolderCheck();}if(ticks%4===0&&state.page==='library')void loadLibrary();if(ticks%4===0&&state.page==='system'){void loadSetup();void loadMigration();void loadAppUpdates();}},1000);text('clock',clock.format(new Date()));document.addEventListener('visibilitychange',()=>{if(!document.hidden){text('clock',clock.format(new Date()));void poll();}});void initialize();
 
   const reports={items:[],engine:null,loadedAt:0,offset:0,polling:false,busy:false,rows:new Map(),pending:[]};
   try{const saved=JSON.parse(localStorage.getItem('studio-report-requests')??'[]');if(Array.isArray(saved))reports.pending=saved.filter(p=>typeof p.engine==='string'&&/^[0-9a-f]{32}$/.test(p.id??'')&&['day','year'].includes(p.period)&&typeof p.selection==='string').slice(0,16);}catch{}

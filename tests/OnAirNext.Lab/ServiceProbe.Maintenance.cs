@@ -102,6 +102,22 @@ internal static partial class ServiceProbe
         // The parent reads Passed and retains this JSON even when a check failed.
         return 0;
     }
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public static async Task<int> MaintenanceMarkerAsync(string id,bool check)
+    {
+        if(Environment.GetEnvironmentVariable("GITHUB_ACTIONS")!="true"||Environment.GetEnvironmentVariable("ONAIR_SETUP_TEST_RUNTIME")!="1"||!Guid.TryParseExact(id,"N",out _)||Directory.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),"RadioTEDU","OnAir")))
+            throw new InvalidOperationException("Disposable Windows setup fixture only.");
+        if(!check)
+        {
+            var result=await RequestAsync(new{Id=id,Action="stop-station",StationId="1"});
+            if(!result.TryGetProperty("accepted",out var accepted)||!accepted.GetBoolean())throw new IOException("The service rejected its fixture stopped-intent marker.");
+        }
+        using var connection=new Microsoft.Data.Sqlite.SqliteConnection(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder{DataSource=Path.Combine(ServiceEndpoint.EngineData,"playback.db"),Mode=Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly,Pooling=false}.ToString());
+        connection.Open();using var command=connection.CreateCommand();command.CommandText="SELECT COUNT(*) FROM engine_commands WHERE id=$id AND station_id='1' AND processed=1";command.Parameters.AddWithValue("$id",id);
+        var marked=(long)command.ExecuteScalar()! == 1;
+        UpdateAdmission.RequireUnarmedStatus(await RequestAsync(new{Id=Guid.NewGuid().ToString("N"),Action="status"}));
+        Console.WriteLine(JsonSerializer.Serialize(new{Marked=marked}));return marked?0:1;
+    }
     private static async Task<OnAirNext.Engine.MaintenanceJournalInspection> InspectMaintenanceJournalAsync(string database)
     {
         var start=new ProcessStartInfo(Path.Combine(ServiceEndpoint.InstallRoot,"bin","OnAirNext.Host.exe")){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};

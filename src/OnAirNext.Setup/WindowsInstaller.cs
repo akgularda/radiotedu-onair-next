@@ -98,13 +98,13 @@ internal static class WindowsInstaller
         security.AddAccessRule(new(new SecurityIdentifier(WellKnownSidType.LocalServiceSid,null),data?FileSystemRights.Modify:FileSystemRights.ReadAndExecute,InheritanceFlags.ContainerInherit|InheritanceFlags.ObjectInherit,PropagationFlags.None,AccessControlType.Allow));
         security.AddAccessRule(new(account,FileSystemRights.ReadAndExecute,InheritanceFlags.ContainerInherit|InheritanceFlags.ObjectInherit,PropagationFlags.None,AccessControlType.Allow));return security;
     }
-    private static void CreateProtected(string directory,SecurityIdentifier account,bool data)
+    internal static void CreateProtected(string directory,SecurityIdentifier account,bool data)
     {
         SetupPaths.RequireNoLinks(directory);
         if(Directory.Exists(directory)){if(!data)AssertProtected(directory);return;}
         new DirectoryInfo(directory).Create(Security(account,data));
     }
-    private static async Task CopyAsync(string source,string destination,SetupFile file,SecurityIdentifier account,bool running,Dictionary<string,string> installed)
+    internal static async Task CopyAsync(string source,string destination,SetupFile file,SecurityIdentifier account,bool running,Dictionary<string,string> installed)
     {
         SetupPaths.RequireNoLinks(source);SetupPaths.RequireNoLinks(destination);
         if(File.Exists(destination))
@@ -140,12 +140,12 @@ internal static class WindowsInstaller
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("kernel32.dll",CharSet=CharSet.Unicode,ExactSpelling=true,SetLastError=true)]
     [return:MarshalAs(UnmanagedType.Bool)]private static extern bool CreateHardLinkW(string path,string existing,nint security);
-    private static void SetOwner(string path)
+    internal static void SetOwner(string path)
     {
         SetupPaths.RequireNoLinks(path);var file=new FileInfo(path);var security=file.GetAccessControl(AccessControlSections.Owner);
         security.SetOwner(new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid,null));file.SetAccessControl(security);
     }
-    private static async Task WriteNewAsync<T>(string path,T value)
+    internal static async Task WriteNewAsync<T>(string path,T value)
     {
         SetupPaths.RequireNoLinks(path);var bytes=JsonSerializer.SerializeToUtf8Bytes(value);
         if(File.Exists(path))
