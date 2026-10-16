@@ -39,10 +39,10 @@ internal static class AppUpdatePreparation
         var config=await SetupPaths.ReadVerifiedAsync<JsonElement>(ServiceEndpoint.ConfigPath,configHash,token);
         UpdateAdmission.RequireUnarmedConfiguration(config,sid);
         UpdateAdmission.RequireUnarmedStatus(await StatusAsync(token));
-        var original=new UpdateImage(await SetupPaths.HashAsync(Path.Combine(installed,"bundle.json"),token),initial.RuntimeFiles);
+        var original=new UpdateImage(await SetupPaths.HashAsync(Path.Combine(installed,"bundle.json"),token),SetupPaths.InstalledRuntimeFiles(initial.RuntimeFiles));
         var currentBundle=await UpdateSwap.VerifyImageAsync(installed,original,token);
         foreach(var file in currentBundle.Files)WindowsInstaller.AssertProtected(SetupPaths.Resolve(installed,file.Path));
-        foreach(var file in initial.RuntimeFiles)WindowsInstaller.AssertProtected(SetupPaths.Resolve(installed,"tools/"+file.Path));
+        foreach(var file in original.RuntimeFiles)WindowsInstaller.AssertProtected(SetupPaths.Resolve(installed,"tools/"+file.Path));
         WindowsInstaller.AssertProtected(Path.Combine(installed,"bundle.json"));
         var nextHash=await SetupPaths.HashAsync(Path.Combine(package,"bundle.json"),token);
         var nextBundle=await SetupPaths.VerifyBundleAsync(package,nextHash,token);

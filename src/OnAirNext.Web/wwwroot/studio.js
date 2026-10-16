@@ -447,7 +447,7 @@
   $('setup-runtime').addEventListener('input',()=>{setupInputDirty=true;setupControls();});
   $('setup-start').addEventListener('change',()=>{setupInputDirty=true;setupControls();});
   $('migration-root').addEventListener('input',()=>migrationControls());
-  $('setup-browse').addEventListener('click',async()=>{setupFolderTarget='setup-runtime';text('setup-folder-heading','Choose the audio runtime folder');$('setup-folder-dialog').showModal();await setupFolders($('setup-runtime').value||null);});
+  $('setup-browse').addEventListener('click',async()=>{setupFolderTarget='setup-runtime';text('setup-folder-heading','Choose the complete audio tools package');$('setup-folder-dialog').showModal();await setupFolders($('setup-runtime').value||null);});
   $('setup-folder-up').addEventListener('click',()=>void setupFolders(setupParent));
   $('setup-folder-select').addEventListener('click',()=>{if(!setupPath)return;$(setupFolderTarget).value=setupPath;if(setupFolderTarget==='setup-runtime')setupInputDirty=true;$('setup-folder-dialog').close();setupControls();migrationControls();});
   $('setup-check').addEventListener('click',async()=>{try{await api('/api/setup/prepare',{method:'POST',body:{RuntimeFolder:$('setup-runtime').value.trim(),StartService:$('setup-start').checked}});setupInputDirty=false;await loadSetup();}catch(error){text('setup-detail',error.message);}});

@@ -170,7 +170,7 @@ jobs:
           path: artifacts/service-smoke/summary.json
           if-no-files-found: warn
       - name: Publish self-contained Windows development package
-        run: ./scripts/Package-Windows.ps1
+        run: ./scripts/Package-Windows.ps1 -CodecRuntimeRoot artifacts/windows-codec-runtime
       - name: Qualify guided Windows setup on disposable runner
         run: ./scripts/Test-WindowsSetup.ps1 -BuildRoot "$env:ONAIR_BUILD_BIN" -PackageRoot artifacts/windows-package
       - name: Retain setup qualification
@@ -220,4 +220,5 @@ jobs:
           path: |
             artifacts/windows-runtime-locks
             artifacts/windows-package-summary.json
+            artifacts/windows-real-runtime-preparation.json
           if-no-files-found: warn

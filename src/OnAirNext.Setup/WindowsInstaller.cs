@@ -37,6 +37,14 @@ internal static class WindowsInstaller
             AssertProtected(install);
             if(!File.Exists(marker)&&Directory.EnumerateFileSystemEntries(install).Any())throw new InvalidOperationException("The new installation folder already contains unrelated files. No files were replaced.");
         }
+        // Existing exact-plan retries keep their immutable legacy receipt. A new
+        // installation must independently recheck the complete provider after UAC.
+        if(!File.Exists(marker))
+        {
+            var reference=bundle.Files.SingleOrDefault(f=>f.Path==CodecRuntimePackage.ReferencePath)??throw new ArgumentException("This package has no matching codec runtime reference.");
+            var inspected=await CodecRuntimePackage.InspectAsync(runtime,SetupPaths.Resolve(plan.BundleRoot,reference.Path),reference.Sha256,CancellationToken.None);
+            CodecRuntimePackage.RequireInventory(plan.RuntimeFiles,inspected);
+        }
         CreateProtected(root,account,false);
         var lockPath=Path.Combine(root,"setup.lock");SetupPaths.RequireNoLinks(lockPath);
         if(!File.Exists(lockPath)){await using(var created=new FileStream(lockPath,FileMode.CreateNew,FileAccess.Write,FileShare.None)){created.Flush(true);}SetOwner(lockPath);}
@@ -63,7 +71,7 @@ internal static class WindowsInstaller
             var installed=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
             foreach(var file in bundle.Files)await CopyAsync(SetupPaths.Resolve(plan.BundleRoot,file.Path),SetupPaths.Resolve(install,file.Path),file,account,running,installed);
             stage="runtime copy";
-            foreach(var file in plan.RuntimeFiles)await CopyAsync(SetupPaths.Resolve(runtime,file.Path),SetupPaths.Resolve(install,"tools/"+file.Path),file,account,running,installed);
+            foreach(var file in plan.RuntimeFiles)await CopyAsync(SetupPaths.Resolve(runtime,file.Path),SetupPaths.Resolve(install,"tools/"+SetupPaths.RuntimeDestination(file.Path)),file,account,running,installed);
             await CopyAsync(SetupPaths.Resolve(plan.BundleRoot,"bundle.json"),Path.Combine(install,"bundle.json"),new("bundle.json",new FileInfo(Path.Combine(plan.BundleRoot,"bundle.json")).Length,plan.BundleSha256),account,running,installed);
             stage="initial stopped channels";
             CreateProtected(ServiceEndpoint.EngineData,account,true);

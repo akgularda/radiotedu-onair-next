@@ -41,12 +41,21 @@ try{
   $source=if($PackageRoot){Join-Path ([IO.Path]::GetFullPath($PackageRoot)) $pair.Folder}else{Join-Path $BuildRoot ($pair.Project+'/release')}
   foreach($entry in Get-ChildItem -LiteralPath $source -Force){Copy-Item -LiteralPath $entry.FullName -Destination $destination -Recurse}
  }
- $files=@(foreach($file in Get-ChildItem -LiteralPath $fixture -Recurse -File){@{Path=[IO.Path]::GetRelativePath($fixture,$file.FullName).Replace('\','/');Bytes=$file.Length;Sha256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash}})
- @{Source=$env:GITHUB_SHA;Files=$files}|ConvertTo-Json -Depth 8|Set-Content -LiteralPath (Join-Path $fixture 'bundle.json') -Encoding utf8NoBOM
- $runtime=Join-Path $fixture 'runtime';$null=New-Item -ItemType Directory -Path $runtime
+ # Explicit synthetic provider for file/SCM tests; real provider preparation has a separate CI receipt.
+ $runtimePackage=Join-Path $fixture 'runtime';$runtime=Join-Path $runtimePackage 'bin';$null=New-Item -ItemType Directory -Path $runtime
  foreach($entry in Get-ChildItem -LiteralPath (Join-Path $BuildRoot 'OnAirNext.Lab/release') -Force){Copy-Item -LiteralPath $entry.FullName -Destination $runtime -Recurse}
  Copy-Item -LiteralPath (Join-Path $runtime 'OnAirNext.Lab.exe') -Destination (Join-Path $runtime 'ffmpeg.exe')
- $request=Join-Path $fixture 'request.json';@{RuntimeFolder=$runtime;StartService=$true}|ConvertTo-Json|Set-Content -LiteralPath $request -Encoding utf8NoBOM
+ Copy-Item -LiteralPath (Join-Path $runtime 'OnAirNext.Lab.exe') -Destination (Join-Path $runtime 'ffprobe.exe')
+ Copy-Item -LiteralPath (Join-Path $runtime 'OnAirNext.Engine.dll') -Destination (Join-Path $runtime 'libfdk-aac-2.dll')
+ $providerDocuments=@('windows-codec.lock.json','Licenses/COPYING.LGPLv2.1','Licenses/FDK-AAC-NOTICE.txt','Licenses/LICENSE.md','Sources/build-configurations.json','Sources/build-windows-codecs.py','Sources/fdk-v2.0.3.tar.gz','Sources/ffmpeg-config.mak','Sources/ffmpeg-n9.0.2.tar.gz','Sources/toolchain.txt')
+ foreach($relative in $providerDocuments){$path=Join-Path $runtimePackage $relative;$null=New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force;('Software fixture only; not codec, legal or source-distribution qualification: '+$relative)|Set-Content -LiteralPath $path -Encoding utf8NoBOM}
+ $runtimeFiles=@(foreach($file in Get-ChildItem -LiteralPath $runtimePackage -Recurse -File){$relative=[IO.Path]::GetRelativePath($runtimePackage,$file.FullName).Replace('\','/');if($providerDocuments -contains $relative -or $relative -eq 'bin/ffmpeg.exe' -or $relative -eq 'bin/ffprobe.exe' -or ($relative.StartsWith('bin/') -and $file.Extension -eq '.dll')){@{path=$relative;bytes=$file.Length;sha256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash}}})
+ $providerManifest=@{schemaVersion=1;target='win-x64-listing-only-software-fixture';dependencyLockSha256=(Get-FileHash -LiteralPath (Join-Path $runtimePackage 'windows-codec.lock.json') -Algorithm SHA256).Hash;buildScriptSha256=(Get-FileHash -LiteralPath (Join-Path $runtimePackage 'Sources/build-windows-codecs.py') -Algorithm SHA256).Hash;files=$runtimeFiles}
+ $providerManifest|ConvertTo-Json -Depth 8|Set-Content -LiteralPath (Join-Path $runtimePackage 'runtime-manifest.json') -Encoding utf8NoBOM
+ Copy-Item -LiteralPath (Join-Path $runtimePackage 'runtime-manifest.json') -Destination (Join-Path $fixture 'setup/codec-runtime-reference.json') -Force
+ $files=@(foreach($folder in @('bin','console','setup')){foreach($file in Get-ChildItem -LiteralPath (Join-Path $fixture $folder) -Recurse -File){@{Path=[IO.Path]::GetRelativePath($fixture,$file.FullName).Replace('\','/');Bytes=$file.Length;Sha256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash}}})
+ @{Source=$env:GITHUB_SHA;Files=$files}|ConvertTo-Json -Depth 8|Set-Content -LiteralPath (Join-Path $fixture 'bundle.json') -Encoding utf8NoBOM
+ $request=Join-Path $fixture 'request.json';@{RuntimeFolder=$runtimePackage;StartService=$true}|ConvertTo-Json|Set-Content -LiteralPath $request -Encoding utf8NoBOM
  $setup=Join-Path $fixture 'setup/OnAirNext.Setup.exe'
  $env:ONAIR_SETUP_TEST_RUNTIME='1'
  $prepared=Run $setup @('--prepare',$request,(Get-FileHash -LiteralPath $request -Algorithm SHA256).Hash)
@@ -56,6 +65,12 @@ try{
  $planPath=Join-Path $fixture 'plan.json';$prepared|Set-Content -LiteralPath $planPath -Encoding utf8NoBOM
  $hash=(Get-FileHash -LiteralPath $planPath -Algorithm SHA256).Hash
  $owned=$true
+ $savedProbe=Join-Path $runtime 'ffprobe.exe.saved-for-fixture';Copy-Item -LiteralPath (Join-Path $runtime 'ffprobe.exe') -Destination $savedProbe
+ try{
+  'changed after review'|Set-Content -LiteralPath (Join-Path $runtime 'ffprobe.exe') -Encoding utf8NoBOM
+  $changedProviderRejected=$false;try{$null=Run $setup @('--install',$planPath,$hash)}catch{$changedProviderRejected=$true}
+  Check 'Elevated fresh installation rejects a changed ffprobe before creating machine roots' ($changedProviderRejected -and -not (Test-Path -LiteralPath $data) -and -not (Test-Path -LiteralPath $install) -and -not (Get-Service -Name $serviceName -ErrorAction SilentlyContinue))
+ }finally{Copy-Item -LiteralPath $savedProbe -Destination (Join-Path $runtime 'ffprobe.exe') -Force}
  $null=Run $setup @('--install',$planPath,$hash)
  $receipt=Get-Content -LiteralPath (Join-Path $data 'setup-status.json') -Raw|ConvertFrom-Json
  Check 'Installer records the exact plan and source version' ($receipt.Phase -eq 'Installed' -and $receipt.PlanId -eq $plan.Id -and $receipt.Source -eq $env:GITHUB_SHA)
@@ -69,6 +84,9 @@ try{
  $runtimeHash=(Get-FileHash -LiteralPath (Join-Path $runtime 'ffmpeg.exe') -Algorithm SHA256).Hash
  if($PackageRoot){$hostProcess=[Diagnostics.Process]::GetProcessById($service.ProcessId);try{Check 'Installed service uses its packaged runtime without global dotnet' (@($hostProcess.Modules|Where-Object {$_.ModuleName -eq 'coreclr.dll' -and $_.FileName.StartsWith((Join-Path $install 'bin')+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)}).Count -eq 1)}finally{$hostProcess.Dispose()}}
  Check 'Runtime copy preserves the selected bytes' ((Get-FileHash -LiteralPath (Join-Path $install 'tools/ffmpeg.exe') -Algorithm SHA256).Hash -eq $runtimeHash)
+ Check 'Installed ffprobe retains its reviewed bytes at the flat tools path' ((Get-FileHash -LiteralPath (Join-Path $install 'tools/ffprobe.exe') -Algorithm SHA256).Hash -eq (Get-FileHash -LiteralPath (Join-Path $runtime 'ffprobe.exe') -Algorithm SHA256).Hash)
+ foreach($relative in $providerDocuments){Check ('Installed codec document retains its reviewed bytes: '+$relative) ((Get-FileHash -LiteralPath (Join-Path $install ('tools/'+$relative)) -Algorithm SHA256).Hash -eq (Get-FileHash -LiteralPath (Join-Path $runtimePackage $relative) -Algorithm SHA256).Hash)}
+ Check 'Installed provider manifest retains its matching reference' ((Get-FileHash -LiteralPath (Join-Path $install 'tools/runtime-manifest.json') -Algorithm SHA256).Hash -eq (Get-FileHash -LiteralPath (Join-Path $runtimePackage 'runtime-manifest.json') -Algorithm SHA256).Hash)
  if($PackageRoot){
   $ids=@(foreach($folder in @('bin','console','setup')){$result=& "$env:SystemRoot/System32/fsutil.exe" file queryfileid (Join-Path $install ($folder+'/coreclr.dll'));if($LASTEXITCODE -ne 0){throw 'Runtime file identity query failed'};[regex]::Match(($result -join ' '),'0x[0-9a-fA-F]+').Value})
   Check 'Identical immutable runtimes share one installed file identity' ($ids.Count -eq 3 -and $ids[0] -ne '' -and @($ids|Select-Object -Unique).Count -eq 1)

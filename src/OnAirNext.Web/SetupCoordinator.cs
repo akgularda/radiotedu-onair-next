@@ -18,7 +18,7 @@ internal sealed class SetupCoordinator : IAsyncDisposable
     private Task _operation=Task.CompletedTask;
     private SetupPlan? _plan;
     private string? _planPath,_planHash;
-    private string _phase="Not prepared",_detail="Choose the local audio runtime, then review the separate installation.";
+    private string _phase="Not prepared",_detail="Choose the complete matching audio tools package, then review the separate installation.";
     public SetupCoordinator(string dataRoot)
     {
         _folder=Path.Combine(dataRoot,"setup");_package=Directory.GetParent(Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory))!.FullName;

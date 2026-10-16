@@ -12,24 +12,18 @@ internal static class SetupPreparation
     public static async Task<SetupPlan> PrepareAsync(string bundleRoot,SetupRequest request,CancellationToken token)
     {
         bundleRoot=SetupPaths.CanonicalRoot(bundleRoot);var manifest=SetupPaths.Resolve(bundleRoot,"bundle.json");
-        var digest=await SetupPaths.HashAsync(manifest,token);await SetupPaths.VerifyBundleAsync(bundleRoot,digest,token);
-        var runtime=SetupPaths.CanonicalRoot(request.RuntimeFolder);var directory=new DirectoryInfo(runtime);
-        var files=new List<SetupFile>();
-        foreach(var file in directory.EnumerateFiles().Where(f=>f.Name.Equals("ffmpeg.exe",StringComparison.OrdinalIgnoreCase)||f.Extension.Equals(".dll",StringComparison.OrdinalIgnoreCase)||f.Name.StartsWith("LICENSE",StringComparison.OrdinalIgnoreCase)||f.Name.StartsWith("COPYING",StringComparison.OrdinalIgnoreCase)).Take(65))
-        {
-            if(files.Count>=64)throw new ArgumentException("Choose a runtime folder with at most 64 relevant files.");
-            SetupPaths.Resolve(runtime,file.Name);if(file.Length<=0||file.Length>SetupPaths.MaximumBundleBytes)throw new ArgumentException("Runtime file size is invalid.");
-            files.Add(new(file.Name,file.Length,await SetupPaths.HashAsync(file.FullName,token)));
-        }
-        SetupPaths.ValidateFiles(files.ToArray(),false);
-        var encoders=await CaptureAsync(Path.Combine(runtime,"ffmpeg.exe"),["-hide_banner","-encoders"],token);
+        var digest=await SetupPaths.HashAsync(manifest,token);var bundle=await SetupPaths.VerifyBundleAsync(bundleRoot,digest,token);
+        var runtime=SetupPaths.CanonicalRoot(request.RuntimeFolder);
+        var reference=bundle.Files.SingleOrDefault(f=>f.Path==CodecRuntimePackage.ReferencePath)??throw new ArgumentException("This setup package has no matching codec runtime reference.");
+        var files=await CodecRuntimePackage.InspectAsync(runtime,SetupPaths.Resolve(bundleRoot,reference.Path),reference.Sha256,token);
+        var encoders=await CaptureAsync(SetupPaths.Resolve(runtime,"bin/ffmpeg.exe"),["-hide_banner","-encoders"],token);
         if(!encoders.Split('\n').Any(line=>line.Split((char[]?)null,StringSplitOptions.RemoveEmptyEntries).ElementAtOrDefault(1)=="libfdk_aac")||
             !encoders.Split('\n').Any(line=>line.Split((char[]?)null,StringSplitOptions.RemoveEmptyEntries).ElementAtOrDefault(1)=="flac"))
             throw new InvalidOperationException("The selected runtime must list libfdk_aac and FLAC encoders. No codec substitution is permitted.");
         // Capability listing is deliberately not a codec, decoded-output or loudness qualification.
         foreach(var file in files)if(!string.Equals(await SetupPaths.HashAsync(SetupPaths.Resolve(runtime,file.Path),token),file.Sha256,StringComparison.OrdinalIgnoreCase))throw new IOException("The runtime changed during inspection.");
         using var identity=WindowsIdentity.GetCurrent();var sid=identity.User?.Value??throw new InvalidOperationException("The operator account is unavailable.");
-        return new(Guid.NewGuid().ToString("N"),sid,bundleRoot,digest,runtime,files.ToArray(),request.StartService);
+        return new(Guid.NewGuid().ToString("N"),sid,bundleRoot,digest,runtime,files,request.StartService);
     }
     private static async Task<string> CaptureAsync(string executable,string[] args,CancellationToken token)
     {

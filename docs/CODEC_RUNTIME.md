@@ -10,6 +10,14 @@ FFmpeg is configured with GPL, version3 and nonfree disabled, and libfdk_aac exp
 
 The cache key includes the dependency lock and build script. The Windows verifier rejects a runtime made with different inputs, a missing or modified file, unmanifested files, invalid paths, unavailable encoders, or the wrong running version/configuration. GitHub artifact transport verification and the dependency manifest serve different purposes; neither permits accepting a changed input implicitly.
 
+## Guided installation inventory
+
+The application package includes setup/codec-runtime-reference.json, a byte-exact copy of the matching codec artifact manifest covered by the application bundle checksum. The audio dependency stays a separate artifact. Fresh guided setup requires the complete matching artifact root, not its bin folder, and checks every referenced file before and after encoder-list inspection. Administrator installation repeats the inventory check before creating its fixed machine roots. It retains ffprobe, notices and corresponding source/build documents alongside the binaries. Executables and DLLs are mapped from bin into tools; Licenses and Sources keep their subfolders.
+
+The Windows packaging job also prepares a plan against the actual codec artifact and saves windows-real-runtime-preparation.json. This verifies package references, inventory hashes and encoder availability on a disposable runner; it does not install a service, qualify redistribution rights, or establish actual-PC/audio acceptance. The separate installer round-trip uses explicit synthetic codec documents and an encoder-listing test double. Neither evidence replaces the decoded codec and engine scenarios.
+
+Legacy installation plan serialization is unchanged. Application updates normalize the original runtime paths for installed-file verification and preserve that exact inventory. This fresh-setup change does not supplement a previously installed flat runtime.
+
 ## Qualification boundary
 
 The Windows job performs real AAC-LC 192 kb/s, libfdk HE-AACv2 64 kb/s and 24-bit Ogg FLAC encodes from deterministic stereo 48 kHz float PCM. It probes the actual profiles, stereo/sample rate and FLAC bit depth, then decodes AAC explicitly with FFmpeg's native AAC decoder and measures each decoded file with ebur128. It preserves the tool diagnostics and structured result on failure as well as success. There is no alternate-codec fallback.
