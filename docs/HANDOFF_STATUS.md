@@ -1,4 +1,4 @@
-> Latest development update, 16 October 2026: the new FDK runtime/full-18 scenario and measurement-history queue correction are awaiting fresh CI qualification. The first codec attempt failed and is retained in artifacts/evidence/codec-first-failure-20261016.json. Prior 28638a5 evidence applies only to that exact functional source. Zero production station groups have migrated.
+> Latest development update, 16 October 2026: source `384cc67a` passed the complete isolated FDK/FLAC 18-output scenario with zero measurement drops/history failures and confirmed Stop/hash checks. See [205-case qualification](../artifacts/evidence/fdk-full18-205-20261016.json). Actual-PC and connected mouse commissioning remain open; zero station groups migrated.
 
 > **Current UI decision:** the user rejected the native prototype and requested a browser app. [Browser interface decision](./BROWSER_UI_DECISION.md) supersedes earlier native-only UI requirements. The new browser build is under qualification; production remains with the old application.
 
