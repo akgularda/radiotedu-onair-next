@@ -23,6 +23,10 @@ The launcher opens an operator-private console session. Anonymous session creati
 
 The measured package payload is 274,556,343 bytes logically extracted, with 112,451,385 unique file bytes; .NET is included, FFmpeg/music/credentials are excluded. These are package content measurements, not download size or target-PC RAM usage. Its [Windows runtime dependency graph is pinned](src/OnAirNext.Setup/packages.lock.json); the fully locked package passed the same complete qualification. No service has been installed on the broadcasting PC and no station has migrated.
 
+## Loudness instrument foundation
+
+A bounded stereo 48 kHz BS.1770-5/EBU-mode measurement core now has scoped synthetic qualification: exact source `6488c439` passed 160 unit cases, 35 service checks, 20 installer/console checks and nine independent FFmpeg signal comparisons in run 38830016334. It provides K-weighted gated I, rectangular M/S, LRA and four-times oversampled true peak. It does not alter audio and is not attached to the programme loop. See [measurement scope and evidence](docs/LOUDNESS_MEASUREMENT.md); normalization, limiting, UI and all 18 real decoded-output measurements remain unfinished.
+
 ## Engine and library foundation
 
 - Continuous 48 kHz stereo programme timeline, pooled 20 ms blocks and bounded decoders.

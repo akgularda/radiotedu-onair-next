@@ -1,6 +1,6 @@
 # Loudness instrument development
 
-This is a stereo 48 kHz measurement foundation under qualification, not completed broadcast loudness processing or an EBU compliance declaration. It is deliberately not attached to the programme loop yet. No production station has migrated.
+This is a stereo 48 kHz measurement foundation with scoped synthetic qualification, not completed broadcast loudness processing or an EBU compliance declaration. It is deliberately not attached to the programme loop yet. No production station has migrated.
 
 ## Instrument and boundaries
 
@@ -13,6 +13,8 @@ True peak uses the four-phase, 12-tap-per-phase interpolating FIR in the **Engli
 Each instance has an explicit maximum measurement duration of 3 seconds to 24 hours. It refuses overflow instead of silently forgetting or wrapping history. Three preallocated arrays each contain at most `floor(maximumFrames / 4800) + 1` doubles; a one-hour instance uses approximately 864 kB of history/scratch storage. Feeding allocates no per-block managed objects and performs no locks, disk, network or child-process operations. `Read` computes bounded statistics and sorts scratch storage; use the same measurement worker for Feed/Read, outside a real-time callback. A worker/published snapshot, dropped-measurement handling and actual station-window ownership remain to be integrated.
 
 ## Reference checks
+
+Exact source `6488c439` passed all 160 Windows unit cases, 35 real SCM checks, 20 installer/console checks and nine independent synthetic signals in [run 38830016334](https://github.com/akgularda/radiotedu-onair-next/actions/runs/38830016334). All five evidence-archive digests and service/setup/package/reference execution sources were verified. See [scoped evidence](../artifacts/evidence/loudness-instrument-160-20261016.json). Maximum independent differences were 0.031 LU integrated and 0.314 dB true peak. LRA was compared on three signals lasting at least 60 seconds; six shorter signals explicitly retain raw LRA without using it for acceptance. This is not a stream compliance result.
 
 Windows unit tests synthesize the signal descriptions in Tech 3341 cases 1-5, 9-10, 12-13 and 15-19, and Tech 3342 cases 1-4. Other checks cover arbitrary chunking, opposite-phase stereo, frame alignment, atomic rejection of nonfinite/oversized input, silence, incomplete final blocks, exact PCM16 calibration, explicit finish and per-block allocations. These do **not** cover the entire EBU test set, authentic programme files, live-meter cases 11/14 or transient true-peak cases 20-23.
 
