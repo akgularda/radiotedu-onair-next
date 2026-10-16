@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -13,6 +12,18 @@ public static class PlayReports
     public static TimeZoneInfo Istanbul => TimeZoneInfo.FindSystemTimeZoneById("Europe/Istanbul");
     public static (DateTimeOffset Start, DateTimeOffset End) DayBounds(DateOnly date)
         => (UtcMidnight(date), UtcMidnight(date.AddDays(1)));
+    public static (DateTimeOffset Start, DateTimeOffset End) PeriodBounds(string period, string selection)
+    {
+        if (string.IsNullOrWhiteSpace(period) || string.IsNullOrWhiteSpace(selection))
+            throw new ArgumentException("Choose an Istanbul calendar date or four-digit year.");
+        if (period == "day" && DateOnly.TryParseExact(selection, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var date) && date.Year < 9999) return DayBounds(date);
+        if (period == "year" && selection.Length == 4 && int.TryParse(selection, NumberStyles.None,
+                CultureInfo.InvariantCulture, out var year) && year is >= 1 and < 9999)
+            return (UtcMidnight(new(year, 1, 1)), UtcMidnight(new(year + 1, 1, 1)));
+        throw new ArgumentException("Choose an Istanbul calendar date or four-digit year.");
+    }
+
     private static DateTimeOffset UtcMidnight(DateOnly date)
         => new(TimeZoneInfo.ConvertTimeToUtc(date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified), Istanbul));
 
@@ -29,45 +40,57 @@ public static class PlayReports
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + ".csv");
         var hours = new long[24];
-        var (count, incomplete) = ExportRange(database, bounds.Start, bounds.End, path, hours);
+        string digest = "";
+        var (count, incomplete) = ExportRange(database, bounds.Start, bounds.End, path, hours,
+            artifactWritten: (_, sha256) => digest = sha256);
         var hourPath = Path.Combine(directory, date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + "-hours.csv");
         AtomicText(hourPath, writer =>
         {
             writer.WriteLine("local_date,hour,occurrences_started");
             for (var hour = 0; hour < 24; hour++) writer.WriteLine($"{date:yyyy-MM-dd},{hour:D2}:00,{hours[hour]}");
         });
-        using var file = File.OpenRead(path);
         var manifest = new ReportManifest(1, date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), "Europe/Istanbul",
-            count, incomplete, Convert.ToHexStringLower(SHA256.HashData(file)), Path.GetFileName(path), DateTimeOffset.UtcNow);
+            count, incomplete, digest, Path.GetFileName(path), DateTimeOffset.UtcNow);
         AtomicText(Path.ChangeExtension(path, ".manifest.json"), writer => writer.Write(JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true })));
         return manifest;
     }
 
     // Query results are streamed. UI page sizes cannot truncate a daily or annual export.
     public static (long Records, long Incomplete) ExportRange(string database, DateTimeOffset from, DateTimeOffset to,
-        string destination, long[]? hourCounts = null)
+        string destination, long[]? hourCounts = null, string? stationId = null,
+        CancellationToken cancellation = default, Action<long, long>? progress = null, int bytesPerSecond = 0,
+        Action<long, string>? artifactWritten = null, Action<long, DateTimeOffset>? snapshotObserved = null)
     {
         if (to <= from) throw new ArgumentException("Report end must follow start.");
+        cancellation.ThrowIfCancellationRequested();
+        if (hourCounts is not null && hourCounts.Length != 24) throw new ArgumentException("Hourly counts require 24 slots.");
         long count = 0, incomplete = 0;
         using var connection = EventJournal.OpenReader(database);
         using var transaction = connection.BeginTransaction();
+        using var snapshot = connection.CreateCommand(); snapshot.Transaction = transaction;
+        snapshot.CommandText = "SELECT COALESCE(MAX(sequence),0) FROM playback_events";
+        var snapshotSequence = (long)snapshot.ExecuteScalar()!;
+        snapshotObserved?.Invoke(snapshotSequence, DateTimeOffset.UtcNow);
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
             SELECT s.payload,
               (SELECT e.payload FROM playback_events e WHERE e.occurrence_id=s.occurrence_id
-                 AND e.event_type IN ('ended','skipped','interrupted','failed') ORDER BY e.sequence DESC LIMIT 1)
+                 AND e.event_type IN ('ended','skipped','interrupted','failed','decode_failed') ORDER BY e.sequence DESC LIMIT 1)
             FROM playback_events s WHERE s.event_type='started' AND s.at_utc >= $from AND s.at_utc < $to
+              AND ($station IS NULL OR s.station_id=$station)
             ORDER BY s.at_utc, s.sequence
             """;
         command.Parameters.AddWithValue("$from", from.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
         command.Parameters.AddWithValue("$to", to.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
+        command.Parameters.AddWithValue("$station", (object?)stationId ?? DBNull.Value);
         using var reader = command.ExecuteReader();
-        AtomicText(destination, writer =>
+        var artifact = AtomicText(destination, writer =>
         {
             writer.WriteLine("occurrence_id,station_id,content_type,artist,title,start_utc,end_utc,start_local,end_local,local_hour,played_seconds,status,previous_occurrence_id,timing_quality");
             while (reader.Read())
             {
+                cancellation.ThrowIfCancellationRequested();
                 var start = JsonSerializer.Deserialize<PlaybackEvent>(reader.GetString(0))!;
                 var end = reader.IsDBNull(1) ? null : JsonSerializer.Deserialize<PlaybackEvent>(reader.GetString(1));
                 var local = TimeZoneInfo.ConvertTime(start.AtUtc, Istanbul);
@@ -80,25 +103,34 @@ public static class PlayReports
                 count++;
                 if (end is null) incomplete++;
                 if (hourCounts is not null) hourCounts[local.Hour]++;
+                if (count % 256 == 0) progress?.Invoke(count, incomplete);
             }
-        });
+        }, cancellation, bytesPerSecond);
+        cancellation.ThrowIfCancellationRequested();
+        progress?.Invoke(count, incomplete);
         transaction.Commit();
+        artifactWritten?.Invoke(artifact.Bytes, artifact.Sha256);
         return (count, incomplete);
     }
 
-    private static void AtomicText(string destination, Action<StreamWriter> write)
+    private static (long Bytes, string Sha256) AtomicText(string destination, Action<StreamWriter> write, CancellationToken cancellation = default, int bytesPerSecond = 0)
     {
         destination = Path.GetFullPath(destination);
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
         var temporary = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        long bytes; string sha256;
         try
         {
             using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
-                using (var writer = new StreamWriter(file, new UTF8Encoding(true), leaveOpen: true)) { write(writer); writer.Flush(); }
+                using var limited = new ReportWriteStream(file, bytesPerSecond, cancellation);
+                using (var writer = new StreamWriter(limited, new UTF8Encoding(true), leaveOpen: true)) { write(writer); writer.Flush(); }
                 file.Flush(flushToDisk: true);
+                bytes = file.Length; sha256 = limited.Sha256;
             }
+            cancellation.ThrowIfCancellationRequested();
             File.Move(temporary, destination, overwrite: true);
+            return (bytes, sha256);
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }

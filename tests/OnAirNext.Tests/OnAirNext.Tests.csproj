@@ -12,5 +12,6 @@
     <Compile Include="../../src/OnAirNext.Host/ServiceEndpoint.cs" Link="ServiceControl/ServiceEndpoint.cs" />
     <Compile Include="../../src/OnAirNext.Host/ServicePipeClient.cs" Link="ServiceControl/ServicePipeClient.cs" />
     <Compile Include="../../src/OnAirNext.Host/ServicePipePolicy.cs" Link="ServiceControl/ServicePipePolicy.cs" />
+    <Compile Include="../../src/OnAirNext.Web/ReportDownloadGrants.cs" Link="Reports/ReportDownloadGrants.cs" />
   </ItemGroup>
 </Project>

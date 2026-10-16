@@ -18,6 +18,7 @@ builder.Services.Configure<FormOptions>(options => { options.MultipartBodyLength
 builder.Services.AddSingleton(_ => new SetupCoordinator(dataRoot));
 using var access = new ConsoleAccess();
 var app = builder.Build();
+var reportDownloads = new ReportDownloadGrants();
 var csrf = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 var cookie = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 var uploads = new SemaphoreSlim(1, 1);
@@ -75,6 +76,32 @@ app.MapGet("/api/status", async (string engine, CancellationToken token) =>
     Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "status" }, token)));
 app.MapGet("/api/library", async (string engine, string station, string? query, int? offset, CancellationToken token) =>
     Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "library-status", StationId = station, Query = query ?? "", Offset = offset ?? 0 }, token)));
+app.MapGet("/api/reports", async (string engine, int? offset, CancellationToken token) =>
+    Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "reports", Offset = offset ?? 0 }, token)));
+app.MapPost("/api/reports/export", async (ReportExportRequest request, CancellationToken token) =>
+    Results.Json(await EngineRpc.SendAsync(request.Engine, new { request.Id, Action = "report-export", request.StationId,
+        ReportPeriod = request.Period, ReportSelection = request.Selection }, token)));
+app.MapPost("/api/reports/cancel", async (ReportCancelRequest request, CancellationToken token) =>
+    Results.Json(await EngineRpc.SendAsync(request.Engine, new { Id = Guid.NewGuid().ToString("N"), Action = "report-cancel", ReportId = request.Id }, token)));
+app.MapPost("/api/reports/download", (ReportCancelRequest request) =>
+{
+    if (!EngineRpc.IsIsolated(request.Engine)) throw new ArgumentException("Choose an isolated engine from System.");
+    var ticket = reportDownloads.Create(request.Engine, request.Id, DateTimeOffset.UtcNow);
+    return Results.Json(new { url = "/downloads/report/" + ticket });
+});
+app.MapGet("/downloads/report/{ticket}", async (string ticket, HttpContext context) =>
+{
+    if (context.Request.Cookies["studio-session"] != cookie) { context.Response.StatusCode = 403; return; }
+    var grant = reportDownloads.Claim(ticket, DateTimeOffset.UtcNow);
+    if (grant is null) { context.Response.StatusCode = 404; return; }
+    await using var download = await ReportDownload.OpenAsync(grant.Engine, grant.ReportId, context.RequestAborted);
+    context.Response.ContentType = "text/csv; charset=utf-8";
+    context.Response.ContentLength = download.Receipt.Bytes;
+    context.Response.Headers["Content-Disposition"] = "attachment; filename=\"" + download.Receipt.FileName + "\"";
+    context.Response.Headers["X-Content-SHA256"] = download.Receipt.Sha256;
+    try { await download.CopyToAsync(context.Response.Body, context.RequestAborted); }
+    catch { context.Abort(); }
+});
 app.MapGet("/api/loudness", async (string engine, string station, CancellationToken token) =>
 {
     if (!await meterRequests.WaitAsync(0, token)) return Results.Json(new { error = "A meter request is already in progress." }, statusCode: 429);
@@ -167,3 +194,6 @@ internal sealed record FolderChoice(string Name, string Path);
 internal sealed record UploadCancellation(string Engine,string Station,string Id);
 
 internal sealed record SetupInstall(string Id);
+
+internal sealed record ReportExportRequest(string Engine, string Id, string Period, string Selection, string? StationId = null);
+internal sealed record ReportCancelRequest(string Engine, string Id);

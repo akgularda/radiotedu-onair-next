@@ -1,5 +1,7 @@
 # RadioTEDU OnAir Next
 
+> Calendar report controls and a separate streaming download lane are under fresh qualification. See [report workflow](docs/REPORT_EXPORTS.md). Prior evidence below applies to its stated exact source.
+
 Independent radio broadcasting engine and local browser console under development. The current RadioTEDU installation continues broadcasting. **No production migration has occurred.**
 
 The user rejected the WPF prototype and requested a browser app. [The browser interface decision](docs/BROWSER_UI_DECISION.md) supersedes earlier native-only UI clauses. The rejected prototype remains historical source and is no longer part of the active solution.
@@ -10,7 +12,7 @@ Source normalization, final-mix limiting, dedicated measurement/history workers 
 
 ## Current interface
 
-The new dark browser console has a channel strip, broadcast desk, searchable/paged Library, folder picker, file-upload controls and System connection screen. It uses local HTML/CSS/JavaScript, without a frontend framework, CDN, external fonts or AI calls. Browser navigation and channel selection have been exercised with actual mouse input in the separate unconnected visual preview.
+The new dark browser console has a channel strip, broadcast desk, searchable/paged Library, calendar Reports, folder picker, file-upload controls and System connection screen. It uses local HTML/CSS/JavaScript, without a frontend framework, CDN, external fonts or AI calls. Browser navigation and channel selection have been exercised with actual mouse input in the separate unconnected visual preview.
 
 - Unconnected visual preview: loopback port 18120, clearly labelled UI PREVIEW.
 - ASP.NET Core console under qualification: literal loopback port 18121. It bridges only isolated onair-next-dev-* engine pipes.

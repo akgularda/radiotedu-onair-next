@@ -1,3 +1,5 @@
+> New continuation: calendar Reports UI, durable export receipts, bounded generation/download and concurrent full-roster report tests are awaiting fresh qualification. Previous source `384cc67a` evidence does not qualify these new changes. Target-PC staging was not admitted; no new runtime or service has started.
+
 > Latest development update, 16 October 2026: source `384cc67a` passed the complete isolated FDK/FLAC 18-output scenario with zero measurement drops/history failures and confirmed Stop/hash checks. See [205-case qualification](../artifacts/evidence/fdk-full18-205-20261016.json). Actual-PC and connected mouse commissioning remain open; zero station groups migrated.
 
 > **Current UI decision:** the user rejected the native prototype and requested a browser app. [Browser interface decision](./BROWSER_UI_DECISION.md) supersedes earlier native-only UI requirements. The new browser build is under qualification; production remains with the old application.

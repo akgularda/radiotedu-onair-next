@@ -121,6 +121,15 @@ try{
  Check 'Discard removes staged copies and preserves operator originals' ($upload.discarded -and $upload.preserved)
  Check 'Cross-account transfer does not broaden source folder permissions' ((Get-Acl -LiteralPath $deniedSource).Sddl -eq $aclBefore)
 
+
+ $reportOutput=& $labExe --service-report-probe 2>&1
+ if($LASTEXITCODE -ne 0){throw ('Service report probe failed: '+($reportOutput -join ' '))}
+ $report=($reportOutput -join [Environment]::NewLine)|ConvertFrom-Json
+ Check 'Completed CSV crosses the LocalService boundary with its exact receipt and SHA-256' $report.verified
+ Check 'A held report download leaves station controls responsive' $report.controlsAvailable
+ Check 'A held report download leaves Library transfer transport available' $report.libraryAvailable
+ Check 'Anonymous report caller is rejected before receiving report bytes' ((Probe 'anonymous-reports').rejected -eq $true)
+
  Check 'Start intent is durably acknowledged' ((Probe 'start-station').accepted -eq $true)
  $null=Ready $true;$oldChildren=Children
  Stop-Service -Name $serviceName;Stopped

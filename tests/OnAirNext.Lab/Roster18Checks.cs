@@ -31,13 +31,17 @@ internal static class Roster18Checks
             }
         }
         await using var origin=new Sandbox(icecastRoot,Path.Combine(root,"origin")); await origin.StartAsync();
-        await using var resources=new Resources();
         var database=Path.Combine(root,"playback.db");
         var probes=new List<Probe>(); var probeStarts=new Dictionary<Probe,long>(); var engines=new List<StationEngine>(); var outputs=new List<OutputSettings>();
         var readings=new List<object>(); result.Details["encodedListeners"]=readings;
-        result.Details["scope"]="Eight synthetic station programs: eight AAC-LC 192, eight libfdk HE-AACv2 64 and two 24-bit Ogg FLAC branches, all 48 kHz stereo. Low-crest sources only. This is not an imported production rate/name map, worst-case encoded headroom, actual-PC resource, 24/72h or UI acceptance.";
+        result.Details["scope"]="Eight synthetic station programs: eight AAC-LC 192, eight libfdk HE-AACv2 64 and two 24-bit Ogg FLAC branches, all 48 kHz stereo. A concurrent annual export includes 10025 synthetic archived attempts seeded before audio. Low-crest sources only. This is not an imported production rate/name map, worst-case encoded headroom, actual-PC resource, 24/72h or UI acceptance.";
         await using (var journal=new EventJournal(database))
         {
+            await SeedReportHistoryAsync(journal);
+            await using var resources=new Resources();
+            await using var reports=new ReportExports(journal,Enumerable.Range(1,8).Select(index=>"roster-"+index));
+            await reports.InitializeAsync();
+            string? reportId=null;
             Exception? runFailure=null;var cleanupFailures=new List<Exception>();
             try
             {
@@ -57,8 +61,22 @@ internal static class Roster18Checks
                     var started=Stopwatch.GetTimestamp();var listener=new Probe(ffmpeg,origin.Port,output.Mount);
                     probes.Add(listener);probeStarts.Add(listener,started);
                 }
+                reportId=Guid.NewGuid().ToString("N");
+                await reports.StartAsync(reportId,"year",TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow,PlayReports.Istanbul).Year.ToString("D4",CultureInfo.InvariantCulture));
                 await Task.Delay(6000);
                 foreach(var output in outputs)await MeasureOutputAsync(ffmpeg,origin.Port,root,output,readings,result);
+                var exported=journal.Report(reportId)!;result.Details["reportExport"]=exported;
+                Check(result,exported.State=="Completed","A full annual export completes while all eighteen real codec branches remain active.");
+                Check(result,exported.Records>=10025&&exported.IncompleteRecords>=10025,"The export retains over ten thousand archived attempts without a UI-page row limit or invented endings.");
+                var download=reports.OpenDownload(reportId);
+                await using(var exportedFile=download.File)
+                {
+                    var hash=Convert.ToHexStringLower(await System.Security.Cryptography.SHA256.HashDataAsync(exportedFile));
+                    Check(result,hash==exported.Sha256&&exportedFile.Length==exported.Bytes,"The annual export bytes independently match its confirmed SHA-256 receipt.");
+                    exportedFile.Position=0;using var csv=new StreamReader(exportedFile,System.Text.Encoding.UTF8,true,65536,true);long rows=-1;
+                    while(await csv.ReadLineAsync() is not null)rows++;
+                    Check(result,rows==exported.Records,"The complete synthetic CSV row count matches its persisted export receipt.");
+                }
                 var snapshots=engines.Select(e=>e.Snapshot()).ToArray();
                 result.Details["stations"]=snapshots; result.Details["listeners"]=probes.Select(p=>new{Audio=p.Snapshot(),ElapsedSeconds=Stopwatch.GetElapsedTime(probeStarts[p]).TotalSeconds}).ToArray();
                 result.Details["resources"]=resources.Snapshot();
@@ -79,6 +97,7 @@ internal static class Roster18Checks
             catch(Exception ex){runFailure=ex;}
             finally
             {
+                if(reportId is not null)result.Details["reportExportAtCleanup"]=journal.Report(reportId);
                 result.Details["journalAtCleanup"]=new{journal.CommittedTransactions,journal.CommittedEvents,journal.PendingEvents};
                 result.Details["stationsAtCleanup"]=engines.Select(e=>e.Snapshot()).ToArray();
                 result.Details["resourcesAtCleanup"]=resources.Snapshot();
@@ -93,6 +112,16 @@ internal static class Roster18Checks
         }
         Check(result,EventJournal.Verify(database),"The full 18-branch test preserves the immutable attempt hash chain.");
         result.Details["profileCounts"]=new{AacLc192=8,HeAacV2_64=8,OggFlac24=2};
+    }
+
+    private static async Task SeedReportHistoryAsync(EventJournal journal)
+    {
+        var year=TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow,PlayReports.Istanbul).Year.ToString("D4",CultureInfo.InvariantCulture);
+        var start=PlayReports.PeriodBounds("year",year).Start.AddMinutes(1);
+        for(var offset=0;offset<10025;offset+=128)
+            await Task.WhenAll(Enumerable.Range(offset,Math.Min(128,10025-offset)).Select(index=>journal.AppendAsync(
+                new PlaybackEvent("archive-start-"+index,"archive-attempt-"+index,"archived-report-fixture","started","archive",
+                    "Synthetic archived artist","Synthetic historical attempt "+index,ContentKind.Music,start.AddMilliseconds(index),0))));
     }
 
     private static async Task MeasureOutputAsync(string ffmpeg,int port,string root,OutputSettings output,List<object> readings,CaseResult result)

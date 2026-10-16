@@ -100,6 +100,9 @@ public sealed partial class EventJournal : IAsyncDisposable
                   payload TEXT NOT NULL,payload_hash TEXT NOT NULL,UNIQUE(window_id,end_sample,phase));
                 CREATE INDEX IF NOT EXISTS programme_measurement_station ON programme_measurements(station_id,window_id,sequence);
                 CREATE INDEX IF NOT EXISTS programme_measurement_window ON programme_measurements(window_id,sequence);
+                CREATE TABLE IF NOT EXISTS report_exports(id TEXT PRIMARY KEY,state TEXT NOT NULL,
+                  requested_utc TEXT NOT NULL,payload TEXT NOT NULL);
+                CREATE INDEX IF NOT EXISTS report_exports_requested ON report_exports(requested_utc DESC,id);
                 """;
             command.ExecuteNonQuery();
             using var version = _connection.CreateCommand();

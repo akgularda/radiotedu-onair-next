@@ -62,6 +62,7 @@ public sealed class ServicePipePolicyTests
     [Theory]
     [InlineData(ServiceEndpoint.Pipe)]
     [InlineData(ServiceEndpoint.FilePipe)]
+    [InlineData(ServiceEndpoint.ReportPipe)]
     public async Task AConnectedCounterfeitProcessIsRejectedBeforePayloadTransmission(string reservedPipe)
     {
         var name="onair-next-dev-counterfeit-"+Guid.NewGuid().ToString("N");

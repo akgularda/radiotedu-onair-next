@@ -15,7 +15,7 @@
       try{sessionStorage.setItem('studio-bootstrap',supplied);}catch{}
     }else{try{const stored=sessionStorage.getItem('studio-bootstrap');if(stored&&/^[0-9A-Fa-f]{64}$/.test(stored))bootstrap=stored;}catch{}}
   }catch{}
-  const names = {air:'On Air',library:'Library',system:'System'};
+  const names = {air:'On Air',library:'Library',reports:'Reports',system:'System'};
   const clock = new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Istanbul',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
   const text = (id,value) => { $(id).textContent = value; };
   const icon = name => {const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); const use=document.createElementNS(svg.namespaceURI,'use');use.setAttribute('href','#i-'+name);svg.append(use);return svg;};
@@ -39,7 +39,7 @@
     $('stations').replaceChildren(...stations.map(station=>{const button=element('button','station-tab');button.role='tab';button.setAttribute('aria-selected',String(station.id===state.station));button.setAttribute('aria-label',station.name+' channel');button.append(element('span','dot'),document.createTextNode(station.name));button.addEventListener('click',()=>selectStation(station.id));return button;}));
   }
   function selectStation(id){state.station=id;state.library=null;state.offset=0;stationTabs();renderStatus();resetLibrary();if(state.page==='library')void loadLibrary();}
-  function navigate(page){if(!names[page])return;state.page=page;document.querySelectorAll('[data-view]').forEach(section=>section.hidden=section.dataset.view!==page);document.querySelectorAll('.nav-item[data-page]').forEach(button=>{button.classList.toggle('selected',button.dataset.page===page);button.setAttribute('aria-current',button.dataset.page===page?'page':'false');});text('breadcrumb',names[page]);if(page==='library')void loadLibrary();if(page==='system')void loadSetup();}
+  function navigate(page){if(!names[page])return;state.page=page;document.querySelectorAll('[data-view]').forEach(section=>section.hidden=section.dataset.view!==page);document.querySelectorAll('.nav-item[data-page]').forEach(button=>{button.classList.toggle('selected',button.dataset.page===page);button.setAttribute('aria-current',button.dataset.page===page?'page':'false');});text('breadcrumb',names[page]);if(page==='library')void loadLibrary();if(page==='system')void loadSetup();if(page==='reports')void loadReports();}
   document.querySelectorAll('[data-page]:not(:disabled)').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();navigate(button.dataset.page);}));
   document.addEventListener('keydown',event=>{if(event.altKey && (event.key==='1'||event.key==='2')){event.preventDefault();navigate(event.key==='1'?'air':'library');}});
   function renderStatus(){
@@ -140,7 +140,7 @@
     if(state.polling||!state.engine||document.hidden)return;state.polling=true;const engine=state.engine;
     try{const result=await api('/api/status?engine='+encodeURIComponent(engine));if(engine!==state.engine)return;const previous=state.stations.map(s=>s.Id).join(',');state.stations=result.stations??[];state.controller=result.controller??null;state.sampleAt=Date.now();if(!state.stations.some(s=>s.Id===state.station)&&state.stations.length)state.station=state.stations[0].Id;if(previous!==state.stations.map(s=>s.Id).join(','))stationTabs();text('audit-pending',String(result.audit?.PendingEvents??'—'));text('audit-rejected',String(result.audit?.RejectedEvents??'—'));text('audit-error',result.audit?.Error??'None reported');}
     catch(error){message('Status unavailable: '+error.message);state.sampleAt=0;}
-    finally{state.polling=false;renderStatus();}
+    finally{state.polling=false;renderStatus();if(state.page==='reports')void loadReports();}
   }
   async function command(action,payload={},retry=null){
     if(!fresh()||state.busy||(!retry&&pending()))return null;
@@ -369,4 +369,73 @@
   $('setup-refresh').addEventListener('click',()=>void loadSetup());
   async function initialize(){stationTabs();renderStatus();try{state.session=await api('/api/session');text('build-label',state.session.preview?'UI PREVIEW':'DEVELOPMENT');}catch(error){message('Console connection unavailable: '+error.message);}await discover();}
   let ticks=0;setInterval(()=>{if(document.hidden||state.consoleClosed)return;text('clock',clock.format(new Date()));renderStatus();if(++ticks%2===0){void poll();void pollFolderCheck();}if(ticks%4===0&&state.page==='library')void loadLibrary();if(ticks%4===0&&state.page==='system')void loadSetup();},1000);text('clock',clock.format(new Date()));document.addEventListener('visibilitychange',()=>{if(!document.hidden){text('clock',clock.format(new Date()));void poll();}});void initialize();
+
+  const reports={items:[],engine:null,loadedAt:0,offset:0,polling:false,busy:false,rows:new Map(),pending:[]};
+  try{const saved=JSON.parse(localStorage.getItem('studio-report-requests')??'[]');if(Array.isArray(saved))reports.pending=saved.filter(p=>typeof p.engine==='string'&&/^[0-9a-f]{32}$/.test(p.id??'')&&['day','year'].includes(p.period)&&typeof p.selection==='string').slice(0,16);}catch{}
+  const reportPending=()=>reports.pending.find(p=>p.engine===state.engine);
+  function saveReportPending(){try{localStorage.setItem('studio-report-requests',JSON.stringify(reports.pending));}catch{}}
+  function reportMessage(value){text('report-feedback',value);}
+  function reportPeriodControls(){const yearly=$('report-period').value==='year';$('report-day-field').hidden=yearly;$('report-year-field').hidden=!yearly;$('report-day').disabled=yearly||!!reportPending()||reports.busy;$('report-year').disabled=!yearly||!!reportPending()||reports.busy;text('report-selection-note',yearly?'January 1 to January 1 of the following year, at midnight in Istanbul.':'A full calendar day, from midnight to midnight in Istanbul.');}
+  function reportControls(){
+    const saved=reportPending(),connected=fresh(),active=reports.engine===state.engine&&reports.items.some(r=>['Queued','Running'].includes(r.State));
+    if(saved){$('report-period').value=saved.period;if(saved.period==='day')$('report-day').value=saved.selection;else $('report-year').value=saved.selection;$('report-station').value=saved.stationId??'';}
+    $('report-period').disabled=reports.busy||!!saved;$('report-station').disabled=reports.busy||!!saved;reportPeriodControls();
+    $('report-export').disabled=!connected||reports.busy||!!saved||active;$('reports-refresh').disabled=reports.polling;
+    $('report-retry-request').hidden=!saved;$('report-retry-request').disabled=!connected||reports.busy;
+    $('report-forget-request').hidden=!saved;$('report-forget-request').disabled=reports.busy;
+    $('reports-prev').disabled=reports.busy||reports.offset===0;$('reports-next').disabled=reports.busy||reports.items.length<32;
+  }
+  function renderReports(){
+    const connected=fresh(),same=reports.engine===state.engine;
+    text('reports-context',same&&reports.loadedAt?'Loaded '+clock.format(new Date(reports.loadedAt))+' · Istanbul':'No history loaded');
+    text('reports-page',same&&reports.items.length?(reports.offset+1)+'–'+(reports.offset+reports.items.length):'—');
+    text('reports-state',!connected?'Engine unavailable':same?'Local CSV exports':'Loading export history…');
+    const items=same?reports.items:[],target=$('report-rows');
+    if(!items.length){reports.rows.clear();stableEmpty('report-rows',String(connected),()=>{const row=element('tr'),cell=element('td','table-empty');cell.colSpan=5;cell.append(icon('report'),element('strong','',connected?'No exports on this page':'Connect to view export history'),element('span','',connected?'Choose a date or year above to create a complete CSV snapshot.':'Existing broadcasts continue independently.'));if(!connected){const button=element('button','button subtle','Connect engine');button.addEventListener('click',()=>navigate('system'));cell.append(button);}row.append(cell);return row;});reportControls();return;}
+    const ordered=[];
+    for(const item of items){
+      const key=reports.engine+'\n'+item.Id;let entry=reports.rows.get(key);
+      if(!entry){const row=element('tr'),period=element('td'),scope=element('td'),status=element('td'),count=element('td','report-count'),actions=element('td'),buttons=element('div','report-actions');const download=element('button','button','CSV'),receipt=element('button','button','Receipt'),cancel=element('button','button','Cancel'),retry=element('button','button','Retry');for(const button of [download,receipt,cancel,retry])button.type='button';buttons.append(download,receipt,cancel,retry);actions.append(buttons);row.append(period,scope,status,count,actions);entry={row,period,scope,status,count,download,receipt,cancel,retry,engine:reports.engine,item};reports.rows.set(key,entry);download.addEventListener('click',()=>void downloadReport(entry));receipt.addEventListener('click',()=>showReportReceipt(entry));cancel.addEventListener('click',()=>void cancelReport(entry));retry.addEventListener('click',()=>void submitReport({engine:entry.engine,id:entry.item.Id,period:entry.item.Period,selection:entry.item.Selection,stationId:entry.item.StationId}));}
+      entry.item=item;entry.period.textContent=item.Selection;entry.scope.textContent=item.StationId?stationName(item.StationId):'All channels';entry.status.replaceChildren(element('span','report-status',item.CancelRequested&&['Queued','Running'].includes(item.State)?'Cancelling…':item.State));if(item.Error)entry.status.append(element('small','report-detail',item.Error));else if(item.State==='Completed'&&item.IncompleteRecords)entry.status.append(element('small','report-detail',item.IncompleteRecords.toLocaleString()+' without a terminal event'));entry.count.textContent=['Running','Completed'].includes(item.State)?Number(item.Records).toLocaleString():'—';entry.count.title=item.State==='Running'?'Rows prepared; the CSV is unconfirmed until completion.':'';entry.download.hidden=item.State!=='Completed';entry.cancel.hidden=!['Queued','Running'].includes(item.State);entry.retry.hidden=!['Failed','Cancelled','Interrupted'].includes(item.State);entry.cancel.disabled=!connected||reports.busy||item.CancelRequested;entry.download.disabled=!connected||reports.busy;entry.retry.disabled=!connected||reports.busy;entry.receipt.disabled=reports.busy;ordered.push(entry.row);
+    }
+    const keep=new Set(ordered);for(const child of Array.from(target.children))if(!keep.has(child))child.remove();ordered.forEach((row,index)=>{if(target.children[index]!==row)target.insertBefore(row,target.children[index]??null);});for(const [key,entry]of reports.rows)if(!keep.has(entry.row))reports.rows.delete(key);reportControls();
+  }
+  async function loadReports(){
+    if(reports.polling||state.consoleClosed||!fresh()){renderReports();return;}
+    reports.polling=true;const engine=state.engine,offset=reports.offset;reportControls();
+    try{const result=await api('/api/reports?'+new URLSearchParams({engine,offset:String(offset)}));if(engine!==state.engine||offset!==reports.offset)return;if(!Array.isArray(result.items))throw new Error(result.error??'No report history returned.');reports.items=result.items;reports.engine=engine;reports.loadedAt=Date.now();const pending=reportPending();if(pending&&result.items.some(r=>r.Id===pending.id&&r.Period===pending.period&&r.Selection===pending.selection&&(r.StationId??null)===(pending.stationId??null))){reports.pending=reports.pending.filter(p=>p!==pending);saveReportPending();reportMessage('Saved export confirmed in engine history.');}else if(result.error)reportMessage(result.error);else if(pending)reportMessage('A saved request still needs confirmation. Retry uses the same export ID.');}
+    catch(error){if(engine===state.engine)reportMessage('Report history unavailable: '+error.message);}
+    finally{reports.polling=false;renderReports();}
+  }
+  async function submitReport(envelope){
+    if(reports.busy||!fresh()||envelope.engine!==state.engine)return;
+    if(!reports.pending.some(p=>p.engine===envelope.engine&&p.id===envelope.id)){reports.pending=reports.pending.filter(p=>p.engine!==envelope.engine);reports.pending.push(envelope);saveReportPending();}
+    reports.busy=true;reports.offset=0;renderReports();reportMessage('Saving export request…');
+    try{const result=await api('/api/reports/export',{method:'POST',body:envelope,timeout:6000});if(envelope.engine!==state.engine)return;if(result.accepted!==true)throw new Error(result.error??'The export was not accepted.');reportMessage('Reading back saved export state…');await loadReports();}
+    catch(error){if(envelope.engine===state.engine)reportMessage('Confirmation unavailable: '+error.message+' Retry keeps the same export ID.');}
+    finally{reports.busy=false;renderReports();}
+  }
+  async function cancelReport(entry){
+    if(reports.busy||!fresh()||entry.engine!==state.engine)return;reports.busy=true;renderReports();
+    try{const result=await api('/api/reports/cancel',{method:'POST',body:{engine:entry.engine,id:entry.item.Id}});if(entry.engine!==state.engine)return;if(result.accepted!==true)throw new Error(result.error??'Cancellation not confirmed.');reportMessage('Cancellation saved. Reading back export state…');await loadReports();}
+    catch(error){if(entry.engine===state.engine)reportMessage('Cancellation confirmation unavailable: '+error.message+' Refresh or repeat Cancel.');}
+    finally{reports.busy=false;renderReports();}
+  }
+  async function downloadReport(entry){
+    if(reports.busy||!fresh()||entry.engine!==state.engine)return;reports.busy=true;renderReports();
+    try{const result=await api('/api/reports/download',{method:'POST',body:{engine:entry.engine,id:entry.item.Id}});if(entry.engine!==state.engine)return;if(typeof result.url!=='string'||!/^\/downloads\/report\/[a-f0-9]{64}$/.test(result.url))throw new Error('The download link is invalid.');const link=element('a');link.href=result.url;link.download=entry.item.FileName;document.body.append(link);link.click();link.remove();reportMessage('Browser download requested. It succeeds only if the confirmed byte count and SHA-256 match.');}
+    catch(error){if(entry.engine===state.engine)reportMessage('Download could not start: '+error.message);}
+    finally{reports.busy=false;renderReports();}
+  }
+  function showReportReceipt(entry){
+    if(entry.engine!==state.engine)return;const item=entry.item,list=$('report-receipt-values');list.replaceChildren();const fields=[['State',item.State],['Period',item.Period+' · '+item.Selection],['Channels',item.StationId?stationName(item.StationId):'All channels'],['Timezone',item.Timezone],['Start, UTC',item.FromUtc],['End, UTC (exclusive)',item.ToUtc],['Attempts',item.Records],['Missing terminal events',item.IncompleteRecords],['Snapshot sequence',item.SnapshotSequence??'Not confirmed'],['Snapshot time, UTC',item.SnapshotAtUtc??'Not confirmed'],['File bytes',item.Bytes],['SHA-256',item.Sha256??'Not confirmed'],['Export ID',item.Id],['Export attempt',item.Attempt]];for(const[label,value]of fields){const row=element('div');row.append(element('dt','',label),element('dd','',String(value)));list.append(row);}$('report-receipt-dialog').showModal();
+  }
+  $('report-period').addEventListener('change',reportPeriodControls);
+  $('report-form').addEventListener('submit',event=>{event.preventDefault();if(!$('report-form').reportValidity())return;const period=$('report-period').value,selection=period==='day'?$('report-day').value:String(Number($('report-year').value)).padStart(4,'0');void submitReport({engine:state.engine,id:crypto.randomUUID().replaceAll('-',''),period,selection,stationId:$('report-station').value||null});});
+  $('report-retry-request').addEventListener('click',()=>{const saved=reportPending();if(saved)void submitReport(saved);});
+  $('report-forget-request').addEventListener('click',()=>{const saved=reportPending();reports.pending=reports.pending.filter(p=>p!==saved);saveReportPending();reportMessage('Local retry reminder cleared. Any accepted engine export continues; refresh history to cancel it.');renderReports();});
+  $('reports-refresh').addEventListener('click',()=>void loadReports());
+  $('reports-prev').addEventListener('click',()=>{reports.offset=Math.max(0,reports.offset-32);void loadReports();});
+  $('reports-next').addEventListener('click',()=>{reports.offset+=32;void loadReports();});
+  const reportToday=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(part=>[part.type,part.value]));$('report-day').value=reportToday.year+'-'+reportToday.month+'-'+reportToday.day;$('report-day').max='9998-12-31';$('report-year').value=reportToday.year;for(const station of roster){const option=element('option','',station.name);option.value=station.id;$('report-station').append(option);}renderReports();
 })();

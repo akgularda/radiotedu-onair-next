@@ -29,7 +29,8 @@ internal static class EngineHost
             if (config.PipeName != ServiceEndpoint.Pipe) throw new ArgumentException("Use the reserved development service pipe.");
             ServiceFileProtection.ValidateSettings(config.DataRoot, config.Ffmpeg);
         }
-        else if (ServiceEndpoint.IsReserved(config.PipeName) || config.PipeName.EndsWith("-files", StringComparison.Ordinal)) throw new ArgumentException("The reserved pipe belongs to the Windows service only.");
+        else if (ServiceEndpoint.IsReserved(config.PipeName) || (config.PipeName.EndsWith("-files", StringComparison.Ordinal) || config.PipeName.EndsWith("-reports", StringComparison.Ordinal))) throw new ArgumentException("The reserved pipe belongs to the Windows service only.");
+        _ = ServiceEndpoint.Reports(config.PipeName);
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(externalStop);
         if (serviceMode) WindowsServiceDiagnostics.Stage("pipe policy");
         ServicePipePolicy? servicePolicy = null;
@@ -75,6 +76,9 @@ internal static class EngineHost
             var inbox = new UploadInbox(journal, library);
             await inbox.InitializeAsync();
             await using var fileServer = new UploadPipeServer(config.PipeName, serviceMode, servicePolicy, inbox, stop.Token);
+            await using var reports = new ReportExports(journal, config.Stations.Select(station => station.Id));
+            await reports.InitializeAsync();
+            await using var reportServer = new ReportPipeServer(config.PipeName, serviceMode, servicePolicy, reports, stop.Token);
             if (serviceMode) WindowsServiceDiagnostics.Stage("controller ready");
             ready();
             Console.WriteLine(JsonSerializer.Serialize(new { state = "controller-ready", config.PipeName, stations = config.Stations.Count, loopbackOnly = true, mode = serviceMode ? "windows-service" : "developer" }));
@@ -113,6 +117,12 @@ internal static class EngineHost
                                 if (!config.Stations.Any(station => station.Id == historyStation)) throw new ArgumentException("Unknown station.");
                                 result = JsonSerializer.Serialize(new { station = historyStation, items = journal.MeasurementHistory(historyStation, request.Offset) });
                                 break;
+                            case "reports":
+                                result = JsonSerializer.Serialize(new { items = reports.Snapshot(request.Offset), error = reports.Error ?? reportServer.Error }); break;
+                            case "report-export" when request.ReportPeriod is { } reportPeriod && request.ReportSelection is { } selection:
+                                result = JsonSerializer.Serialize(new { accepted = true, report = await reports.StartAsync(request.Id, reportPeriod, selection, request.StationId) }); break;
+                            case "report-cancel" when request.ReportId is { } reportId:
+                                result = JsonSerializer.Serialize(new { accepted = true, report = await reports.CancelAsync(reportId) }); break;
                             case "skip" when request.StationId is { } skipStation:
                                 await coordinator.SkipAsync(skipStation, request.Id);
                                 result = "{\"accepted\":true}"; break;
@@ -193,4 +203,4 @@ internal static class EngineHost
 internal sealed record HostSettings(string Ffmpeg, string DataRoot, string PipeName, List<StationSettings> Stations, string? OperatorSid = null);
 internal sealed record EngineCommand(string Id, string Action, string? StationId, string? Path = null,
     string[]? Paths = null, string? Query = null, int Offset = 0, string? AssetId = null,
-    long Revision = 0, long ExpectedVersion = 0, string? Artist = null, string? Title = null, string? SourceCheckId = null);
+    long Revision = 0, long ExpectedVersion = 0, string? Artist = null, string? Title = null, string? SourceCheckId = null, string? ReportPeriod = null, string? ReportSelection = null, string? ReportId = null);
