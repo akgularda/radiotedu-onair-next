@@ -374,7 +374,8 @@
   $('setup-check').addEventListener('click',async()=>{try{await api('/api/setup/prepare',{method:'POST',body:{RuntimeFolder:$('setup-runtime').value.trim(),StartService:$('setup-start').checked}});setupInputDirty=false;await loadSetup();}catch(error){text('setup-detail',error.message);}});
   $('setup-install').addEventListener('click',async()=>{if(!setupState?.plan)return;try{await api('/api/setup/install',{method:'POST',body:{Id:setupState.plan.id}});await loadSetup();}catch(error){text('setup-detail',error.message);}});
   $('setup-shortcuts').addEventListener('click',async()=>{try{await api('/api/setup/shortcuts',{method:'POST'});text('setup-detail','Desktop and Start menu shortcuts are available. They open the local console without Codex; the service runs independently.');}catch(error){text('setup-detail',error.message);}});
-  $('close-console').addEventListener('click',async()=>{if(!confirm('Close this local console? The broadcast service keeps running.'))return;try{await api('/api/console/close',{method:'POST'});state.consoleClosed=true;state.engine=null;state.sampleAt=0;renderStatus();setupControls();message('Console closed. Broadcast service continues. Open the installed shortcut or new package to return.');}catch(error){message(error.message);}});
+  $('close-console').addEventListener('click',()=>$('close-console-dialog').showModal());
+  $('confirm-close-console').addEventListener('click',async()=>{$('close-console-dialog').close();try{await api('/api/console/close',{method:'POST'});state.consoleClosed=true;state.engine=null;state.sampleAt=0;renderStatus();setupControls();message('Console closed. Broadcast service continues. Open the installed shortcut or new package to return.');}catch(error){message(error.message);}});
   $('setup-refresh').addEventListener('click',()=>void loadSetup());
 
   function migrationControls(){
