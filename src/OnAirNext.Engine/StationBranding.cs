@@ -48,6 +48,7 @@ public sealed class StationBranding : IDisposable
         ObjectDisposedException.ThrowIf(_disposed,this);
         if(_initialized)throw new InvalidOperationException("Branding already initialized.");
         await _journal.InitializeBrandingAsync();
+        await _journal.RegisterBrandingInventoriesAsync(_sources.Keys.ToArray());
         foreach(var station in _sources.Keys)_configuration[station]=await _journal.BrandingConfigurationAsync(station);
         _library.Changed+=InventoryChanged;_initialized=true;
         foreach(var station in _sources.Keys)Publish(station);

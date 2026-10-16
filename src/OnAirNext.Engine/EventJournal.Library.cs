@@ -23,6 +23,7 @@ public sealed partial class EventJournal
         using var cmd = c.CreateCommand(); cmd.Transaction = t;
         cmd.CommandText = """
             CREATE TABLE IF NOT EXISTS library_roots(station_id TEXT PRIMARY KEY,path TEXT NOT NULL,revision INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS library_inventory_roles(inventory_id TEXT PRIMARY KEY,station_id TEXT NOT NULL,kind TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS library_legacy_music(command_id TEXT PRIMARY KEY,station_id TEXT NOT NULL,revision INTEGER NOT NULL,
               payload TEXT NOT NULL,payload_hash TEXT NOT NULL,created_utc TEXT NOT NULL,UNIQUE(station_id,revision));
             CREATE TABLE IF NOT EXISTS library_assets(station_id TEXT NOT NULL,revision INTEGER NOT NULL,id TEXT NOT NULL,
@@ -53,10 +54,10 @@ public sealed partial class EventJournal
     {
         path = NormalizeLibraryPath(path);
         if (Path.TrimEndingDirectorySeparator(Path.GetPathRoot(path)!).Equals(path, StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("Choose a station music subfolder, rather than a whole drive.");
+            throw new ArgumentException("Choose a channel media subfolder instead of a whole drive.");
         return TransactionAsync((c, t) =>
         {
-            if (ReadDesired(c, t, station) is null) throw new ArgumentException("Unknown station.");
+            RequireLibraryInventory(c,t,station);
             if (!AdmitControl(c, t, station, "library-root", path, id)) return false;
             authorizeNewAssignment?.Invoke(); // Fast in-memory gate only; durable retries do not need a fresh transient proof.
             using var cmd = LibraryCommand(c, t, """
@@ -75,7 +76,7 @@ public sealed partial class EventJournal
         var payload = JsonSerializer.Serialize(normalized);
         return TransactionAsync((c, t) =>
         {
-            if (ReadDesired(c, t, station) is null) throw new ArgumentException("Unknown station.");
+            RequireLibraryInventory(c,t,station);
             if (!AdmitControl(c, t, station, "library-import", payload, id)) return false;
             if (uploaded)
             {

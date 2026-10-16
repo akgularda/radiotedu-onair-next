@@ -27,24 +27,27 @@ public sealed class StationLibraryTests
         await File.WriteAllTextAsync(Path.Combine(jingles,"two.wav"),"fixture");
         await File.WriteAllTextAsync(Path.Combine(sweepers,"sweeper.wav"),"fixture");
         await using var journal=new EventJournal(Path.Combine(root,"catalog.db"));var active=0;var maximum=0;
+        await journal.InitializeDesiredStateAsync(Settings);
+        var jingleKey=StationBranding.InventoryKey("a",ContentKind.Jingle);var sweeperKey=StationBranding.InventoryKey("a",ContentKind.Sweeper);
         async Task<AudioMetadata> Probe(string path,CancellationToken token)
         {
             var current=Interlocked.Increment(ref active);maximum=Math.Max(maximum,current);
             try{await Task.Delay(30,token);return new("Fixture",Path.GetFileNameWithoutExtension(path),.2);}
             finally{Interlocked.Decrement(ref active);}
         }
-        await using var library=new StationLibrary(journal,"unused",root,["a","j-a","s-a"],Probe,
-            new Dictionary<string,ContentKind>{{"j-a",ContentKind.Jingle},{"s-a",ContentKind.Sweeper}});
+        await using var library=new StationLibrary(journal,"unused",root,["a",jingleKey,sweeperKey],Probe,
+            new Dictionary<string,ContentKind>{{jingleKey,ContentKind.Jingle},{sweeperKey,ContentKind.Sweeper}});
+        using var branding=new StationBranding(journal,library,["a"]);await branding.InitializeAsync();
         await library.InitializeAsync();
-        await library.SetRootAsync("a",music,"music");await library.SetRootAsync("j-a",jingles,"jingles");await library.SetRootAsync("s-a",sweepers,"sweepers");
-        await WaitAsync(library,()=>library.ReadyInventory("a").ReadyCount==1&&library.ReadyInventory("j-a").ReadyCount==2&&library.ReadyInventory("s-a").ReadyCount==1);
-        var frozen=library.ReadyInventory("j-a",1);
+        await library.SetRootAsync("a",music,"music");await library.SetRootAsync(jingleKey,jingles,"jingles");await library.SetRootAsync(sweeperKey,sweepers,"sweepers");
+        await WaitAsync(library,()=>library.ReadyInventory("a").ReadyCount==1&&library.ReadyInventory(jingleKey).ReadyCount==2&&library.ReadyInventory(sweeperKey).ReadyCount==1);
+        var frozen=library.ReadyInventory(jingleKey,1);
         Assert.Equal(2,frozen.ReadyCount);Assert.Equal(ContentKind.Jingle,Assert.Single(frozen.Items).Kind);
-        Assert.Equal(ContentKind.Sweeper,Assert.Single(library.ReadyInventory("s-a").Items).Kind);
+        Assert.Equal(ContentKind.Sweeper,Assert.Single(library.ReadyInventory(sweeperKey).Items).Kind);
         var planner=library.Planner(Settings)!;Assert.Equal(1,planner.AvailableItems);Assert.Equal(ContentKind.Music,planner.Select(0).Item.Kind);
         Assert.Equal(1,maximum);
-        var empty=Path.Combine(root,"empty");Directory.CreateDirectory(empty);await library.SetRootAsync("j-a",empty,"replace");
-        Assert.Empty(library.ReadyInventory("j-a").Items);Assert.Single(frozen.Items);
+        var empty=Path.Combine(root,"empty");Directory.CreateDirectory(empty);await library.SetRootAsync(jingleKey,empty,"replace");
+        Assert.Empty(library.ReadyInventory(jingleKey).Items);Assert.Single(frozen.Items);
         Assert.Throws<ArgumentException>(()=>library.ReadyInventory("unknown"));
         Assert.Throws<ArgumentOutOfRangeException>(()=>library.ReadyInventory("a",0));
     }

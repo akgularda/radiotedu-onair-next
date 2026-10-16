@@ -31,6 +31,7 @@ public sealed partial class EventJournal
         command.CommandText="""
             CREATE TABLE IF NOT EXISTS station_branding(station_id TEXT PRIMARY KEY,version INTEGER NOT NULL,payload TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS branding_commands(id TEXT PRIMARY KEY,request TEXT NOT NULL,result TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS library_inventory_roles(inventory_id TEXT PRIMARY KEY,station_id TEXT NOT NULL,kind TEXT NOT NULL);
             """;
         command.ExecuteNonQuery();return true;
     });

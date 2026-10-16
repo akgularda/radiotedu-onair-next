@@ -1,4 +1,6 @@
 using OnAirNext.Engine;
+using OnAirNext.UploadProtocol;
+using System.Security.Cryptography;
 using Xunit;
 
 namespace OnAirNext.Tests;
@@ -18,6 +20,7 @@ public sealed class StationBrandingTests
         await File.WriteAllTextAsync(Path.Combine(jingles,"identifier.wav"),"fixture");
         await File.WriteAllTextAsync(Path.Combine(sweepers,"sweeper.wav"),"fixture");
         await using var journal=new EventJournal(Path.Combine(root,"catalog.db"));
+        foreach(var id in new[]{"a","b"})await journal.InitializeDesiredStateAsync(new(id,[],[],AutoStart:false));
         var kinds=StationBranding.InventoryKinds(["a","b"]);
         await using var library=new StationLibrary(journal,"unused",root,new[]{"a","b"}.Concat(kinds.Keys),
             (path,_)=>Task.FromResult(new AudioMetadata("Fixture",Path.GetFileNameWithoutExtension(path),.2)),kinds);
@@ -49,6 +52,44 @@ public sealed class StationBrandingTests
         Assert.Same(disabledPool,branding.Source("a").Snapshot());
         Assert.Equal(disabled,(await branding.SnapshotAsync("a")).Configuration);
         Assert.False(await journal.RequiresBrandingConfigurationSupportAsync());await journal.RequireRecoveryReaderAsync(null);
+    }
+    [Fact]
+    public async Task ManagedRoleUploadUsesItsParentWithoutCreatingAnotherProgrammeStation()
+    {
+        var root=Root();await using var journal=new EventJournal(Path.Combine(root,"catalog.db"));
+        await journal.InitializeDesiredStateAsync(new("a",[],[],AutoStart:false));
+        var kinds=StationBranding.InventoryKinds(["a"]);
+        await using var library=new StationLibrary(journal,"unused",root,new[]{"a"}.Concat(kinds.Keys),
+            (_,_)=>Task.FromResult(new AudioMetadata("Fixture","Identifier",.2)),kinds);
+        using var branding=new StationBranding(journal,library,["a"]);await branding.InitializeAsync();await library.InitializeAsync();
+        var key=StationBranding.InventoryKey("a",ContentKind.Jingle);var inbox=new UploadInbox(journal,library);await inbox.InitializeAsync();
+        var bytes="synthetic retained upload bytes"u8.ToArray();var id=Guid.NewGuid().ToString("N");
+        await inbox.BeginAsync(key,id,[new UploadFileSpec("identifier.wav",bytes.Length,Convert.ToHexString(SHA256.HashData(bytes)))]);
+        await inbox.ReceiveAsync(key,id,0,new MemoryStream(bytes),CancellationToken.None);
+        await inbox.CommitAsync(key,id,CancellationToken.None);
+        using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        while(library.ReadyInventory(key).ReadyCount!=1){library.Wake();await Task.Delay(100,deadline.Token);}
+        Assert.Equal(ContentKind.Jingle,Assert.Single(library.ReadyInventory(key).Items).Kind);
+        Assert.Null(await journal.DesiredStateAsync(key));Assert.False((await journal.DesiredStateAsync("a"))!.RequestedRunning);
+        Assert.Equal(BrandingRules.Disabled,(await branding.SnapshotAsync("a")).Configuration.Rules);
+    }
+    [Fact]
+    public async Task ARegisteredRoleCannotAcceptRootsOrUploadsWithoutAKnownParent()
+    {
+        var root=Root();await using var journal=new EventJournal(Path.Combine(root,"catalog.db"));
+        var kinds=StationBranding.InventoryKinds(["a"]);
+        await using var library=new StationLibrary(journal,"unused",root,new[]{"a"}.Concat(kinds.Keys),
+            (_,_)=>Task.FromResult(new AudioMetadata("Fixture","Identifier",.2)),kinds);
+        using var branding=new StationBranding(journal,library,["a"]);await branding.InitializeAsync();await library.InitializeAsync();
+        var key=StationBranding.InventoryKey("a",ContentKind.Jingle);var inbox=new UploadInbox(journal,library);await inbox.InitializeAsync();
+        await Assert.ThrowsAsync<ArgumentException>(()=>library.SetRootAsync(key,Path.Combine(root,"jingles"),"folder"));
+        await Assert.ThrowsAsync<ArgumentException>(()=>library.ImportAsync(key,[Path.Combine(root,"identifier.wav")],"import"));
+        var bytes="synthetic upload"u8.ToArray();var id=Guid.NewGuid().ToString("N");var files=new[]{new UploadFileSpec("identifier.wav",bytes.Length,Convert.ToHexString(SHA256.HashData(bytes)))};
+        await Assert.ThrowsAsync<ArgumentException>(()=>inbox.BeginAsync(key,id,files));
+        Assert.Empty(journal.LibraryRoots());
+        await journal.InitializeDesiredStateAsync(new("a",[],[],AutoStart:false));
+        Assert.Equal(key,(await inbox.BeginAsync(key,id,files)).StationId);
+        Assert.Null(await journal.DesiredStateAsync(key));
     }
     [Fact]
     public void RoleKeysCannotCollideWithProgrammeStationsOrOtherRoles()

@@ -9,7 +9,7 @@ public sealed partial class EventJournal
     public Task<LibraryUpload> RegisterLibraryUploadAsync(string station, string id, string payload, long expectedRevision) => TransactionAsync((c, t) =>
     {
         if (payload.Length > 100000) throw new ArgumentException("The upload manifest exceeds its size limit.");
-        if (ReadDesired(c, t, station) is null) throw new ArgumentException("Unknown station.");
+        RequireLibraryInventory(c,t,station);
         var previous = ReadUpload(c, t, id);
         if (previous is not null)
         {

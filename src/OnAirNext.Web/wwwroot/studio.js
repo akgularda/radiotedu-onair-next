@@ -4,6 +4,7 @@
   const roster = [{id:'1',name:'Classic'},{id:'2',name:'Lofi'},{id:'4',name:'Pop'},{id:'5',name:'Cazz'},{id:'8',name:'Rock'},{id:'9',name:'Energize'},{id:'10',name:'Situation'},{id:'11',name:'Main Character'}];
   const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null,folderTarget:null,folderSource:null,editTarget:null,assetStateTarget:null,controller:null,consoleClosed:false,upload:null,uploadSelection:null};
   const migration={engine:null,preview:null,loading:false,busy:false,key:null,selects:new Map(),pending:null,submissionError:null};
+  let brandingUI=null;
   let setupFolderTarget='setup-runtime';
   try{const request=JSON.parse(localStorage.getItem('studio-migration-request')??'null');if(request&&typeof request.engine==='string'&&/^[a-f0-9]{32}$/.test(request.id??'')&&typeof request.legacyRoot==='string')migration.pending=request;}catch{}
 
@@ -19,7 +20,7 @@
       try{sessionStorage.setItem('studio-bootstrap',supplied);}catch{}
     }else{try{const stored=sessionStorage.getItem('studio-bootstrap');if(stored&&/^[0-9A-Fa-f]{64}$/.test(stored))bootstrap=stored;}catch{}}
   }catch{}
-  const names = {air:'On Air',library:'Library',reports:'Reports',system:'System'};
+  const names = {air:'On Air',library:'Library',ads:'Ads & Sweepers',reports:'Reports',system:'System'};
   const clock = new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Istanbul',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
   const text = (id,value) => { $(id).textContent = value; };
   const icon = name => {const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); const use=document.createElementNS(svg.namespaceURI,'use');use.setAttribute('href','#i-'+name);svg.append(use);return svg;};
@@ -43,7 +44,7 @@
     $('stations').replaceChildren(...stations.map(station=>{const button=element('button','station-tab');button.role='tab';button.setAttribute('aria-selected',String(station.id===state.station));button.setAttribute('aria-label',station.name+' channel');button.append(element('span','dot'),document.createTextNode(station.name));button.addEventListener('click',()=>selectStation(station.id));return button;}));
   }
   function selectStation(id){state.station=id;state.library=null;state.offset=0;stationTabs();renderStatus();resetLibrary();if(state.page==='library')void loadLibrary();}
-  function navigate(page){if(!names[page])return;state.page=page;document.querySelectorAll('[data-view]').forEach(section=>section.hidden=section.dataset.view!==page);document.querySelectorAll('.nav-item[data-page]').forEach(button=>{button.classList.toggle('selected',button.dataset.page===page);button.setAttribute('aria-current',button.dataset.page===page?'page':'false');});text('breadcrumb',names[page]);if(page==='library')void loadLibrary();if(page==='system'){void loadSetup();void loadAppUpdates();void loadAudioTools();}if(page==='reports')void loadReports();}
+  function navigate(page){if(!names[page])return;state.page=page;document.querySelectorAll('[data-view]').forEach(section=>section.hidden=section.dataset.view!==page);document.querySelectorAll('.nav-item[data-page]').forEach(button=>{button.classList.toggle('selected',button.dataset.page===page);button.setAttribute('aria-current',button.dataset.page===page?'page':'false');});text('breadcrumb',names[page]);if(page==='library')void loadLibrary();if(page==='system'){void loadSetup();void loadAppUpdates();void loadAudioTools();}if(page==='reports')void loadReports();brandingUI?.update();}
   document.querySelectorAll('[data-page]:not(:disabled)').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();navigate(button.dataset.page);}));
   document.addEventListener('keydown',event=>{if(event.altKey && (event.key==='1'||event.key==='2')){event.preventDefault();navigate(event.key==='1'?'air':'library');}});
   function renderStatus(){
@@ -91,7 +92,7 @@
     $('engine-label').replaceChildren(document.createTextNode(connected?'Engine connected':'Engine not connected'),element('small','',connected?'Isolated development engine':'Existing broadcasts unchanged'));
     $('disconnect-engine').disabled=!state.engine;
     $('retry-command').hidden=!pending();$('retry-command').disabled=!connected||state.busy;
-    libraryControls();renderProgrammeMeter();
+    libraryControls();renderProgrammeMeter();brandingUI?.update();
   }
   function libraryControls(){const enabled=fresh()&&!state.busy&&!pending();$('choose-folder').disabled=!enabled;$('add-files').disabled=!enabled||!state.library?.canImportFiles;$('managed-folder').disabled=!enabled;$('rescan').disabled=!enabled||!state.library?.page?.Root;$('library-prev').disabled=!fresh()||state.offset===0;$('library-next').disabled=!fresh()||state.library?.page?.Items?.length!==50;document.querySelectorAll('.transfer-action').forEach(button=>button.disabled=!enabled);document.querySelectorAll('.asset-action').forEach(button=>button.disabled=!enabled);assetDialogControls();folderControls();}
   function renderProgrammeMeter(){
@@ -498,7 +499,7 @@
   $('migration-root').addEventListener('input',()=>migrationControls());
   $('setup-browse').addEventListener('click',async()=>{setupFolderTarget='setup-runtime';text('setup-folder-heading','Choose the complete audio tools package');$('setup-folder-dialog').showModal();await setupFolders($('setup-runtime').value||null);});
   $('setup-folder-up').addEventListener('click',()=>void setupFolders(setupParent));
-  $('setup-folder-select').addEventListener('click',()=>{if(!setupPath)return;$(setupFolderTarget).value=setupPath;if(setupFolderTarget==='setup-runtime')setupInputDirty=true;if(setupFolderTarget==='audio-tools-root')audioToolsDirty=true;$('setup-folder-dialog').close();setupControls();migrationControls();audioToolsControls();});
+  $('setup-folder-select').addEventListener('click',()=>{if(!setupPath)return;$(setupFolderTarget).value=setupPath;if(setupFolderTarget==='setup-runtime')setupInputDirty=true;if(setupFolderTarget==='audio-tools-root')audioToolsDirty=true;$(setupFolderTarget).dispatchEvent(new Event('change',{bubbles:true}));$('setup-folder-dialog').close();setupControls();migrationControls();audioToolsControls();});
   $('setup-check').addEventListener('click',async()=>{try{await api('/api/setup/prepare',{method:'POST',body:{RuntimeFolder:$('setup-runtime').value.trim(),StartService:$('setup-start').checked}});setupInputDirty=false;await loadSetup();}catch(error){text('setup-detail',error.message);}});
   $('setup-install').addEventListener('click',async()=>{if(!setupState?.plan)return;try{await api('/api/setup/install',{method:'POST',body:{Id:setupState.plan.id}});await loadSetup();}catch(error){text('setup-detail',error.message);}});
   $('setup-shortcuts').addEventListener('click',async()=>{try{await api('/api/setup/shortcuts',{method:'POST'});text('setup-detail','Desktop and Start menu shortcuts are available. They open the local console without Codex; the service runs independently.');}catch(error){text('setup-detail',error.message);}});
@@ -656,4 +657,11 @@
   $('reports-prev').addEventListener('click',()=>{reports.offset=Math.max(0,reports.offset-32);void loadReports();});
   $('reports-next').addEventListener('click',()=>{reports.offset+=32;void loadReports();});
   const reportToday=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(part=>[part.type,part.value]));$('report-day').value=reportToday.year+'-'+reportToday.month+'-'+reportToday.day;$('report-day').max='9998-12-31';$('report-year').value=reportToday.year;for(const station of roster){const option=element('option','',station.name);option.value=station.id;$('report-station').append(option);}renderReports();
+  brandingUI=RadioTeduBranding.create({
+    api,message,
+    context:()=>({engine:state.engine,station:state.station,name:stationName(),fresh:fresh(),busy:state.busy,supported:state.controller?.capabilities?.includes('branding-library-v1')===true,active:state.page==='ads'}),
+    claim:()=>{if(!fresh()||state.busy||pending())return false;state.busy=true;renderStatus();return true;},
+    release:()=>{state.busy=false;renderStatus();},
+    browse:async(input,title)=>{setupFolderTarget=input;text('setup-folder-heading',title);$('setup-folder-dialog').showModal();if(!await setupFolders($(input).value||null))await setupFolders(null);}
+  });
 })();
