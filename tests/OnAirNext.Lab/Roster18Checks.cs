@@ -41,6 +41,9 @@ internal static class Roster18Checks
             await using var resources=new Resources();
             await using var reports=new ReportExports(journal,Enumerable.Range(1,8).Select(index=>"roster-"+index));
             await reports.InitializeAsync();
+            var observations=new List<object>();result.Details["fleetObservations"]=observations;
+            using var observeStop=new CancellationTokenSource();
+            Task observeTask=Task.CompletedTask;
             string? reportId=null;
             Exception? runFailure=null;var cleanupFailures=new List<Exception>();
             try
@@ -52,6 +55,7 @@ internal static class Roster18Checks
                     outputs.AddRange(group);
                     engines.Add(new StationEngine(ffmpeg,new("roster-"+index,sources,group),journal));
                 }
+                observeTask=ObserveFleetAsync(engines,journal,observations,observeStop.Token);
                 foreach(var engine in engines)await engine.StartAsync();
                 using(var ready=new CancellationTokenSource(TimeSpan.FromSeconds(40)))
                     while(engines.Any(e=>e.Snapshot().Outputs.Any(o=>o.State!="SourceConnected")))await Task.Delay(100,ready.Token);
@@ -97,6 +101,7 @@ internal static class Roster18Checks
             catch(Exception ex){runFailure=ex;}
             finally
             {
+                await observeStop.CancelAsync();await observeTask;
                 if(reportId is not null)result.Details["reportExportAtCleanup"]=journal.Report(reportId) ?? (object)new { State = "Missing" };
                 result.Details["journalAtCleanup"]=new{journal.CommittedTransactions,journal.CommittedEvents,journal.PendingEvents};
                 result.Details["stationsAtCleanup"]=engines.Select(e=>e.Snapshot()).ToArray();
@@ -112,6 +117,27 @@ internal static class Roster18Checks
         }
         Check(result,EventJournal.Verify(database),"The full 18-branch test preserves the immutable attempt hash chain.");
         result.Details["profileCounts"]=new{AacLc192=8,HeAacV2_64=8,OggFlac24=2};
+    }
+
+    private static async Task ObserveFleetAsync(List<StationEngine> engines,EventJournal journal,List<object> readings,CancellationToken token)
+    {
+        var clock=Stopwatch.StartNew();
+        try
+        {
+            while(!token.IsCancellationRequested)
+            {
+                if(readings.Count==180)readings.RemoveAt(0);
+                readings.Add(new{AtUtc=DateTimeOffset.UtcNow,ElapsedSeconds=clock.Elapsed.TotalSeconds,
+                    ThreadPool.ThreadCount,ThreadPool.PendingWorkItemCount,ThreadPool.CompletedWorkItemCount,
+                    GcPauseMilliseconds=GC.GetTotalPauseDuration().TotalMilliseconds,
+                    Gen2Collections=GC.CollectionCount(2),ManagedBytes=GC.GetTotalMemory(false),
+                    JournalPending=journal.PendingEvents,
+                    Stations=engines.Select(engine=>{var s=engine.Snapshot();return new{s.Id,s.LateBlocks,s.CompletedItems,
+                        MeterDropped=s.Loudness?.DroppedBlocks,Outputs=s.Outputs.Select(o=>new{o.Id,o.State,o.EncoderStarts,o.Connections,o.DroppedBlocks,o.QueuedBlocks}).ToArray()};}).ToArray()});
+                await Task.Delay(1000,token);
+            }
+        }
+        catch(OperationCanceledException)when(token.IsCancellationRequested){}
     }
 
     private static async Task SeedReportHistoryAsync(EventJournal journal)

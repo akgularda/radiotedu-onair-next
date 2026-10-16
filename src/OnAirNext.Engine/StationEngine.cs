@@ -113,6 +113,10 @@ public sealed partial class StationEngine : IStationSession
                 var due=TimeSpan.FromSeconds((double)(_samples-_clockStart)/AudioFormat.SampleRate);var delay=due-clock.Elapsed;
                 if(delay>TimeSpan.Zero)await Task.Delay(delay,_stop.Token);
                 else if(delay < -AudioFormat.BlockDuration*2)Interlocked.Increment(ref _late);
+                // A completed decoder read must not turn delayed playout into an unbroken
+                // CPU burst. Let independent codec-pipe/transport continuations drain
+                // between catch-up blocks without waiting for any particular output.
+                if(delay <= TimeSpan.Zero)await Task.Yield();
                 ObserveAudit();CommitBoundaries(_samples,true);
                 frame.SamplePosition=_samples;
                 _loudness.Publish(frame);foreach(var output in _outputs)output.Publish(frame);

@@ -1,3 +1,5 @@
+> **2026-10-16 retained full18 failure:** Reports source passed 214 unit tests, but run 38869428050 dropped/reconnected codec branches during the full18 lab. The annual export itself completed. Catch-up fairness and bounded diagnostic observations are pending a fresh full qualification. This is not approved for production transfer. See `artifacts/evidence/report-full18-catchup-failure-20261016.json`.
+
 > New continuation: calendar Reports UI, durable export receipts, bounded generation/download and concurrent full-roster report tests are awaiting fresh qualification. Previous source `384cc67a` evidence does not qualify these new changes. Target-PC staging was not admitted; no new runtime or service has started.
 
 > Latest development update, 16 October 2026: source `384cc67a` passed the complete isolated FDK/FLAC 18-output scenario with zero measurement drops/history failures and confirmed Stop/hash checks. See [205-case qualification](../artifacts/evidence/fdk-full18-205-20261016.json). Actual-PC and connected mouse commissioning remain open; zero station groups migrated.

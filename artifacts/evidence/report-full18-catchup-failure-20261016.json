@@ -1,0 +1,248 @@
+{
+  "run": 38869428050,
+  "head": "81d6fecd3407ad2955bddb7aa083dcd48179a2dd",
+  "scope": "Remote synthetic full18 concurrent annual export failure; not production",
+  "unit": {
+    "total": 214,
+    "executed": 214,
+    "passed": 214,
+    "failed": 0,
+    "error": 0,
+    "timeout": 0,
+    "aborted": 0,
+    "inconclusive": 0,
+    "passedButRunAborted": 0,
+    "notRunnable": 0,
+    "notExecuted": 0,
+    "disconnected": 0,
+    "warning": 0,
+    "completed": 0,
+    "inProgress": 0,
+    "pending": 0
+  },
+  "archiveProof": [
+    {
+      "name": "windows-unit-results",
+      "digest": "sha256:56b796ccf74a48ef1c81eba15d57e9942cbdc7dd67bf1972893625394c8139c1",
+      "bytes": 52975
+    },
+    {
+      "name": "loudness-reference-qualification",
+      "digest": "sha256:64439fc8abf5028fcd70d78a01ec68c67d45560948d90af2d556facad9669818",
+      "bytes": 2655
+    },
+    {
+      "name": "windows-real-audio-qualification",
+      "digest": "sha256:c201b73523f403068d538de517b9e1b9bb163c9fcc277dc9d8eceb98816d27c8",
+      "bytes": 21658
+    },
+    {
+      "name": "windows-codec-qualification",
+      "digest": "sha256:f723d56cfefd9742da882508bd1470272b5336153333d62091efc869737d5ad3",
+      "bytes": 15689
+    }
+  ],
+  "report": {
+    "Id": "8bcb80da041c48aeb5f5c1a88a505a8e",
+    "Period": "year",
+    "Selection": "2026",
+    "StationId": null,
+    "RequestedAtUtc": "2026-10-16T07:50:49.295069+00:00",
+    "State": "Completed",
+    "Attempt": 1,
+    "Records": 10038,
+    "IncompleteRecords": 10033,
+    "Bytes": 2397109,
+    "Sha256": "0ca737073d3347a32a3e44b1ff83346076b5971d0c43fa91fa24f053ba98e90f",
+    "FinishedAtUtc": "2026-10-16T07:50:55.4181355+00:00",
+    "Error": null,
+    "CancelRequested": false,
+    "SnapshotSequence": 10043,
+    "SnapshotAtUtc": "2026-10-16T07:50:53.0805969+00:00",
+    "Timezone": "Europe/Istanbul",
+    "FileName": "radiotedu-2026-8bcb80da041c48aeb5f5c1a88a505a8e-1.csv",
+    "FromUtc": "2025-12-31T21:00:00+00:00",
+    "ToUtc": "2026-12-31T21:00:00+00:00"
+  },
+  "resource": {
+    "HostPeakBytes": 133865472,
+    "CodecPeakBytes": 419667968,
+    "ListenerPeakBytes": 212684800,
+    "PeakCpuPercentOfRuntimeCapacity": 148.64636607973537,
+    "AverageCpuPercentOfRuntimeCapacity": 48.3672011999908,
+    "FirstSteadyWorkingSetBytes": 351514624,
+    "LastWorkingSetBytes": 465608704,
+    "RuntimeLogicalProcessors": 2,
+    "ProcessorCountOverride": "2",
+    "Note": "Remote lab host includes instrumentation. CPU is normalized to the reported runtime processor count, which may be overridden; it is not whole-machine or HP Z220 CPU capacity. Listener processes and test Icecast are excluded from engine codecs."
+  },
+  "completed": [
+    {
+      "id": "roster-1",
+      "late": 595,
+      "meterDrops": 8,
+      "outputs": [
+        {
+          "id": "roster-1-aac",
+          "starts": 2,
+          "drops": 147,
+          "error": null
+        },
+        {
+          "id": "roster-1-he",
+          "starts": 2,
+          "drops": 147,
+          "error": "Output stalled or its bounded queue overflowed."
+        }
+      ]
+    },
+    {
+      "id": "roster-2",
+      "late": 626,
+      "meterDrops": 26,
+      "outputs": [
+        {
+          "id": "roster-2-aac",
+          "starts": 2,
+          "drops": 162,
+          "error": "Output stalled or its bounded queue overflowed."
+        },
+        {
+          "id": "roster-2-he",
+          "starts": 2,
+          "drops": 162,
+          "error": "Output stalled or its bounded queue overflowed."
+        }
+      ]
+    },
+    {
+      "id": "roster-3",
+      "late": 523,
+      "meterDrops": 8,
+      "outputs": [
+        {
+          "id": "roster-3-aac",
+          "starts": 2,
+          "drops": 145,
+          "error": null
+        },
+        {
+          "id": "roster-3-he",
+          "starts": 2,
+          "drops": 145,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "roster-4",
+      "late": 609,
+      "meterDrops": 5,
+      "outputs": [
+        {
+          "id": "roster-4-aac",
+          "starts": 1,
+          "drops": 5,
+          "error": "Output stalled or its bounded queue overflowed."
+        },
+        {
+          "id": "roster-4-he",
+          "starts": 1,
+          "drops": 5,
+          "error": "Output stalled or its bounded queue overflowed."
+        }
+      ]
+    },
+    {
+      "id": "roster-5",
+      "late": 596,
+      "meterDrops": 16,
+      "outputs": [
+        {
+          "id": "roster-5-aac",
+          "starts": 2,
+          "drops": 150,
+          "error": null
+        },
+        {
+          "id": "roster-5-he",
+          "starts": 2,
+          "drops": 150,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "roster-6",
+      "late": 446,
+      "meterDrops": 0,
+      "outputs": [
+        {
+          "id": "roster-6-aac",
+          "starts": 1,
+          "drops": 0,
+          "error": null
+        },
+        {
+          "id": "roster-6-he",
+          "starts": 1,
+          "drops": 0,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "roster-7",
+      "late": 497,
+      "meterDrops": 2,
+      "outputs": [
+        {
+          "id": "roster-7-aac",
+          "starts": 2,
+          "drops": 164,
+          "error": null
+        },
+        {
+          "id": "roster-7-he",
+          "starts": 2,
+          "drops": 164,
+          "error": null
+        },
+        {
+          "id": "roster-7-flac",
+          "starts": 2,
+          "drops": 164,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "roster-8",
+      "late": 487,
+      "meterDrops": 8,
+      "outputs": [
+        {
+          "id": "roster-8-aac",
+          "starts": 2,
+          "drops": 167,
+          "error": "Output stalled or its bounded queue overflowed."
+        },
+        {
+          "id": "roster-8-he",
+          "starts": 2,
+          "drops": 172,
+          "error": "Output stalled or its bounded queue overflowed."
+        },
+        {
+          "id": "roster-8-flac",
+          "starts": 2,
+          "drops": 172,
+          "error": "Output stalled or its bounded queue overflowed."
+        }
+      ]
+    }
+  ],
+  "error": "System.AggregateException: Full roster validation or owned cleanup failed. (roster-listener-meter failed: [http @ 0000021dcf062e80] HTTP error 404 File Not Found\r\n[in#0 @ 0000021dd0915bc0] Error opening input: Server returned 404 Not Found\r\nError opening input file http://127.0.0.1:49485/next-roster-8-aac.\r\nError opening input files: Server returned 404 Not Found\r\n)\r\n ---> System.IO.InvalidDataException: roster-listener-meter failed: [http @ 0000021dcf062e80] HTTP error 404 File Not Found\r\n[in#0 @ 0000021dd0915bc0] Error opening input: Server returned 404 Not Found\r\nError opening input file http://127.0.0.1:49485/next-roster-8-aac.\r\nError opening input files: Server returned 404 Not Found\r\n\r\n   at OnAirNext.Lab.Roster18Checks.ToolAsync(String executable, IEnumerable`1 arguments, String role, Boolean stdout) in /_/tests/OnAirNext.Lab/Roster18Checks.cs:line 186\r\n   at OnAirNext.Lab.Roster18Checks.ToolAsync(String executable, IEnumerable`1 arguments, String role, Boolean stdout) in /_/tests/OnAirNext.Lab/Roster18Checks.cs:line 189\r\n   at OnAirNext.Lab.Roster18Checks.MeasureOutputAsync(String ffmpeg, Int32 port, String root, OutputSettings output, List`1 readings, CaseResult result) in /_/tests/OnAirNext.Lab/Roster18Checks.cs:line 151\r\n   at OnAirNext.Lab.Roster18Checks.RunAsync(String ffmpeg, String icecastRoot, String root, CaseResult result) in /_/tests/OnAirNext.Lab/Roster18Checks.cs:line 67\r\n   --- End of inner exception stack trace ---\r\n   at OnAirNext.Lab.Roster18Checks.RunAsync(String ffmpeg, String icecastRoot, String root, CaseResult result) in /_/tests/OnAirNext.Lab/Roster18Checks.cs:line 109\r\n   at OnAirNext.Lab.Roster18Checks.RunAsync(String ffmpeg, String icecastRoot, String root, CaseResult result) in /_/tests/OnAirNext.Lab/Roster18Checks.cs:line 111\r\n   at OnAirNext.Lab.Roster18Checks.RunAsync(String ffmpeg, String icecastRoot, String root, CaseResult result) in /_/tests/OnAirNext.Lab/Roster18Checks.cs:line 111\r\n   at OnAirNext.Lab.Roster18Checks.RunAsync(String ffmpeg, String icecastRoot, String root, CaseResult result) in /_/tests/OnAirNext.Lab/Roster18Checks.cs:line 112\r\n   at OnAirNext.Lab.Roster18Checks.RunAsync(String ffmpeg, String icecastRoot, String root, CaseResult result) in /_/tests/OnAirNext.Lab/Roster18Checks.cs:line 114\r\n   at Program.<Main>$(String[] args) in /_/tests/OnAirNext.Lab/Program.cs:line 53",
+  "remainingChildren": {},
+  "at": "2026-10-16T08:00:52.745Z"
+}

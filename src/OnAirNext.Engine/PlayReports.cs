@@ -51,6 +51,7 @@ public static class PlayReports
         cancellation.ThrowIfCancellationRequested();
         if (hourCounts is not null && hourCounts.Length != 24) throw new ArgumentException("Hourly counts require 24 slots.");
         long count = 0, incomplete = 0;
+        var zone = Istanbul;
         using var connection = EventJournal.OpenReader(database);
         using var transaction = connection.BeginTransaction();
         using var snapshot = connection.CreateCommand(); snapshot.Transaction = transaction;
@@ -79,8 +80,8 @@ public static class PlayReports
                 cancellation.ThrowIfCancellationRequested();
                 var start = JsonSerializer.Deserialize<PlaybackEvent>(reader.GetString(0))!;
                 var end = reader.IsDBNull(1) ? null : JsonSerializer.Deserialize<PlaybackEvent>(reader.GetString(1));
-                var local = TimeZoneInfo.ConvertTime(start.AtUtc, Istanbul);
-                var localEnd = end is null ? "" : TimeZoneInfo.ConvertTime(end.AtUtc, Istanbul).ToString("O", CultureInfo.InvariantCulture);
+                var local = TimeZoneInfo.ConvertTime(start.AtUtc, zone);
+                var localEnd = end is null ? "" : TimeZoneInfo.ConvertTime(end.AtUtc, zone).ToString("O", CultureInfo.InvariantCulture);
                 var duration = end is null ? "" : (Math.Max(0, end.SamplePosition - start.SamplePosition) / (double)AudioFormat.SampleRate).ToString("F3", CultureInfo.InvariantCulture);
                 writer.WriteLine(string.Join(',', new[] { start.OccurrenceId, start.StationId, start.Kind.ToString(), start.Artist,
                     start.Title, start.AtUtc.ToString("O", CultureInfo.InvariantCulture), end?.AtUtc.ToString("O", CultureInfo.InvariantCulture) ?? "",
