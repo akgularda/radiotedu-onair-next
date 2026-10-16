@@ -79,4 +79,4 @@ The developer verification entry point is scripts/Test-Engine.ps1. Loopback scen
 
 Public source: [akgularda/radiotedu-onair-next](https://github.com/akgularda/radiotedu-onair-next). Report archive remains private. Never commit credentials, real databases, recordings or music.
 
-The source now includes an isolated, pinned-source Windows codec dependency build and real AAC-LC/FDK HE-AACv2/24-bit FLAC smoke qualification. Its result is pending; see [codec runtime scope](docs/CODEC_RUNTIME.md). The qualified engine runtime and production ownership are unchanged.
+The new source adds an isolated pinned FFmpeg/FDK runtime build, actual codec smoke qualification and a synthetic 8-station/18-output scenario. The first run exposed measurement-history storage blocking and a build pipeline/DLL-audit failure; fixes and fresh qualification are pending. See [codec runtime scope](docs/CODEC_RUNTIME.md) and the retained failure evidence. Production ownership is unchanged; prior engine evidence applies to its exact recorded source only.

@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$RuntimeRoot)
+param([Parameter(Mandatory)][string]$RuntimeRoot, [switch]$IntegrityOnly)
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows') { throw 'Codec qualification is restricted to a disposable Windows CI runner.' }
 $codecRepo = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
@@ -9,7 +9,7 @@ $codecRoot = [IO.Path]::GetFullPath($RuntimeRoot)
 $codecPrefix = $codecRoot.TrimEnd('\','/') + [IO.Path]::DirectorySeparatorChar
 $codecSummary = [ordered]@{ Source=$env:GITHUB_SHA; Completed=$false; Passed=$false; ProductionChanged=$false;
     Scope='Disposable Windows runtime dependency integrity and real AAC-LC/HE-AACv2/24-bit Ogg FLAC smoke encodes/decodes only. Not the 18-output engine, worst-case encoded headroom, actual-PC, long-run or mouse qualification.';
-    Profiles=@(); Error=$null }
+    Profiles=@(); Mode=$(if($IntegrityOnly){'Dependency integrity only'}else{'Real profile encode/decode smoke'}); Error=$null }
 function Run-CodecTool([string]$Tool, [string[]]$ToolArguments, [string]$LogName) {
     $codecLines = @(& $Tool @ToolArguments 2>&1 | ForEach-Object { $_.ToString() })
     $codecExit = $LASTEXITCODE
@@ -43,6 +43,14 @@ try {
     $codecEncoders = (Run-CodecTool $codecFfmpeg @('-hide_banner','-encoders') 'encoders.txt') -join "\n"
     foreach ($codecEncoder in @('aac','libfdk_aac','flac','pcm_f32le')) {
         if ($codecEncoders -notmatch ('(?m)^\s*A\S*\s+' + [regex]::Escape($codecEncoder) + '\s')) { throw "Missing required encoder: $codecEncoder" }
+    }
+    if ($IntegrityOnly) {
+        $codecSummary.Scope='Pinned runtime source/configuration/file integrity and encoder availability only; no audio was encoded in this verification.'
+        $codecSummary.DependencyManifestSha256=(Get-FileHash -LiteralPath (Join-Path $codecRoot 'runtime-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()
+        $codecSummary.VerifiedFiles=$codecKnown.Count
+        $codecSummary.Completed=$true; $codecSummary.Passed=$true
+        Write-Output 'Reverified downloaded runtime integrity and required encoder availability.'
+        return
     }
     $codecPcm = Join-Path $codecEvidence 'input.f32'
     $codecWriter = [IO.BinaryWriter]::new([IO.File]::Create($codecPcm))

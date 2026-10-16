@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$BuildRoot)
+param([Parameter(Mandatory)][string]$BuildRoot, [Parameter(Mandatory)][string]$CodecRuntimeRoot)
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true') { throw 'This real-codec qualification runs only on a disposable CI runner; never on the broadcasting PC.' }
 $audioRepo = Split-Path $PSScriptRoot -Parent
@@ -8,11 +8,10 @@ New-Item -ItemType Directory -Path $audioEvidence -Force | Out-Null
 $audioTools = Join-Path $env:RUNNER_TEMP ('onair-next-audio-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $audioTools | Out-Null
 $audioSummary = [ordered]@{ Source=$env:GITHUB_SHA; Completed=$false; Passed=$false; ProductionChanged=$false;
-    Scope='Real isolated AAC-LC/24-bit Ogg FLAC, synthetic live mix and recovery only. Includes five-signal fixed source gain and two low-crest normalized AAC-LC/FLAC branches. Includes synthetic final-mix limiter and prepared/audible recovery ownership. No HE-AAC/18-output/worst-case encoded limiter/headroom/actual-PC/24-72h or mouse acceptance.';
+    Scope='Real isolated AAC-LC/24-bit Ogg FLAC, synthetic live mix and recovery only. Includes five-signal fixed source gain and two low-crest normalized AAC-LC/FLAC branches. Includes synthetic final-mix limiter and prepared/audible recovery ownership. Includes a synthetic low-crest 8-station/18-output AAC-LC/FDK HE-AACv2/24-bit Ogg FLAC scenario. No worst-case encoded limiter/headroom/actual-PC/24-72h or mouse acceptance.';
     HeAacTested=$false; Cases=@(); Tools=@(); Error=$null }
 try {
     $audioArchives = @(
-        @{ Name='ffmpeg-9.0.2-essentials_build.7z'; Url='https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-essentials_build.7z'; Hash='4705843ccaaf54257c16ad90f3e952ece33c17df964ecf7bfdbb0f49c7171077'; Folder='ffmpeg' },
         @{ Name='icecast_win64_2.5.0.exe'; Url='https://downloads.xiph.org/releases/icecast/icecast_win64_2.5.0.exe'; Hash='ad412cbe5d3d3804ea6208dfb4be8d8a25ecb94d62f46bc5a9aa8fa0f2f647c9'; Folder='icecast' }
     )
     $audioSevenZip = Join-Path $env:ProgramFiles '7-Zip\7z.exe'
@@ -27,17 +26,17 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Runtime extraction failed.' }
         $audioSummary.Tools += @{ Name=$audioArchive.Name; Sha256=$audioHash; Url=$audioArchive.Url }
     }
-    $audioFfmpeg = @(Get-ChildItem -LiteralPath (Join-Path $audioTools 'ffmpeg') -Filter ffmpeg.exe -Recurse -File)
-    if ($audioFfmpeg.Count -ne 1) { throw 'Expected exactly one pinned FFmpeg runtime.' }
-    $audioFfmpeg = $audioFfmpeg[0].FullName
+    & (Join-Path $PSScriptRoot 'codec\Test-WindowsCodecRuntime.ps1') -RuntimeRoot $CodecRuntimeRoot -IntegrityOnly
+    $audioFfmpeg = Join-Path ([IO.Path]::GetFullPath($CodecRuntimeRoot)) 'bin\ffmpeg.exe'
+    $audioSummary.Tools += @{Name='Pinned source FFmpeg 9.0.2 + FDK 2.0.3'; ManifestSha256=(Get-FileHash -LiteralPath (Join-Path $CodecRuntimeRoot 'runtime-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()}
     $audioIcecast = Join-Path $audioTools 'icecast'
     if (-not (Test-Path -LiteralPath (Join-Path $audioIcecast 'bin\icecast.exe'))) { throw 'Pinned Icecast runtime is missing.' }
     $audioSummary.FfmpegVersion = (& $audioFfmpeg -version | Select-Object -First 1)
-    if ($LASTEXITCODE -ne 0 -or $audioSummary.FfmpegVersion -notmatch '^ffmpeg version 9\.0\.2') { throw 'Pinned FFmpeg version did not start.' }
+    if ($LASTEXITCODE -ne 0 -or $audioSummary.FfmpegVersion -notmatch '^ffmpeg version n?9\.0\.2(?:[-\s]|$)') { throw 'Pinned FFmpeg version did not start.' }
     $audioDotnet = (Get-Command dotnet.exe -ErrorAction Stop).Source
     $audioLab = Join-Path $BuildRoot 'OnAirNext.Lab\release\OnAirNext.Lab.dll'
     if (-not (Test-Path -LiteralPath $audioLab)) { throw 'The compiled audio lab is missing.' }
-    $audioScenarios = @('baseline','precision','normalization','processing','live','recovery','finite','backpressure','corrupt')
+    $audioScenarios = @('baseline','precision','normalization','processing','roster18','live','recovery','finite','backpressure','corrupt')
     foreach ($audioScenario in $audioScenarios) {
         $audioLog = Join-Path $audioEvidence ($audioScenario + '.log')
         $audioOutput = @(& (Join-Path $PSScriptRoot 'Test-Engine.ps1') -PreparedCiBuild -Scenario $audioScenario -DurationSeconds 12 -FfmpegRuntime $audioFfmpeg -IcecastRuntime $audioIcecast 2>&1)
@@ -57,6 +56,8 @@ try {
         }
         Write-Output "$audioScenario passed with $(@($audioResult.Results[0].Checks).Count) real checks."
     }
+    $audioSummary.HeAacTested = @($audioSummary.Cases | Where-Object { $_.HeAacTested -eq $true }).Count -eq 1
+    if (-not $audioSummary.HeAacTested) { throw 'The real 18-output HE-AAC roster did not qualify.' }
     $audioSummary.Completed = $audioSummary.Cases.Count -eq $audioScenarios.Count
     if (-not $audioSummary.Completed) { throw "Not every requested audio scenario completed." }
     $audioSummary.Passed = $audioSummary.Completed

@@ -75,7 +75,7 @@ def main():
         raise RuntimeError('Both Windows tools must be built.')
     bundled = {f.name.lower() for f in (OUT / 'bin').iterdir()}
     system = {'kernel32.dll', 'msvcrt.dll', 'user32.dll', 'advapi32.dll', 'ws2_32.dll', 'bcrypt.dll', 'crypt32.dll',
-              'secur32.dll', 'shell32.dll', 'ole32.dll', 'oleaut32.dll', 'gdi32.dll', 'psapi.dll', 'winmm.dll',
+              'secur32.dll', 'ncrypt.dll', 'shell32.dll', 'ole32.dll', 'oleaut32.dll', 'gdi32.dll', 'psapi.dll', 'winmm.dll',
               'shlwapi.dll', 'version.dll', 'setupapi.dll', 'mfplat.dll', 'mfuuid.dll', 'strmiids.dll', 'vfw32.dll',
               'avicap32.dll', 'd3d11.dll', 'dxgi.dll', 'd3d9.dll', 'opengl32.dll', 'glu32.dll', 'imm32.dll',
               'ntdll.dll', 'comdlg32.dll', 'comctl32.dll', 'dxva2.dll', 'dwmapi.dll', 'usp10.dll'}

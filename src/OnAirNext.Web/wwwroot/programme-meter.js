@@ -19,6 +19,7 @@
     else if(usable)state=active?'Measuring':'Stopped · last window';
     if(snapshot&&snapshot.Continuous===false)notes.push('Measurement gaps: this session has incomplete coverage.');
     if(snapshot?.HistoryFailures>0)notes.push('Measurement history is incomplete.');
+    if(Number.isInteger(snapshot?.PendingHistoryWrites)&&snapshot.PendingHistoryWrites>0)notes.push(snapshot.PendingHistoryWrites+' measurement history write(s) await confirmation.');
     if(usable&&finite(reading.TruePeakDbtp)&&reading.TruePeakDbtp>-1)notes.push('Above the −1 dBTP linear ceiling.');
     if(!notes.length)notes.push(usable?'Final-mix measurements do not establish encoded-output compliance.':active?'Waiting for programme samples.':'Start a station to measure its final programme mix.');
     return {state,usable,stale:active&&!fresh&&scope,levels,

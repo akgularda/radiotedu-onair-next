@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "source": "22686fa4fd4c51e62070409b3a685afeedce1a0b",
+  "runId": "38852683121",
+  "runUrl": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38852683121",
+  "conclusion": "failure",
+  "productionChanged": false,
+  "verifiedResultArchives": [
+    {
+      "name": "windows-unit-results",
+      "digest": "sha256:b0a673594cfdde2bf5feda5861a285383aaeb86434ecbae5cea1b07d3801bb66",
+      "bytes": 47186
+    },
+    {
+      "name": "loudness-reference-qualification",
+      "digest": "sha256:1671ab6c45dcc62997150694f66b005b89116e2b3cc95d769a93bb50a2a2209d",
+      "bytes": 2654
+    },
+    {
+      "name": "windows-real-audio-qualification",
+      "digest": "sha256:aac1f63bacbdb6413cf69615a22b6306571a6d9ddfb9d87732df5b8ba0419c78",
+      "bytes": 4302
+    },
+    {
+      "name": "windows-codec-qualification",
+      "digest": "sha256:4fc1b5c3320c15077eef8f8e1c0e7b4c331e549b43a4f752c8f445a9849be4c5",
+      "bytes": 503
+    }
+  ],
+  "realAudio": {
+    "baselinePassed": true,
+    "precisionPassed": false,
+    "precisionListener": {
+      "ComparedFrames": 135808,
+      "MismatchedFrames": 0,
+      "SubSixteenBitFrames": 135805,
+      "StereoDifferentFrames": 135808,
+      "MaximumErrorLsb24": 0,
+      "FirstFixtureFrame": 8192
+    },
+    "measurement": {
+      "droppedBlocks": 4,
+      "droppedFrames": 3840,
+      "gaps": 1,
+      "historyFailures": 0
+    },
+    "output": [
+      {
+        "Id": "precision",
+        "State": "SourceConnected",
+        "EncoderStarts": 1,
+        "Connections": 1,
+        "FramesWritten": 229,
+        "DroppedBlocks": 0,
+        "QueuedBlocks": 0,
+        "EncoderPid": 8284,
+        "LastError": null
+      }
+    ]
+  },
+  "codec": {
+    "complete": false,
+    "actualProfilesTested": 0,
+    "cause": "Native DLL audit rejected the standard Windows NCrypt dependency. Default shell pipeline hid the Python failure behind tee exit zero, published/cached a partial runtime without a manifest, and Windows verification correctly rejected it."
+  },
+  "correction": "Accept documented Windows NCrypt system DLL; explicit bash pipefail; complete source/file manifest verification before artifact/cache acceptance; changed build input gives a new exact cache key. Measurement disk waits moved to a separate bounded queue with explicit unconfirmed writes; fresh qualification pending.",
+  "limits": "No HE-AAC/18-output or new-source qualification is claimed by this failed run."
+}

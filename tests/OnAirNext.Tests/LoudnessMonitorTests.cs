@@ -48,25 +48,61 @@ public sealed class LoudnessMonitorTests
     }
 
     [Fact]
-    public async Task SlowHistoryCannotBlockProducerAndDroppedCoverageBecomesASeparateSegment()
+    public async Task SlowHistoryDoesNotBlockMeasurementOrProducer()
     {
-        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var history = new ConcurrentQueue<ProgrammeLoudnessWindow>(); var calls = 0;
-        await using var monitor = new ProgrammeLoudnessMonitor("9", "session", Anchor, queueBlocks: 2, history: w =>
-        { history.Enqueue(w); if (Interlocked.Increment(ref calls) == 1) { entered.TrySetResult(); return release.Task; } return Task.CompletedTask; });
-        Assert.True(Send(monitor, 0)); await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        var clock = Stopwatch.StartNew();
-        Assert.True(Send(monitor, 960)); Assert.True(Send(monitor, 1920));
-        Assert.False(Send(monitor, 2880)); Assert.False(Send(monitor, 3840));
-        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(1), "Publish must not wait for the blocked history writer.");
-        Assert.False(monitor.Snapshot().Continuous); Assert.Equal(1920, monitor.Snapshot().DroppedFrames);
-        release.TrySetResult(); await Until(() => monitor.Snapshot().QueuedBlocks == 0);
-        Assert.True(Send(monitor, 4800)); monitor.Complete(); await monitor.Completion.WaitAsync(TimeSpan.FromSeconds(5));
-        var closed = history.Where(w => w.Phase == "Finished").ToArray();
-        Assert.Equal(2, closed.Length); Assert.Equal("SourceGap", closed[0].Reason); Assert.True(closed[0].HasMeasurementGap);
-        Assert.Equal(2880, closed[0].EndSample); Assert.Equal(4800, closed[1].StartSample); Assert.Equal(1920, closed[1].GapBeforeFrames);
-        Assert.Equal(1, monitor.Snapshot().Gaps);
+        var entered=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var history=new ConcurrentQueue<ProgrammeLoudnessWindow>();var calls=0;
+        await using var monitor=new ProgrammeLoudnessMonitor("9","session",Anchor,queueBlocks:2,history:w=>
+        {history.Enqueue(w);if(Interlocked.Increment(ref calls)==1){entered.TrySetResult();return release.Task;}return Task.CompletedTask;});
+        try
+        {
+            Assert.True(Send(monitor,0));await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            for(var i=1;i<50;i++)
+            {
+                await Until(()=>monitor.Snapshot().QueuedBlocks==0);
+                Assert.True(Send(monitor,i*960));
+            }
+            await Until(()=>monitor.Snapshot().Current?.Reading?.SampleFrames>=48000);
+            Assert.False(release.Task.IsCompleted);
+            Assert.True(monitor.Snapshot().Continuous);
+            Assert.Equal(1,monitor.Snapshot().PendingHistoryWrites);
+        }
+        finally{release.TrySetResult();}
+        monitor.Complete();await monitor.Completion.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(0,monitor.Snapshot().PendingHistoryWrites);
+        Assert.Equal(0,monitor.Snapshot().HistoryFailures);
+        Assert.Equal(48000,history.Single(w=>w.Phase=="Finished").Reading!.SampleFrames);
+    }
+
+    [Fact]
+    public async Task MissingSourcePositionsStillCreateAnExplicitSeparateMeasurementSegment()
+    {
+        var history=new ConcurrentQueue<ProgrammeLoudnessWindow>();
+        await using var monitor=new ProgrammeLoudnessMonitor("9","session",Anchor,queueBlocks:100,history:w=>{history.Enqueue(w);return Task.CompletedTask;});
+        Assert.True(Send(monitor,0));Assert.True(Send(monitor,960));Assert.True(Send(monitor,4800));
+        monitor.Complete();await monitor.Completion.WaitAsync(TimeSpan.FromSeconds(5));
+        var closed=history.Where(w=>w.Phase=="Finished").ToArray();
+        Assert.Equal(2,closed.Length);Assert.Equal("SourceGap",closed[0].Reason);Assert.True(closed[0].HasMeasurementGap);
+        Assert.Equal(1920,closed[0].EndSample);Assert.Equal(4800,closed[1].StartSample);Assert.Equal(2880,closed[1].GapBeforeFrames);
+        Assert.False(monitor.Snapshot().Continuous);Assert.Equal(1,monitor.Snapshot().Gaps);
+    }
+
+    [Fact]
+    public async Task UnconfirmedHistoryIsBoundedAndDoesNotLoseMeasuredPcm()
+    {
+        var release=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);var calls=0;
+        await using var monitor=new ProgrammeLoudnessMonitor("9","session",Anchor,queueBlocks:100,history:_=>{Interlocked.Increment(ref calls);return release.Task;});
+        try
+        {
+            for(var i=0;i<50;i++)Assert.True(Send(monitor,i*960));
+            monitor.Complete();await monitor.Completion.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.True(monitor.Snapshot().Continuous);Assert.Equal(48000,monitor.Snapshot().LastClosed!.Reading!.SampleFrames);
+            Assert.True(monitor.Snapshot().HistoryFailures>=1);Assert.NotNull(monitor.Snapshot().HistoryError);
+            Assert.Equal(1,calls);Assert.Equal(1,monitor.Snapshot().PendingHistoryWrites);
+        }
+        finally{release.TrySetResult();}
+        await Until(()=>monitor.Snapshot().PendingHistoryWrites==0);
     }
 
     [Fact]

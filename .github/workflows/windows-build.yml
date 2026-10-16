@@ -59,9 +59,13 @@ jobs:
           sudo apt-get install -y --no-install-recommends gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 nasm autoconf automake libtool make pkg-config
       - name: Build generic Windows LGPL codec runtime with pinned FDK source
         if: steps.codec-cache.outputs.cache-hit != 'true'
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p artifacts/windows-codec-build
           python3 scripts/codec/build-windows-codecs.py 2>&1 | tee artifacts/windows-codec-build/build.log
+      - name: Reject incomplete or changed runtime before upload/cache
+        run: python3 scripts/codec/verify-runtime-files.py artifacts/windows-codec-runtime
       - name: Retain codec build diagnostics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -99,6 +103,7 @@ jobs:
             artifacts/windows-codec-qualification/*-probe.json
           if-no-files-found: warn
   build:
+    needs: windows-codec-qualification
     runs-on: windows-latest
     timeout-minutes: 35
     env:
@@ -130,8 +135,13 @@ jobs:
           if-no-files-found: warn
       - name: Locate compiled binaries
         run: '"ONAIR_BUILD_BIN=$env:LOCALAPPDATA/RadioTEDU/OnAirNext-Dev/build/bin" >> $env:GITHUB_ENV'
+      - name: Download this run's verified full codec runtime
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: windows-codec-runtime
+          path: artifacts/windows-codec-runtime
       - name: Qualify real float PCM and isolated audio codecs
-        run: ./scripts/Test-WindowsAudio.ps1 -BuildRoot "$env:ONAIR_BUILD_BIN"
+        run: ./scripts/Test-WindowsAudio.ps1 -BuildRoot "$env:ONAIR_BUILD_BIN" -CodecRuntimeRoot ./artifacts/windows-codec-runtime
       - name: Retain real isolated audio qualification
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

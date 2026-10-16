@@ -1,3 +1,5 @@
+> Latest development update, 16 October 2026: the new FDK runtime/full-18 scenario and measurement-history queue correction are awaiting fresh CI qualification. The first codec attempt failed and is retained in artifacts/evidence/codec-first-failure-20261016.json. Prior 28638a5 evidence applies only to that exact functional source. Zero production station groups have migrated.
+
 # Broadcast-PC delivery ledger
 
 Updated 16 October 2026. This records the complete commissioning scope; it is not a release declaration. The legacy application remains the production owner. Nothing below authorizes skipping an unproven gate.

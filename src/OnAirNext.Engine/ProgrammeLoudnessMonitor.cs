@@ -14,7 +14,7 @@ public sealed record ProgrammeLoudnessWindow(string Id, string StationId, string
 public sealed record ProgrammeLoudnessSnapshot(string State, DateTimeOffset UpdatedAtUtc,
     ProgrammeLoudnessWindow? Current, ProgrammeLoudnessWindow? LastClosed,
     long DroppedBlocks, long DroppedFrames, long InvalidBlocks, long Gaps,
-    long HistoryFailures, string? Error, string? HistoryError, int QueuedBlocks = 0)
+    long HistoryFailures, string? Error, string? HistoryError, int QueuedBlocks = 0, int PendingHistoryWrites = 0)
 {
     public bool Continuous => DroppedBlocks == 0 && InvalidBlocks == 0 && Gaps == 0;
 }
@@ -33,7 +33,9 @@ public sealed class ProgrammeLoudnessMonitor : IAsyncDisposable
     private readonly long _maximumFrames;
     private readonly Func<ProgrammeLoudnessWindow, Task>? _history;
     private readonly Task _worker;
-    private Task? _pendingWrite;
+    private readonly Channel<ProgrammeLoudnessWindow> _historyQueue;
+    private readonly Task _historyWorker, _completion;
+    private int _pendingHistoryWrites;
     private StereoLoudnessMeter48k? _meter;
     private ProgrammeLoudnessWindow? _window, _lastClosed;
     private ProgrammeLoudnessSnapshot _published = new("Waiting", DateTimeOffset.UtcNow, null, null, 0, 0, 0, 0, 0, null, null);
@@ -58,16 +60,21 @@ public sealed class ProgrammeLoudnessMonitor : IAsyncDisposable
         _expectedEnd = _lastSourceEnd = initialSample;
         _queue = Channel.CreateBounded<PcmBlock>(new BoundedChannelOptions(queueBlocks)
             { SingleReader = true, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait });
+        _historyQueue = Channel.CreateBounded<ProgrammeLoudnessWindow>(new BoundedChannelOptions(64)
+            { SingleReader = true, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait });
+        _historyWorker = Task.Run(RunHistoryAsync);
         _worker = Task.Run(RunAsync);
+        _completion = Task.WhenAll(_worker, _historyWorker);
     }
 
-    public Task Completion => _worker;
+    public Task Completion => _completion;
     public ProgrammeLoudnessSnapshot Snapshot()
     {
         var view = Volatile.Read(ref _published);
         return view with { DroppedBlocks = Interlocked.Read(ref _drops), DroppedFrames = Interlocked.Read(ref _droppedFrames),
             InvalidBlocks = Interlocked.Read(ref _invalid), Gaps = Interlocked.Read(ref _gaps),
-            HistoryFailures = Interlocked.Read(ref _historyFailures), QueuedBlocks = _queue.Reader.Count };
+            HistoryFailures = Interlocked.Read(ref _historyFailures), QueuedBlocks = _queue.Reader.Count,
+            PendingHistoryWrites = Volatile.Read(ref _pendingHistoryWrites) };
     }
 
     public bool Publish(PcmBlock block)
@@ -144,6 +151,7 @@ public sealed class ProgrammeLoudnessMonitor : IAsyncDisposable
             Interlocked.Exchange(ref _accepting, 0); _queue.Writer.TryComplete();
             while (_queue.Reader.TryRead(out var block))
             { Interlocked.Increment(ref _drops); Interlocked.Add(ref _droppedFrames, block.Length / AudioFormat.BytesPerSampleFrame); block.Dispose(); }
+            _historyQueue.Writer.TryComplete();
         }
     }
 
@@ -203,19 +211,64 @@ public sealed class ProgrammeLoudnessMonitor : IAsyncDisposable
         PublishView("WindowFinished"); await PersistAsync(_window);
     }
 
-    private async Task PersistAsync(ProgrammeLoudnessWindow window)
+    private Task PersistAsync(ProgrammeLoudnessWindow window)
     {
-        if (_history is null) return;
-        if (_pendingWrite is { IsCompleted: false }) { HistoryFailed(); return; }
+        if (_history is null) return Task.CompletedTask;
+        Interlocked.Increment(ref _pendingHistoryWrites);
+        if (!_historyQueue.Writer.TryWrite(window))
+        {
+            Interlocked.Decrement(ref _pendingHistoryWrites);
+            HistoryFailed();
+        }
+        return Task.CompletedTask;
+    }
+
+    private async Task RunHistoryAsync()
+    {
         try
         {
-            _pendingWrite = _history(window);
-            _ = _pendingWrite.ContinueWith(static task => _ = task.Exception,
-                CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-            await _pendingWrite.WaitAsync(TimeSpan.FromSeconds(2), _abort.Token);
+            await foreach (var window in _historyQueue.Reader.ReadAllAsync(_abort.Token))
+            {
+                Task? write = null;
+                var ownsDecrement = true;
+                try
+                {
+                    write = _history!(window);
+                    await write.WaitAsync(TimeSpan.FromSeconds(2), _abort.Token);
+                }
+                catch (Exception)
+                {
+                    HistoryFailed();
+                    // Keep at most one unconfirmed storage operation. Never build an unbounded set
+                    // of timed-out writes while continuing to measure real programme PCM.
+                    if (write is { IsCompleted: false })
+                    {
+                        _ = write.ContinueWith(static (task, state) =>
+                        {
+                            _ = task.Exception;
+                            Interlocked.Decrement(ref ((ProgrammeLoudnessMonitor)state!)._pendingHistoryWrites);
+                        }, this, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                        ownsDecrement = false;
+                        break;
+                    }
+                }
+                finally
+                {
+                    // A timed-out in-flight task owns its decrement until it actually settles.
+                    if (ownsDecrement) Interlocked.Decrement(ref _pendingHistoryWrites);
+                }
+            }
         }
-        catch (OperationCanceledException) when (_abort.IsCancellationRequested) { HistoryFailed(); throw; }
-        catch (Exception) { HistoryFailed(); }
+        catch (OperationCanceledException) when (_abort.IsCancellationRequested) { }
+        finally
+        {
+            _historyQueue.Writer.TryComplete();
+            while (_historyQueue.Reader.TryRead(out _))
+            {
+                Interlocked.Decrement(ref _pendingHistoryWrites);
+                HistoryFailed();
+            }
+        }
     }
     private void HistoryFailed()
     {
@@ -228,7 +281,7 @@ public sealed class ProgrammeLoudnessMonitor : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        Complete(); await _worker;
+        Complete(); await _completion;
         if (Interlocked.Exchange(ref _disposed, 1) == 0) _abort.Dispose();
     }
 }
