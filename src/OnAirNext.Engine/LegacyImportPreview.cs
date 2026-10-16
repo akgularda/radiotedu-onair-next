@@ -16,6 +16,15 @@ public sealed record LegacyImportPreview(string Id, string LegacyRoot, string St
         if (!Guid.TryParseExact(id, "N", out var parsed) || parsed.ToString("N") != id)
             throw new ArgumentException("Choose a saved migration preview.");
     }
+    public static string[] OutputAddressIssues(LegacySavedOutput output)
+    {
+        var issues = new List<string>();
+        if (string.IsNullOrEmpty(output.Host) || output.Host.Length > 253 || Uri.CheckHostName(output.Host.Trim('[', ']')) == UriHostNameType.Unknown) issues.Add("host");
+        if (output.Port is < 1 or > 65535) issues.Add("port");
+        if (string.IsNullOrEmpty(output.Mount) || output.Mount.Length > 1024 || !output.Mount.StartsWith('/') || output.Mount.Any(char.IsControl)) issues.Add("mount");
+        if (output.Profile is null || output.Profile.Length > 64) issues.Add("profile");
+        return issues.ToArray();
+    }
     public static void ValidateMappings(LegacyImportPreview preview, LegacyStationMapping[] mappings, IReadOnlySet<string> targets)
     {
         var sourceIds = (preview.Stations ?? []).Select(station => station.Id).ToHashSet();
@@ -27,6 +36,8 @@ public sealed record LegacyImportPreview(string Id, string LegacyRoot, string St
         if (selected.Length == 0 || selected.Select(mapping => mapping.TargetStationId).Distinct(StringComparer.Ordinal).Count() != selected.Length)
             throw new ArgumentException("Choose distinct target channels for the stations to import.");
         var outputs = selected.Select(mapping => preview.Stations!.Single(station => station.Id == mapping.LegacyStationId).PrimaryOutput).Where(output => output is not null).Select(output => output!).ToArray();
+        if (outputs.Any(output => OutputAddressIssues(output).Length != 0))
+            throw new ArgumentException("A selected station has an invalid saved primary output. Leave it with the former program until its destination is reviewed.");
         if (outputs.Any(output => output.Mount.Equals("/en", StringComparison.OrdinalIgnoreCase) || output.Mount.Equals("/fr", StringComparison.OrdinalIgnoreCase))) throw new ArgumentException("EN and FR remain with their external owners. Leave them with the former program.");
         if (outputs.Where(output => output.Enabled).Select(output => (Host: output.Host.ToLowerInvariant(), output.Port, output.Mount)).Distinct().Count() != outputs.Count(output => output.Enabled))
             throw new ArgumentException("Two selected stations have the same saved primary destination. Resolve ownership before saving this mapping.");

@@ -12,6 +12,8 @@ This is the music-folder step of the guided migration. It does not commission a 
 
 The button requires the engine capability legacy-music-assignment-v1. An older console rejects the dedicated command, and an older engine never interprets it as an ordinary folder assignment.
 
+A disabled former output may have an empty destination. The preview retains its saved fields and shows a warning so other stations can be reviewed. Leave that row with the former program: mapping rejects an invalid address even for a disabled output. An invalid enabled output still fails preparation with the station ID and field names. Oversize fields still fail regardless of enabled state. Reviewing these rows does not enable them.
+
 ## Durability and isolation
 
 The root change, command deduplication and import receipt commit in one SQLite transaction in the new application's data directory. Access denial or a stale target revision rolls back the whole operation. A completed request can be retried after a transient source check expires, after the mapping changes, or after restart; it reads the original receipt without changing a later folder choice or the current running intent.

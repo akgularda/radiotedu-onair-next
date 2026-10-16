@@ -163,11 +163,17 @@ public sealed class LegacyImportPreviews : IAsyncDisposable
                     LegacySavedOutput? output = null;
                     command.CommandText = "SELECT icecast_host,icecast_port,icecast_mount,stream_codec_profile,stream_bitrate_kbps,icecast_enabled,LENGTH(TRIM(icecast_password))>0 FROM station_outputs WHERE station_id=$id";
                     using (var rows = command.ExecuteReader()) if (rows.Read()) output = new(rows.GetString(0), rows.GetInt32(1), rows.GetString(2), rows.GetString(3), rows.GetInt32(4), rows.GetInt32(5) != 0, rows.GetInt32(6) != 0);
-                    if (output is not null && (output.Host.Length > 253 || Uri.CheckHostName(output.Host.Trim('[', ']')) == UriHostNameType.Unknown || output.Port is < 1 or > 65535 || output.Mount.Length is < 1 or > 1024 || !output.Mount.StartsWith('/') || output.Mount.Any(char.IsControl) || output.Profile.Length > 64))
-                        throw new InvalidDataException("A saved primary output has an invalid address or exceeds its size limit.");
+                    if (output is not null && (output.Host.Length > 253 || output.Mount.Length > 1024 || output.Profile.Length > 64))
+                        throw new InvalidDataException("Station " + identity.Id + ": a saved primary output exceeds its preview size limit.");
                     var music = settings.GetValueOrDefault("music_library_folder");
                     var jingle = settings.GetValueOrDefault("jingle_library_folder") ?? settings.GetValueOrDefault("jingle_folder");
                     var warnings = new List<string> { "Secondary outputs and source credentials have not been imported.", "Jingle/sweeper files and cadence require a separate validated import." };
+                    if (output is not null && LegacyImportPreview.OutputAddressIssues(output) is { Length: > 0 } issues)
+                    {
+                        var fields = string.Join(", ", issues);
+                        if (output.Enabled) throw new InvalidDataException("Station " + identity.Id + ": the enabled primary output has an invalid " + fields + ". Review its saved destination before preparing import.");
+                        warnings.Add("Disabled primary output has an invalid " + fields + ". Leave this station with the former program until its destination is reviewed. It was not enabled or replaced.");
+                    }
                     if (string.IsNullOrWhiteSpace(music)) warnings.Add("No saved music folder.");
                     if (string.IsNullOrWhiteSpace(jingle)) warnings.Add("No saved jingle folder.");
                     stations.Add(new(identity.Id, identity.Name, music, jingle, settings.GetValueOrDefault("sweeper_track_ids"),
