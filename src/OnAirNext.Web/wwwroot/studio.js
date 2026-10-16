@@ -1,8 +1,12 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
-  const roster = [{id:'1',name:'Classic'},{id:'2',name:'Lofi'},{id:'4',name:'Radio'},{id:'5',name:'Cazz'},{id:'8',name:'Rock'},{id:'9',name:'Energize'},{id:'10',name:'Situation'},{id:'11',name:'Main Character'}];
+  const roster = [{id:'1',name:'Classic'},{id:'2',name:'Lofi'},{id:'4',name:'Pop'},{id:'5',name:'Cazz'},{id:'8',name:'Rock'},{id:'9',name:'Energize'},{id:'10',name:'Situation'},{id:'11',name:'Main Character'}];
   const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null,folderTarget:null,folderSource:null,editTarget:null,assetStateTarget:null,controller:null,consoleClosed:false,upload:null,uploadSelection:null};
+  const migration={engine:null,preview:null,loading:false,busy:false,key:null,selects:new Map(),pending:null};
+  let setupFolderTarget='setup-runtime';
+  try{const request=JSON.parse(localStorage.getItem('studio-migration-request')??'null');if(request&&typeof request.engine==='string'&&/^[a-f0-9]{32}$/.test(request.id??'')&&typeof request.legacyRoot==='string')migration.pending=request;}catch{}
+
   try { const saved=JSON.parse(localStorage.getItem('studio-pending-commands')??'[]');if(Array.isArray(saved))state.pending=saved.filter(p=>typeof p.engine==='string'&&p.request?.Id&&p.request?.StationId).slice(0,32); } catch { }
   const pending = () => state.pending.find(p=>p.engine===state.engine&&p.request.StationId===state.station);
   const savePending = () => {try{localStorage.setItem('studio-pending-commands',JSON.stringify(state.pending));}catch{}};
@@ -43,6 +47,7 @@
   document.querySelectorAll('[data-page]:not(:disabled)').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();navigate(button.dataset.page);}));
   document.addEventListener('keydown',event=>{if(event.altKey && (event.key==='1'||event.key==='2')){event.preventDefault();navigate(event.key==='1'?'air':'library');}});
   function renderStatus(){
+    migrationControls();
     document.querySelectorAll('[data-station-name]').forEach(node=>node.textContent=stationName());
     const station=current(), connected=fresh(), running=connected&&station?.RequestedRunning;
     text('station-state',connected?(station?.State??'Station unavailable'):'Not connected');$('station-state').classList.toggle('running',connected&&station?.State==='Running');
@@ -140,7 +145,7 @@
     if(state.polling||!state.engine||document.hidden)return;state.polling=true;const engine=state.engine;
     try{const result=await api('/api/status?engine='+encodeURIComponent(engine));if(engine!==state.engine)return;const previous=state.stations.map(s=>s.Id).join(',');state.stations=result.stations??[];state.controller=result.controller??null;state.sampleAt=Date.now();if(!state.stations.some(s=>s.Id===state.station)&&state.stations.length)state.station=state.stations[0].Id;if(previous!==state.stations.map(s=>s.Id).join(','))stationTabs();text('audit-pending',String(result.audit?.PendingEvents??'—'));text('audit-rejected',String(result.audit?.RejectedEvents??'—'));text('audit-error',result.audit?.Error??'None reported');}
     catch(error){message('Status unavailable: '+error.message);state.sampleAt=0;}
-    finally{state.polling=false;renderStatus();if(state.page==='reports')void loadReports();}
+    finally{state.polling=false;renderStatus();if(state.page==='reports')void loadReports();if(state.page==='system')void loadMigration();}
   }
   async function command(action,payload={},retry=null){
     if(!fresh()||state.busy||(!retry&&pending()))return null;
@@ -359,16 +364,88 @@
       $('setup-folder-list').replaceChildren(...(result.folders??[]).map(folder=>{const button=element('button','folder-choice',folder.Name??folder.name);button.type='button';button.addEventListener('click',()=>void setupFolders(folder.Path??folder.path));return button;}));}
     catch(error){text('setup-folder-error',error.message);}
   }
-  $('setup-browse').addEventListener('click',async()=>{$('setup-folder-dialog').showModal();await setupFolders($('setup-runtime').value||null);});
+  $('setup-browse').addEventListener('click',async()=>{setupFolderTarget='setup-runtime';text('setup-folder-heading','Choose the audio runtime folder');$('setup-folder-dialog').showModal();await setupFolders($('setup-runtime').value||null);});
   $('setup-folder-up').addEventListener('click',()=>void setupFolders(setupParent));
-  $('setup-folder-select').addEventListener('click',()=>{if(!setupPath)return;$('setup-runtime').value=setupPath;$('setup-folder-dialog').close();setupControls();});
+  $('setup-folder-select').addEventListener('click',()=>{if(!setupPath)return;$(setupFolderTarget).value=setupPath;$('setup-folder-dialog').close();setupControls();migrationControls();});
   $('setup-check').addEventListener('click',async()=>{try{await api('/api/setup/prepare',{method:'POST',body:{RuntimeFolder:$('setup-runtime').value,StartService:$('setup-start').checked}});await loadSetup();}catch(error){text('setup-detail',error.message);}});
   $('setup-install').addEventListener('click',async()=>{if(!setupState?.plan)return;try{await api('/api/setup/install',{method:'POST',body:{Id:setupState.plan.id}});await loadSetup();}catch(error){text('setup-detail',error.message);}});
   $('setup-shortcuts').addEventListener('click',async()=>{try{await api('/api/setup/shortcuts',{method:'POST'});text('setup-detail','Desktop and Start menu shortcuts are available. They open the local console without Codex; the service runs independently.');}catch(error){text('setup-detail',error.message);}});
   $('close-console').addEventListener('click',async()=>{if(!confirm('Close this local console? The broadcast service keeps running.'))return;try{await api('/api/console/close',{method:'POST'});state.consoleClosed=true;state.engine=null;state.sampleAt=0;renderStatus();setupControls();message('Console closed. Broadcast service continues. Open the installed shortcut or new package to return.');}catch(error){message(error.message);}});
   $('setup-refresh').addEventListener('click',()=>void loadSetup());
+
+  function migrationControls(){
+    const pending=migration.pending?.engine===state.engine?migration.pending:null;
+    const connected=fresh()&&!state.session?.preview;
+    const unarmed=connected&&state.stations.length>0&&state.stations.every(s=>s.State==='Stopped'&&(s.Outputs??[]).length===0);
+    const preview=migration.engine===state.engine?migration.preview:null;
+    const active=preview&&['Inspecting','Verifying backup'].includes(preview.State);
+    $('migration-browse').disabled=!!state.session?.preview||!state.session||migration.busy||!!pending||!!active;
+    $('migration-create').disabled=!unarmed||migration.busy||!!pending||!!active||!$('migration-root').value;
+    $('migration-refresh').disabled=!connected||migration.loading;
+    $('migration-clear-retry').hidden=!pending;$('migration-retry').hidden=!pending;$('migration-retry').disabled=!unarmed||migration.busy;
+    $('migration-save').disabled=!unarmed||migration.busy||!preview?.Backup||!['Ready for mapping','Mapping saved'].includes(preview.State);
+    text('migration-phase',connected?(preview?.State??'No saved preview'):'Not connected');
+    if(!connected){$('migration-table').hidden=true;text('migration-backup','No current engine proof. Connect to read its saved preview.');}
+  }
+  function renderMigration(){
+    const preview=migration.engine===state.engine?migration.preview:null;
+    if(!preview){migration.key=null;migration.selects.clear();$('migration-rows').replaceChildren();$('migration-table').hidden=true;migrationControls();return;}
+    text('migration-phase',preview.State);
+    if(preview.Error)text('migration-feedback',preview.Error);
+    else if(preview.State==='Verifying backup')text('migration-feedback','Independently checking the saved recovery file · '+(preview.CheckedBytes/1048576).toFixed(1)+' MiB checked. Playback ownership is unchanged.');
+    else if(preview.State==='Mapping saved')text('migration-feedback','Mapping read back from disk · revision '+preview.Revision+'. No channel has been imported or started.');
+    else if(preview.State==='Ready for mapping')text('migration-feedback','Recovery checksum matches. Review each proposed channel assignment, then save the mapping.');
+    else text('migration-feedback',preview.State==='Inspecting'?'Reading saved legacy settings without changing them.':'A fresh preview is required before continuing.');
+    const proof=preview.Backup;text('migration-backup',proof?'Verified recovery file: '+proof.FileName+' · '+proof.Bytes.toLocaleString('en-GB')+' bytes · SHA-256 '+proof.Sha256:'Recovery proof is not confirmed.');
+    const key=state.engine+':'+preview.Id+':'+preview.Revision+':'+!!proof+':'+preview.SettingsFingerprint;
+    if(key!==migration.key){
+      migration.key=key;migration.selects.clear();
+      $('migration-rows').replaceChildren(...(preview.Stations??[]).map(station=>{
+        const row=element('tr'),identity=element('td'),folders=element('td'),output=element('td'),target=element('td');
+        identity.append(element('strong','',station.Name),element('p','quiet','Legacy ID '+station.Id));
+        folders.append(element('p','asset-path','Music: '+(station.MusicFolder||'Not assigned')),element('p','asset-path','Jingles: '+(station.JingleFolder||'Not assigned')),element('p','quiet','Sweepers: '+(station.SweepersEnabled?'enabled · every '+station.SweeperEvery+' tracks':'disabled')));
+        for(const warning of station.Warnings??[])folders.append(element('p','quiet',warning));
+        const saved=station.PrimaryOutput;output.textContent=saved?saved.Host+':'+saved.Port+saved.Mount+' · '+saved.Profile+' / '+saved.BitrateKbps+' kbps · '+(saved.Enabled?'enabled in former program':'disabled in former program'):'No saved primary output';
+        const select=element('select');select.setAttribute('aria-label','Target channel for '+station.Name);const leave=element('option','','Leave with former program');leave.value='';select.append(leave);
+        for(const s of state.stations){const option=element('option','',stationName(s.Id));option.value=s.Id;select.append(option);}
+        const mapping=preview.Mappings?.find(m=>m.LegacyStationId===station.Id);select.value=mapping?mapping.TargetStationId??'':state.stations.some(s=>s.Id===String(station.Id))?String(station.Id):'';
+        select.disabled=!proof;migration.selects.set(station.Id,select);target.append(select);row.append(identity,folders,output,target);return row;
+      }));
+    }
+    $('migration-table').hidden=!(preview.Stations?.length);migrationControls();
+  }
+  async function loadMigration(){
+    if(migration.loading||!fresh()||state.session?.preview)return;
+    const engine=state.engine,pending=migration.pending?.engine===engine?migration.pending:null;migration.loading=true;migrationControls();
+    try{const result=await api('/api/migration-preview?engine='+encodeURIComponent(engine)+(pending?'&id='+pending.id:''));if(engine!==state.engine)return;if(result.accepted===false)throw new Error(result.error??'Preview unavailable.');migration.engine=engine;migration.preview=result.preview??null;
+      if(pending&&migration.preview?.Id===pending.id){migration.pending=null;try{localStorage.removeItem('studio-migration-request');}catch{}}
+      if(migration.preview&&!migration.pending)$('migration-root').value=migration.preview.LegacyRoot;renderMigration();}
+    catch(error){if(engine===state.engine)text('migration-feedback','Saved preview unavailable: '+error.message);}
+    finally{migration.loading=false;migrationControls();}
+  }
+  async function prepareMigration(){
+    if(migration.busy||!fresh())return;
+    const pending=migration.pending?.engine===state.engine?migration.pending:null;
+    const request=pending??{engine:state.engine,id:crypto.randomUUID().replaceAll('-',''),legacyRoot:$('migration-root').value};
+    migration.pending=request;try{localStorage.setItem('studio-migration-request',JSON.stringify(request));}catch{}
+    migration.busy=true;migrationControls();text('migration-feedback','Saving preview request…');
+    try{const result=await api('/api/migration-preview',{method:'POST',body:request});if(request.engine!==state.engine)return;if(result.accepted!==true)throw new Error(result.error??'Preview was not accepted.');await loadMigration();}
+    catch(error){if(request.engine===state.engine)text('migration-feedback','Confirmation unavailable: '+error.message+' Retry keeps the same preview ID.');}
+    finally{migration.busy=false;migrationControls();}
+  }
+  $('migration-browse').addEventListener('click',async()=>{setupFolderTarget='migration-root';text('setup-folder-heading','Choose the former program’s data directory');$('setup-folder-dialog').showModal();await setupFolders($('migration-root').value||null);});
+  $('migration-clear-retry').addEventListener('click',()=>{migration.pending=null;try{localStorage.removeItem('studio-migration-request');}catch{}text('migration-feedback','Local retry reminder cleared. Any accepted preview continues; Refresh saved preview reads its status.');migrationControls();});
+  $('migration-create').addEventListener('click',()=>void prepareMigration());$('migration-retry').addEventListener('click',()=>void prepareMigration());$('migration-refresh').addEventListener('click',()=>void loadMigration());
+  $('migration-save').addEventListener('click',async()=>{
+    const engine=state.engine,preview=migration.preview;if(migration.busy||migration.engine!==engine||!preview||!fresh())return;
+    const mappings=[...migration.selects].map(([LegacyStationId,select])=>({LegacyStationId,TargetStationId:select.value||null}));migration.busy=true;migrationControls();
+    try{const result=await api('/api/migration-mapping',{method:'POST',body:{engine,id:preview.Id,revision:preview.Revision,mappings}});if(engine!==state.engine)return;if(result.accepted!==true)throw new Error(result.error??'Mapping was not confirmed.');await loadMigration();}
+    catch(error){if(engine===state.engine)text('migration-feedback','Mapping confirmation unavailable: '+error.message+' Refresh the saved preview before retrying.');}
+    finally{migration.busy=false;migrationControls();}
+  });
+
   async function initialize(){stationTabs();renderStatus();try{state.session=await api('/api/session');text('build-label',state.session.preview?'UI PREVIEW':'DEVELOPMENT');}catch(error){message('Console connection unavailable: '+error.message);}await discover();}
-  let ticks=0;setInterval(()=>{if(document.hidden||state.consoleClosed)return;text('clock',clock.format(new Date()));renderStatus();if(++ticks%2===0){void poll();void pollFolderCheck();}if(ticks%4===0&&state.page==='library')void loadLibrary();if(ticks%4===0&&state.page==='system')void loadSetup();},1000);text('clock',clock.format(new Date()));document.addEventListener('visibilitychange',()=>{if(!document.hidden){text('clock',clock.format(new Date()));void poll();}});void initialize();
+  let ticks=0;setInterval(()=>{if(document.hidden||state.consoleClosed)return;text('clock',clock.format(new Date()));renderStatus();if(++ticks%2===0){void poll();void pollFolderCheck();}if(ticks%4===0&&state.page==='library')void loadLibrary();if(ticks%4===0&&state.page==='system'){void loadSetup();void loadMigration();}},1000);text('clock',clock.format(new Date()));document.addEventListener('visibilitychange',()=>{if(!document.hidden){text('clock',clock.format(new Date()));void poll();}});void initialize();
 
   const reports={items:[],engine:null,loadedAt:0,offset:0,polling:false,busy:false,rows:new Map(),pending:[]};
   try{const saved=JSON.parse(localStorage.getItem('studio-report-requests')??'[]');if(Array.isArray(saved))reports.pending=saved.filter(p=>typeof p.engine==='string'&&/^[0-9a-f]{32}$/.test(p.id??'')&&['day','year'].includes(p.period)&&typeof p.selection==='string').slice(0,16);}catch{}

@@ -118,6 +118,65 @@ internal static class ServiceProbe
         return verified && controlsAvailable && libraryAvailable ? 0 : 1;
     }
 
+    public static async Task<int> MigrationAsync()
+    {
+        var root = Path.Combine(ServiceEndpoint.EngineData, "legacy-preview-source");
+        Directory.CreateDirectory(Path.Combine(root, "recovery-points", "daily"));
+        var recovery = Path.Combine(root, "recovery-points", "daily", "synthetic.db.dpapi");
+        var fixtureBytes = Encoding.UTF8.GetBytes("ONAIR-DPAPI-1\nDisposable service-boundary fixture; not restore data.");
+        await File.WriteAllBytesAsync(recovery, fixtureBytes);
+        var digest = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(fixtureBytes));
+        var database = Path.Combine(root, "cleanroom.db");
+        using (var connection = new Microsoft.Data.Sqlite.SqliteConnection(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder { DataSource = database }.ToString()))
+        {
+            connection.Open(); using var command = connection.CreateCommand();
+            command.CommandText = """
+                CREATE TABLE stations(id INTEGER PRIMARY KEY,name TEXT);
+                CREATE TABLE station_settings(station_id INTEGER,key TEXT,value TEXT);
+                CREATE TABLE station_outputs(station_id INTEGER,icecast_host TEXT,icecast_port INTEGER,icecast_mount TEXT,stream_codec_profile TEXT,stream_bitrate_kbps INTEGER,icecast_enabled INTEGER,icecast_password TEXT);
+                CREATE TABLE recovery_points(id INTEGER PRIMARY KEY,file_path TEXT,sha256 TEXT,size_bytes INTEGER,verified_at TEXT,integrity_status TEXT);
+                INSERT INTO stations VALUES(4,'Synthetic Pop'),(9,'Synthetic Energize');
+                INSERT INTO station_settings VALUES(4,'music_library_folder',$music),(4,'ai_host_enabled','true');
+                INSERT INTO station_outputs VALUES(4,'127.0.0.1',18980,'/pop','aac_low_192',192,1,'synthetic-service-source-secret'),(9,'127.0.0.1',18980,'/energize','aac_low_192',192,1,'synthetic-service-source-secret');
+                INSERT INTO recovery_points VALUES(1,$backup,$hash,$size,'2026-10-16T08:00:00Z','ok');
+                """;
+            command.Parameters.AddWithValue("$music", Path.Combine(root, "Pop")); command.Parameters.AddWithValue("$backup", recovery);
+            command.Parameters.AddWithValue("$hash", digest); command.Parameters.AddWithValue("$size", fixtureBytes.Length); command.ExecuteNonQuery();
+        }
+        var before = System.Security.Cryptography.SHA256.HashData(await File.ReadAllBytesAsync(database));
+        var id = Guid.NewGuid().ToString("N");
+        var response = await RequestAsync(new { Id = id, Action = "legacy-preview-create", Path = root });
+        if (!response.GetProperty("accepted").GetBoolean()) throw new InvalidOperationException("Synthetic migration preview was not accepted.");
+        LegacyImportPreview? preview = null;
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        while (preview is null || preview.State is "Inspecting" or "Verifying backup")
+        {
+            deadline.Token.ThrowIfCancellationRequested();
+            response = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "legacy-preview", PreviewId = id });
+            preview = response.GetProperty("preview").Deserialize<LegacyImportPreview>();
+            if (preview is null || preview.State is "Inspecting" or "Verifying backup") await Task.Delay(25, deadline.Token);
+        }
+        var backupVerified = preview.State == "Ready for mapping" && preview.Backup is { } backupProof && backupProof.Sha256 == digest && backupProof.Bytes == fixtureBytes.Length;
+        if (!backupVerified) throw new InvalidOperationException("Synthetic migration backup was not confirmed: " + preview.State);
+        LegacyStationMapping[] mappings = [new(4, "service-fixture"), new(9, "source-fixture")];
+        response = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "legacy-mapping-save", PreviewId = id, Revision = 0, Mappings = mappings });
+        if (!response.GetProperty("accepted").GetBoolean()) throw new InvalidOperationException("Synthetic mapping was not accepted.");
+        response = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "legacy-preview", PreviewId = id });
+        var saved = response.GetProperty("preview").Deserialize<LegacyImportPreview>()!;
+        var mappingReadback = saved.State == "Mapping saved" && saved.Revision == 1 && saved.Mappings!.SequenceEqual(mappings);
+        response = await RequestAsync(new { Id = id, Action = "legacy-preview-create", Path = root });
+        var replay = response.GetProperty("preview").Deserialize<LegacyImportPreview>()!;
+        mappingReadback &= replay.Revision == 1 && replay.State == "Mapping saved";
+        var serialized = JsonSerializer.Serialize(saved);
+        var secretsExcluded = !serialized.Contains("synthetic-service-source-secret", StringComparison.Ordinal) && !serialized.Contains("ai_host_enabled", StringComparison.Ordinal);
+        var after = await File.ReadAllBytesAsync(database);
+        var unchanged = before.AsSpan().SequenceEqual(System.Security.Cryptography.SHA256.HashData(after));
+        var status = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "status" });
+        var unarmed = status.GetProperty("stations").EnumerateArray().All(station => station.GetProperty("State").GetString() == "Stopped" && station.GetProperty("Outputs").GetArrayLength() == 0);
+        Console.WriteLine(JsonSerializer.Serialize(new { backupVerified, mappingReadback, secretsExcluded, sourceUnchanged = unchanged, unarmed, previewId = id }));
+        return backupVerified && mappingReadback && secretsExcluded && unchanged && unarmed ? 0 : 1;
+    }
+
     public static async Task<int> OwnedChildFixtureAsync(bool leaf)
     {
         // Software-lifecycle fixture only: never a codec implementation, audio output or UI simulation.

@@ -130,6 +130,14 @@ try{
  Check 'A held report download leaves Library transfer transport available' $report.libraryAvailable
  Check 'Anonymous report caller is rejected before receiving report bytes' ((Probe 'anonymous-reports').rejected -eq $true)
 
+ $migrationOutput=& $labExe --service-migration-probe 2>&1
+ if($LASTEXITCODE -ne 0){throw ('Service migration probe failed: '+($migrationOutput -join ' '))}
+ $migration=($migrationOutput -join [Environment]::NewLine)|ConvertFrom-Json
+ Check 'LocalService independently verifies a synthetic legacy recovery receipt' $migration.backupVerified
+ Check 'Mapping save and retry cross the service boundary with persisted readback' $migration.mappingReadback
+ Check 'Migration preview excludes source secrets and AI settings' $migration.secretsExcluded
+ Check 'Migration preparation leaves source data and stopped output ownership unchanged' ($migration.sourceUnchanged -and $migration.unarmed)
+
  Check 'Start intent is durably acknowledged' ((Probe 'start-station').accepted -eq $true)
  $null=Ready $true;$oldChildren=Children
  Stop-Service -Name $serviceName;Stopped

@@ -2,6 +2,7 @@
   <PropertyGroup><RuntimeIdentifiers>win-x64</RuntimeIdentifiers></PropertyGroup>
   <ItemGroup>
     <Content Update="wwwroot/**" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="../OnAirNext.Engine/LegacyImportPreview.cs" Link="Protocol/LegacyImportPreview.cs" />
     <Compile Include="../OnAirNext.Engine/ReportCalendar.cs" Link="Protocol/ReportCalendar.cs" />
     <Compile Include="../OnAirNext.Engine/ReportExport.cs" Link="Protocol/ReportExport.cs" />
     <Compile Include="../OnAirNext.Engine/ReportTransferProtocol.cs" Link="Protocol/ReportTransferProtocol.cs" />

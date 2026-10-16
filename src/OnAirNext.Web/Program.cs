@@ -76,6 +76,12 @@ app.MapGet("/api/status", async (string engine, CancellationToken token) =>
     Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "status" }, token)));
 app.MapGet("/api/library", async (string engine, string station, string? query, int? offset, CancellationToken token) =>
     Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "library-status", StationId = station, Query = query ?? "", Offset = offset ?? 0 }, token)));
+app.MapGet("/api/migration-preview", async (string engine, string? id, CancellationToken token) =>
+    Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "legacy-preview", PreviewId = id }, token)));
+app.MapPost("/api/migration-preview", async (MigrationPreviewRequest request, CancellationToken token) =>
+    Results.Json(await EngineRpc.SendAsync(request.Engine, new { request.Id, Action = "legacy-preview-create", Path = request.LegacyRoot }, token)));
+app.MapPost("/api/migration-mapping", async (MigrationMappingRequest request, CancellationToken token) =>
+    Results.Json(await EngineRpc.SendAsync(request.Engine, new { Id = Guid.NewGuid().ToString("N"), Action = "legacy-mapping-save", PreviewId = request.Id, request.Revision, request.Mappings }, token)));
 app.MapGet("/api/reports", async (string engine, int? offset, CancellationToken token) =>
     Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "reports", Offset = offset ?? 0 }, token)));
 app.MapPost("/api/reports/export", async (ReportExportRequest request, CancellationToken token) =>
@@ -197,3 +203,6 @@ internal sealed record SetupInstall(string Id);
 
 internal sealed record ReportExportRequest(string Engine, string Id, string Period, string Selection, string? StationId = null);
 internal sealed record ReportCancelRequest(string Engine, string Id);
+
+internal sealed record MigrationPreviewRequest(string Engine, string Id, string LegacyRoot);
+internal sealed record MigrationMappingRequest(string Engine, string Id, int Revision, OnAirNext.Engine.LegacyStationMapping[] Mappings);

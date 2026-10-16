@@ -79,6 +79,9 @@ internal static class EngineHost
             await using var reports = new ReportExports(journal, config.Stations.Select(station => station.Id));
             await reports.InitializeAsync();
             await using var reportServer = new ReportPipeServer(config.PipeName, serviceMode, servicePolicy, reports, stop.Token);
+            await using var legacyPreviews = new LegacyImportPreviews(config.DataRoot, config.Stations.Select(station => station.Id),
+                () => coordinator.Snapshot().All(station => station.State == "Stopped" && station.Outputs.Count == 0));
+            legacyPreviews.Initialize();
             if (serviceMode) WindowsServiceDiagnostics.Stage("controller ready");
             ready();
             Console.WriteLine(JsonSerializer.Serialize(new { state = "controller-ready", config.PipeName, stations = config.Stations.Count, loopbackOnly = true, mode = serviceMode ? "windows-service" : "developer" }));
@@ -117,6 +120,12 @@ internal static class EngineHost
                                 if (!config.Stations.Any(station => station.Id == historyStation)) throw new ArgumentException("Unknown station.");
                                 result = JsonSerializer.Serialize(new { station = historyStation, items = journal.MeasurementHistory(historyStation, request.Offset) });
                                 break;
+                            case "legacy-preview":
+                                result = JsonSerializer.Serialize(new { preview = legacyPreviews.Snapshot(request.PreviewId), scope = LegacyImportPreview.Scope }); break;
+                            case "legacy-preview-create" when request.Path is { } legacyRoot:
+                                result = JsonSerializer.Serialize(new { accepted = true, preview = legacyPreviews.Start(request.Id, legacyRoot), scope = LegacyImportPreview.Scope }); break;
+                            case "legacy-mapping-save" when request.PreviewId is { } previewId && request.Mappings is { } mappings && request.Revision is >= 0 and <= int.MaxValue:
+                                result = JsonSerializer.Serialize(new { accepted = true, preview = legacyPreviews.SaveMappings(previewId, checked((int)request.Revision), mappings), scope = LegacyImportPreview.Scope }); break;
                             case "reports":
                                 result = JsonSerializer.Serialize(new { items = reports.Snapshot(request.Offset), error = reports.Error ?? reportServer.Error }); break;
                             case "report-export" when request.ReportPeriod is { } reportPeriod && request.ReportSelection is { } selection:
@@ -203,4 +212,4 @@ internal static class EngineHost
 internal sealed record HostSettings(string Ffmpeg, string DataRoot, string PipeName, List<StationSettings> Stations, string? OperatorSid = null);
 internal sealed record EngineCommand(string Id, string Action, string? StationId, string? Path = null,
     string[]? Paths = null, string? Query = null, int Offset = 0, string? AssetId = null,
-    long Revision = 0, long ExpectedVersion = 0, string? Artist = null, string? Title = null, string? SourceCheckId = null, string? ReportPeriod = null, string? ReportSelection = null, string? ReportId = null);
+    long Revision = 0, long ExpectedVersion = 0, string? Artist = null, string? Title = null, string? SourceCheckId = null, string? ReportPeriod = null, string? ReportSelection = null, string? ReportId = null, string? PreviewId = null, LegacyStationMapping[]? Mappings = null);
