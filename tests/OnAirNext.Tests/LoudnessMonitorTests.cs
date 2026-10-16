@@ -29,6 +29,24 @@ public sealed class LoudnessMonitorTests
     }
 
     [Fact]
+    public async Task DefaultMeasurementQueueRetainsTwoSecondClockCatchupWithoutPadding()
+    {
+        var history = new ConcurrentQueue<ProgrammeLoudnessWindow>();
+        await using var monitor = new ProgrammeLoudnessMonitor(
+            "9", "clock-catchup", Anchor, history: w => { history.Enqueue(w); return Task.CompletedTask; });
+        for (var i = 0; i < 100; i++) Assert.True(Send(monitor, i * 960));
+        monitor.Complete(); await monitor.Completion.WaitAsync(TimeSpan.FromSeconds(5));
+        var view = monitor.Snapshot();
+        Assert.True(view.Continuous); Assert.Equal(0, view.DroppedFrames);
+        Assert.Equal(0, view.QueuedBlocks); Assert.Equal(0, view.PendingHistoryWrites);
+        Assert.Equal(0, view.HistoryFailures); Assert.Equal("Stopped", view.State);
+        var finished = Assert.Single(history.Where(w => w.Phase == "Finished"));
+        Assert.Equal(96000, finished.Reading!.SampleFrames);
+        Assert.Equal(0, finished.StartSample); Assert.Equal(96000, finished.EndSample);
+        Assert.False(finished.HasMeasurementGap); Assert.False(finished.MissingTail);
+    }
+
+    [Fact]
     public async Task ExactWindowRolloverAndPartialEofNeverPadOrLoseSamples()
     {
         var history = new List<ProgrammeLoudnessWindow>();

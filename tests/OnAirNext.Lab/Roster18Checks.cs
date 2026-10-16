@@ -72,7 +72,7 @@ internal static class Roster18Checks
                     Check(result,reading.Error is null&&reading.DecodedSeconds>=30&&reading.LongestSilentRun<=2&&reading.ToneTransitions>=Math.Max(4,Math.Floor(reading.DecodedSeconds/3)-2)&&reading.ToneTransitions<=Math.Ceiling(reading.DecodedSeconds/3)+1&&reading.UnexpectedToneTransitions==0,
                         reading.Mount+": continuous native decoding observes successive expected items without unexplained silence or repeats.");
                 }
-                Check(result,snapshots.All(s=>s.Loudness?.Continuous==true&&s.Loudness.HistoryFailures==0),"Every station retains continuous final-mix measurement and confirmed measurement history under the complete codec roster.");
+                Check(result,snapshots.All(s=>s.Loudness?.Continuous==true&&s.Loudness.State=="Measuring"&&s.Loudness.HistoryFailures==0),"Every station retains continuous final-mix measurement and confirmed measurement history under the complete codec roster.");
                 result.Details["journalBeforeStop"]=new{journal.CommittedTransactions,journal.CommittedEvents,journal.PendingEvents};
                 Check(result,snapshots.All(s=>s.AuditRejectedEvents==0)&&journal.Error is null,"Concurrent eight-station attempt journals remain writable without rejected events.");
             }

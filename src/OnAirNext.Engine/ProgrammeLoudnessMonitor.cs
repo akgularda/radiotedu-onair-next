@@ -16,7 +16,7 @@ public sealed record ProgrammeLoudnessSnapshot(string State, DateTimeOffset Upda
     long DroppedBlocks, long DroppedFrames, long InvalidBlocks, long Gaps,
     long HistoryFailures, string? Error, string? HistoryError, int QueuedBlocks = 0, int PendingHistoryWrites = 0)
 {
-    public bool Continuous => DroppedBlocks == 0 && InvalidBlocks == 0 && Gaps == 0;
+    public bool Continuous => State != "Faulted" && DroppedBlocks == 0 && InvalidBlocks == 0 && Gaps == 0;
 }
 
 /// <summary>
@@ -46,7 +46,7 @@ public sealed class ProgrammeLoudnessMonitor : IAsyncDisposable
     private int _accepting = 1, _disposed;
 
     public ProgrammeLoudnessMonitor(string station, string session, DateTimeOffset sampleClockAnchor,
-        long initialSample = 0, TimeSpan? maximumWindow = null, int queueBlocks = 40,
+        long initialSample = 0, TimeSpan? maximumWindow = null, int queueBlocks = 100,
         Func<ProgrammeLoudnessWindow, Task>? history = null)
     {
         if (string.IsNullOrWhiteSpace(station) || station.Length > 100 || string.IsNullOrWhiteSpace(session) || session.Length > 100)
@@ -63,7 +63,7 @@ public sealed class ProgrammeLoudnessMonitor : IAsyncDisposable
         _historyQueue = Channel.CreateBounded<ProgrammeLoudnessWindow>(new BoundedChannelOptions(64)
             { SingleReader = true, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait });
         _historyWorker = Task.Run(RunHistoryAsync);
-        _worker = Task.Run(RunAsync);
+        _worker = Task.Factory.StartNew(Run, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         _completion = Task.WhenAll(_worker, _historyWorker);
     }
 
@@ -98,11 +98,12 @@ public sealed class ProgrammeLoudnessMonitor : IAsyncDisposable
         _abort.CancelAfter(TimeSpan.FromSeconds(2));
     }
 
-    private async Task RunAsync()
+    private void Run()
     {
         try
         {
-            await foreach (var block in _queue.Reader.ReadAllAsync(_abort.Token))
+            while (_queue.Reader.WaitToReadAsync(_abort.Token).AsTask().GetAwaiter().GetResult())
+            while (_queue.Reader.TryRead(out var block))
             {
                 using (block)
                 {
@@ -110,14 +111,14 @@ public sealed class ProgrammeLoudnessMonitor : IAsyncDisposable
                     {
                         Interlocked.Increment(ref _gaps);
                         _gapBefore = Math.Max(0, block.SamplePosition - _expectedEnd);
-                        await CloseWindowAsync("SourceGap", true);
+                        CloseWindow("SourceGap", true);
                     }
-                    try { ValidateSamples(block); await ConsumeAsync(block); _error = null; }
+                    try { ValidateSamples(block); Consume(block); _error = null; }
                     catch (ArgumentException)
                     {
                         Interlocked.Increment(ref _invalid); Interlocked.Increment(ref _gaps);
                         _error = "Invalid programme PCM was excluded from measurement.";
-                        await CloseWindowAsync("InvalidPcm", true);
+                        CloseWindow("InvalidPcm", true);
                         _gapBefore = block.Length / AudioFormat.BytesPerSampleFrame;
                     }
                     _expectedEnd = block.SamplePosition + block.Length / AudioFormat.BytesPerSampleFrame;
@@ -125,7 +126,7 @@ public sealed class ProgrammeLoudnessMonitor : IAsyncDisposable
             }
             var missingTail = Volatile.Read(ref _lastSourceEnd) != _expectedEnd;
             if (missingTail) Interlocked.Increment(ref _gaps);
-            await CloseWindowAsync(missingTail ? "UnmeasuredTail" : "SessionEnded", missingTail);
+            CloseWindow(missingTail ? "UnmeasuredTail" : "SessionEnded", missingTail);
             PublishView("Stopped");
         }
         catch (OperationCanceledException) when (_abort.IsCancellationRequested)
@@ -155,7 +156,7 @@ public sealed class ProgrammeLoudnessMonitor : IAsyncDisposable
         }
     }
 
-    private async Task ConsumeAsync(PcmBlock block)
+    private void Consume(PcmBlock block)
     {
         var remaining = block.Length / AudioFormat.BytesPerSampleFrame; var offset = 0;
         while (remaining > 0)
@@ -170,11 +171,11 @@ public sealed class ProgrammeLoudnessMonitor : IAsyncDisposable
                     _anchor.AddSeconds(firstSample / 48000d), "Started", "ContinuousWindow", _maximumFrames,
                     false, _gapBefore, false, null);
                 _gapBefore = 0;
-                PublishView("Measuring"); await PersistAsync(_window);
+                PublishView("Measuring"); QueueHistory(_window);
             }
             var take = (int)Math.Min(remaining, _maximumFrames - _frames);
             FeedPart(block, offset, take); _frames += take; offset += take; remaining -= take;
-            if (_frames == _maximumFrames) { await CloseWindowAsync("Duration", false); continue; }
+            if (_frames == _maximumFrames) { CloseWindow("Duration", false); continue; }
             if (_frames >= _nextLevels)
             {
                 var reading = _frames >= _nextStatistics ? _meter.Read() : _meter.ReadLevels();
@@ -186,7 +187,7 @@ public sealed class ProgrammeLoudnessMonitor : IAsyncDisposable
             if (_frames >= _nextCheckpoint)
             {
                 _nextCheckpoint = (_frames / (60L * 48000) + 1) * 60L * 48000;
-                await PersistAsync(_window! with { Phase = "Checkpoint", EndSample = _window!.StartSample + _frames, Reading = _meter.Read() });
+                QueueHistory(_window! with { Phase = "Checkpoint", EndSample = _window!.StartSample + _frames, Reading = _meter.Read() });
             }
         }
     }
@@ -201,26 +202,25 @@ public sealed class ProgrammeLoudnessMonitor : IAsyncDisposable
             if (!float.IsFinite(value)) throw new ArgumentException("Invalid programme PCM.");
     }
 
-    private async Task CloseWindowAsync(string reason, bool gap)
+    private void CloseWindow(string reason, bool gap)
     {
         if (_meter is null || _window is null) return;
         _meter.Finish();
         _window = _window with { EndSample = _window.StartSample + _frames, Phase = "Finished", Reason = reason,
             HasMeasurementGap = gap, MissingTail = gap, Reading = _meter.Read() };
         _lastClosed = _window; _meter = null;
-        PublishView("WindowFinished"); await PersistAsync(_window);
+        PublishView("WindowFinished"); QueueHistory(_window);
     }
 
-    private Task PersistAsync(ProgrammeLoudnessWindow window)
+    private void QueueHistory(ProgrammeLoudnessWindow window)
     {
-        if (_history is null) return Task.CompletedTask;
+        if (_history is null) return;
         Interlocked.Increment(ref _pendingHistoryWrites);
         if (!_historyQueue.Writer.TryWrite(window))
         {
             Interlocked.Decrement(ref _pendingHistoryWrites);
             HistoryFailed();
         }
-        return Task.CompletedTask;
     }
 
     private async Task RunHistoryAsync()

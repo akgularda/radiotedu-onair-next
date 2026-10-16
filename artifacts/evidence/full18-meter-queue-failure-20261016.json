@@ -1,0 +1,257 @@
+{
+  "source": "7068a2672240983ca1ddcc64cd1c28e8575114cf",
+  "run": "38858994796",
+  "passed": false,
+  "productionChanged": false,
+  "scope": "Isolated Windows CI synthetic low-crest full 18-codec roster; no target-PC commissioning.",
+  "artifact": {
+    "sha256": "7cdc3f76c1242f2e948b875a85fc08b7f58f3d7a6a5d2c579c08ade6348c0692",
+    "bytes": 25939,
+    "verified": true
+  },
+  "checks": 186,
+  "failedChecks": [
+    {
+      "Passed": false,
+      "Description": "Every station retains continuous final-mix measurement and confirmed measurement history under the complete codec roster."
+    }
+  ],
+  "stations": [
+    {
+      "id": "roster-1",
+      "meterState": "Measuring",
+      "droppedBlocks": 58,
+      "gaps": 2,
+      "historyFailures": 0,
+      "pendingHistory": 0,
+      "outputs": [
+        {
+          "id": "roster-1-aac",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        },
+        {
+          "id": "roster-1-he",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        }
+      ]
+    },
+    {
+      "id": "roster-2",
+      "meterState": "Measuring",
+      "droppedBlocks": 57,
+      "gaps": 2,
+      "historyFailures": 0,
+      "pendingHistory": 0,
+      "outputs": [
+        {
+          "id": "roster-2-aac",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        },
+        {
+          "id": "roster-2-he",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        }
+      ]
+    },
+    {
+      "id": "roster-3",
+      "meterState": "Measuring",
+      "droppedBlocks": 57,
+      "gaps": 2,
+      "historyFailures": 0,
+      "pendingHistory": 0,
+      "outputs": [
+        {
+          "id": "roster-3-aac",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        },
+        {
+          "id": "roster-3-he",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        }
+      ]
+    },
+    {
+      "id": "roster-4",
+      "meterState": "Measuring",
+      "droppedBlocks": 54,
+      "gaps": 3,
+      "historyFailures": 0,
+      "pendingHistory": 0,
+      "outputs": [
+        {
+          "id": "roster-4-aac",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        },
+        {
+          "id": "roster-4-he",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        }
+      ]
+    },
+    {
+      "id": "roster-5",
+      "meterState": "Measuring",
+      "droppedBlocks": 56,
+      "gaps": 2,
+      "historyFailures": 0,
+      "pendingHistory": 0,
+      "outputs": [
+        {
+          "id": "roster-5-aac",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        },
+        {
+          "id": "roster-5-he",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        }
+      ]
+    },
+    {
+      "id": "roster-6",
+      "meterState": "Measuring",
+      "droppedBlocks": 58,
+      "gaps": 2,
+      "historyFailures": 0,
+      "pendingHistory": 0,
+      "outputs": [
+        {
+          "id": "roster-6-aac",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        },
+        {
+          "id": "roster-6-he",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        }
+      ]
+    },
+    {
+      "id": "roster-7",
+      "meterState": "Measuring",
+      "droppedBlocks": 58,
+      "gaps": 2,
+      "historyFailures": 0,
+      "pendingHistory": 0,
+      "outputs": [
+        {
+          "id": "roster-7-aac",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        },
+        {
+          "id": "roster-7-he",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        },
+        {
+          "id": "roster-7-flac",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        }
+      ]
+    },
+    {
+      "id": "roster-8",
+      "meterState": "Measuring",
+      "droppedBlocks": 70,
+      "gaps": 3,
+      "historyFailures": 0,
+      "pendingHistory": 0,
+      "outputs": [
+        {
+          "id": "roster-8-aac",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        },
+        {
+          "id": "roster-8-he",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        },
+        {
+          "id": "roster-8-flac",
+          "encoderStarts": 1,
+          "connections": 1,
+          "droppedBlocks": 0
+        }
+      ]
+    }
+  ],
+  "journalAtCleanup": {
+    "CommittedTransactions": 1226,
+    "CommittedEvents": 552,
+    "PendingEvents": 0
+  },
+  "cleanup": [
+    {
+      "id": "roster-1",
+      "state": "Stopped",
+      "pendingAudit": null
+    },
+    {
+      "id": "roster-2",
+      "state": "Stopped",
+      "pendingAudit": null
+    },
+    {
+      "id": "roster-3",
+      "state": "Stopped",
+      "pendingAudit": null
+    },
+    {
+      "id": "roster-4",
+      "state": "Stopped",
+      "pendingAudit": null
+    },
+    {
+      "id": "roster-5",
+      "state": "Stopped",
+      "pendingAudit": null
+    },
+    {
+      "id": "roster-6",
+      "state": "Stopped",
+      "pendingAudit": null
+    },
+    {
+      "id": "roster-7",
+      "state": "Stopped",
+      "pendingAudit": null
+    },
+    {
+      "id": "roster-8",
+      "state": "Stopped",
+      "pendingAudit": null
+    }
+  ],
+  "correction": "Dedicated measurement thread, bounded two-second catch-up queue, unchanged no-loss requirement. Await fresh qualification."
+}
