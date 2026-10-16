@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/OnAirNext.Engine/StereoLoudnessMeter48k.cs" Link="StereoLoudnessMeter48k.cs" />
+    <Compile Include="../Signals/StereoReferenceSignals.cs" Link="StereoReferenceSignals.cs" />
+  </ItemGroup>
+</Project>

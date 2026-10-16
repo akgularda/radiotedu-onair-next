@@ -2,6 +2,8 @@
 
 # Handoff snapshot status
 
+Loudness continuation: a bounded stereo BS.1770-5/EBU-mode measurement core and synthetic/reference checks are now in source, awaiting fresh CI qualification. It is not connected to the programme loop, does not normalize/limit audio and does not certify any output. See [instrument scope and remaining work](LOUDNESS_MEASUREMENT.md). The live legacy engine is unchanged; zero station groups have migrated. Migration remains one station's codec group at a time.
+
 Current continuation, 16 October 2026: exact source e852c2e1 passed 134 unit cases, 35 completed SCM checks and 20 completed installer/console checks on a disposable Windows runner. The self-contained Windows package, private runtime loading, protected immutable-file deduplication, same-plan retry, per-user shortcuts, build identity and console close without service restart were exercised. See [setup evidence](../artifacts/evidence/windows-setup-134-20261016.json), [guided setup](WINDOWS_GUIDED_SETUP.md) and the [complete delivery ledger](BROADCAST_PC_DELIVERY_LEDGER.md). The encoder-list fixture has no real audio implementation. The reviewed framework and Windows runtime graph both restored in locked mode during the successful package qualification. Actual Windows 10 installation, resource admission, UAC/mouse/file-chooser and before-logon source/device tests remain incomplete. Zero groups have migrated, and the former application still owns all broadcasts. Historical records below are not a release declaration.
 
 Prepared 15 October 2026. This is a development snapshot for the broadcasting-PC agent, not a production-ready release.
