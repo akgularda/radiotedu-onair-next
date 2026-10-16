@@ -14,6 +14,16 @@ Unit scenarios interrupt both rename boundaries in each direction, deny the seco
 
 `UpdateAdmission` independently checks the authenticated status payload and installed configuration shape. It requires the exact eight station IDs, stopped states, explicit false running intent, empty output definitions, no owned children, and a drained journal without a current error. The configuration must retain the fixed service pipe, operator, data and encoder paths and false AutoStart defaults. Missing fields are rejected. This parser does not itself authenticate a pipe, freeze concurrent commands, or prove an unchanged configuration; those remain responsibilities of the elevated maintenance workflow.
 
+## Windows maintenance fence under qualification
+
+The service helper now retains the reviewed process handle, disables the isolated service start type, deletes SCM restart actions, clears the failure flag, reads the fence back, and requests a graceful stop. It waits for the exact process to exit before allowing file transitions. Microsoft documents that an already queued recovery restart cannot be canceled; disabling the service also prevents that queued restart from reclaiming application files. The former broadcasting service is never addressed. Resuming after interruption can complete a partially installed fence. Restoration reinstates the exact delayed-auto and 5/15/60-second policy.
+
+A guarded, disposable CI setup probe exercises stale-process rejection, the actual SCM disabled-start refusal, repeated fencing, interrupted partial fencing, restored authenticated eight-station status and unchanged configuration bytes. It uses an explicit encoder-listing test double with zero outputs, not audio. It refuses execution outside Windows GitHub CI or when the old broadcasting data root exists. This source is pending fresh CI qualification; no operational update control or target-PC maintenance has executed it.
+
+Intent polling now opens a bounded committed-file snapshot with delete sharing so an atomic progress replacement can proceed while the UI reads the prior complete record. A concurrent reader/writer scenario checks complete, monotonic revisions and retained rollback direction.
+
+References: [SERVICE_FAILURE_ACTIONS](https://learn.microsoft.com/en-us/windows/win32/api/winsvc/ns-winsvc-service_failure_actionsw), [ChangeServiceConfig2 queued recovery behavior](https://learn.microsoft.com/en-us/windows/win32/api/winsvc/nf-winsvc-changeserviceconfig2w).
+
 ## Remaining gates before exposing update controls
 
 - An elevated helper must bind the review to the existing protected ownership/configuration, package bytes and journal schema contract.

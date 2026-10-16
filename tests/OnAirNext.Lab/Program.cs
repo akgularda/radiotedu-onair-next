@@ -5,6 +5,11 @@ using System.IO.Pipes;
 using OnAirNext.Engine;
 using OnAirNext.Lab;
 
+if (args.Length == 1 && args[0] == "--service-maintenance-probe")
+{
+    if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Disposable Windows CI setup fixture only.");
+    return await ServiceProbe.MaintenanceAsync();
+}
 if (args.Length == 1 && args[0] == "--service-migration-probe") return await ServiceProbe.MigrationAsync();
 if (args.Length == 1 && args[0] == "--service-report-probe") return await ServiceProbe.ReportAsync();
 if (args.Length == 1 && args[0] == "--service-upload-probe") return await UploadProbe.RunAsync();

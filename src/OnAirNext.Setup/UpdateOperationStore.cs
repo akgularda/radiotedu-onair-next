@@ -47,7 +47,12 @@ public sealed class UpdateOperationStore
     public async Task<UpdateIntent?> ReadIntentAsync(string id,string expectedReview,CancellationToken token=default)
     {
         var path=FilePath(id,".intent.json");if(!File.Exists(path))return null;
-        var intent=await SetupPaths.ReadAsync<UpdateIntent>(path,32768,token);
+        // Readers retain one committed file identity while allowing the atomic replacement.
+        // No writer shares write access to this stream, so partially written JSON is never read.
+        SetupPaths.RequireNoLinks(path);
+        await using var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read|FileShare.Delete,32768,true);
+        if(stream.Length is <1 or >32768)throw new IOException("The saved update direction exceeds its size limit.");
+        var intent=await JsonSerializer.DeserializeAsync<UpdateIntent>(stream,cancellationToken:token)??throw new IOException("The saved update direction is unreadable.");
         if(intent.ReviewSha256 is null||!intent.ReviewSha256.Equals(expectedReview,StringComparison.OrdinalIgnoreCase)||!Enum.IsDefined(intent.Direction)||intent.Revision<1||intent.UpdatedAtUtc==default||intent.UpdatedAtUtc.Offset!=TimeSpan.Zero||string.IsNullOrWhiteSpace(intent.Phase)||intent.Phase.Length>128)
             throw new IOException("The saved update direction does not match the reviewed operation.");
         return intent;

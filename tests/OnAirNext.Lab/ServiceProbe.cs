@@ -6,7 +6,7 @@ using OnAirNext.ServiceControl;
 
 namespace OnAirNext.Lab;
 
-internal static class ServiceProbe
+internal static partial class ServiceProbe
 {
     public static async Task<int> CommandAsync(string action)
     {

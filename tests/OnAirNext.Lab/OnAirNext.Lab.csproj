@@ -6,5 +6,8 @@
     <Compile Include="../../src/OnAirNext.Web/UploadRpc.cs" Link="Protocol/UploadRpc.cs" />
     <Compile Include="../../src/OnAirNext.Host/ServiceEndpoint.cs" Link="ServiceControl/ServiceEndpoint.cs" />
     <Compile Include="../../src/OnAirNext.Host/ServicePipeClient.cs" Link="ServiceControl/ServicePipeClient.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/SetupService.cs" Link="Installation/SetupService.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/SetupModels.cs" Link="Installation/SetupModels.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/UpdateAdmission.cs" Link="Installation/UpdateAdmission.cs" />
   </ItemGroup>
 </Project>

@@ -179,4 +179,26 @@ public sealed class UpdateSwapTests
         await Assert.ThrowsAsync<InvalidOperationException>(()=>operation.Store.RunAsync(operation.Id,operation.Hash,UpdateDirection.Apply,Stopped));
         var saved=await operation.Store.ReadIntentAsync(operation.Id,operation.Hash);Assert.NotNull(saved);Assert.Equal(UpdateDirection.Rollback,saved.Direction);Assert.Equal(UpdateDiskState.Prepared,await f.Swap.InspectAsync());
     }
+    [Fact]
+    public async Task PollingObservesCompleteMonotonicIntentWhileAtomicReplacementContinues()
+    {
+        var f=new Fixture();await f.CreateAsync();var operation=await OperationAsync(f);
+        await operation.Store.RunAsync(operation.Id,operation.Hash,UpdateDirection.Rollback,Stopped);
+        var snapshots=0;long revision=0;
+        var writer=Task.Run(async()=>
+        {
+            for(var i=0;i<40;i++)await operation.Store.RunAsync(operation.Id,operation.Hash,UpdateDirection.Rollback,Stopped);
+        });
+        do
+        {
+            var snapshot=await operation.Store.ReadIntentAsync(operation.Id,operation.Hash);Assert.NotNull(snapshot);
+            Assert.Equal(UpdateDirection.Rollback,snapshot.Direction);Assert.True(snapshot.Revision>=revision);
+            revision=snapshot.Revision;snapshots++;await Task.Yield();
+        }while(!writer.IsCompleted);
+        await writer;Assert.True(snapshots>0);
+        var latest=await operation.Store.ReadIntentAsync(operation.Id,operation.Hash);Assert.NotNull(latest);
+        Assert.True(latest.Revision>=revision);Assert.Equal(82,latest.Revision);
+        Assert.Equal(UpdateDiskState.Prepared,await f.Swap.InspectAsync());
+    }
+
 }
