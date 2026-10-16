@@ -6,6 +6,8 @@ The user rejected the WPF prototype and requested a browser app. [The browser in
 
 The current development branch also adds [non-destructive source gain](docs/SOURCE_NORMALIZATION.md): complete-file loudness analysis, bounded fixed gain, revision-bound persistence and Library reanalysis controls. Exact source cf39fd9c passed 179 unit cases and 148 real audio checks, including two independently decoded normalized synthetic AAC-LC/FLAC branches in run 38842202973. See [qualified source scope](artifacts/evidence/source-normalization-179-20261016.json). Final-mix limiting, full codec headroom and all-stream acceptance remain unfinished.
 
+The next continuation adds [final-mix limiting and delayed output ownership](docs/FINAL_MIX_LIMITER.md), currently under qualification. Its new engine, limiter, journal and UI readouts require fresh exact-source validation; the preceding 179/148 evidence does not qualify these changes.
+
 ## Current interface
 
 The new dark browser console has a channel strip, broadcast desk, searchable/paged Library, folder picker, file-upload controls and System connection screen. It uses local HTML/CSS/JavaScript, without a frontend framework, CDN, external fonts or AI calls. Browser navigation and channel selection have been exercised with actual mouse input in the separate unconnected visual preview.

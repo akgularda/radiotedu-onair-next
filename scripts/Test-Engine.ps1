@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('all','baseline','recovery','durable','lifecycle','finite','offline','fleet','live','soak','backpressure','corrupt','host','precision','normalization')][string]$Scenario = 'all',
+    [ValidateSet('all','baseline','recovery','durable','lifecycle','finite','offline','fleet','live','soak','backpressure','corrupt','host','precision','normalization','processing')][string]$Scenario = 'all',
     [ValidateRange(6,259200)][int]$DurationSeconds = 12,
     [switch]$SkipBootstrap,
     [switch]$SkipUnitTests,

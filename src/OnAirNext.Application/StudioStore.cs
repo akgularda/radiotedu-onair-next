@@ -105,15 +105,19 @@ public sealed class StudioStore : IPlayoutPlanner
         return (IReadOnlyList<ScheduleEntry>)rows;
     });
 
-    public PlayoutSelection Select(int rotationIndex, string? excludeQueueEntryId = null) => Execute((c, t) =>
+    public PlayoutSelection Select(int rotationIndex, string? excludeQueueEntryId = null)
+        => SelectPrepared(rotationIndex,excludeQueueEntryId is null?new HashSet<string>():new HashSet<string>{excludeQueueEntryId})
+           ?? throw new InvalidOperationException("Import songs or choose a playlist before starting automation.");
+
+    public PlayoutSelection? SelectPrepared(int rotationIndex,IReadOnlySet<string> excludedQueueEntries) => Execute((c, t) =>
     {
-        using var pending = Command(c, t, "SELECT a.id,a.path,a.artist,a.title,a.kind,q.id FROM studio_queue q JOIN studio_assets a ON a.id=q.asset_id WHERE q.state='pending' AND a.retired=0 AND q.id<>$exclude ORDER BY q.position LIMIT 1", ("$exclude", excludeQueueEntryId ?? ""));
-        using (var reader = pending.ExecuteReader()) if (reader.Read()) return Selection(reader);
+        using var pending = Command(c, t, "SELECT a.id,a.path,a.artist,a.title,a.kind,q.id FROM studio_queue q JOIN studio_assets a ON a.id=q.asset_id WHERE q.state='pending' AND a.retired=0 ORDER BY q.position");
+        using (var reader = pending.ExecuteReader()) while (reader.Read()) if(!excludedQueueEntries.Contains(reader.GetString(5))) return Selection(reader);
         var playlist = Get(c, t, "playlist", "");
         using var rotation = Command(c, t, "SELECT a.id,a.path,a.artist,a.title,a.kind,NULL FROM studio_assets a LEFT JOIN studio_playlist_items i ON a.id=i.asset_id AND i.playlist_id=$playlist WHERE a.retired=0 AND (($playlist<>'' AND i.asset_id IS NOT NULL) OR ($playlist='' AND a.kind='Music')) ORDER BY COALESCE(i.position,0),a.title,a.id", ("$playlist", playlist));
         using var rows = rotation.ExecuteReader(); var items = new List<PlayoutSelection>();
         while (rows.Read()) items.Add(Selection(rows));
-        if (items.Count == 0) throw new InvalidOperationException("Import songs or choose a playlist before starting automation.");
+        if (items.Count == 0) return (PlayoutSelection?)null;
         return items[rotationIndex % items.Count];
     });
 

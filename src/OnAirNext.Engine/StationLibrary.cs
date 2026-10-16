@@ -93,6 +93,8 @@ public sealed class StationLibrary : IAsyncDisposable
     {
         private static readonly int[] Strides = [1, 3, 5, 7, 11, 13, 17, 19];
         public int? AvailableItems => owner._playback.TryGetValue(settings.Id, out var set) && set.Configured ? set.Items.Length : settings.Playlist.Count;
+        public PlayoutSelection? SelectPrepared(int rotationIndex,IReadOnlySet<string> excludedQueueEntries)
+            => AvailableItems==0?null:Select(rotationIndex);
         public PlayoutSelection Select(int rotationIndex, string? excludeQueueEntryId = null)
         {
             if (!owner._playback.TryGetValue(settings.Id, out var set) || !set.Configured)

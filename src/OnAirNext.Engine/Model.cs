@@ -9,6 +9,7 @@ public static class AudioFormat
     public const int Channels = 2;
     // Engine/codec-pipe contract: interleaved little-endian IEEE float32, stereo, 48 kHz.
     public const int BytesPerSample = sizeof(float);
+    public const float MaximumSourceSample = 64;
     public const int BytesPerSampleFrame = Channels * BytesPerSample;
     public const int SamplesPerBlock = 960;
     public const int BlockBytes = SamplesPerBlock * BytesPerSampleFrame;
@@ -74,6 +75,11 @@ public interface IPlayoutPlanner
 {
     int? AvailableItems => null;
     PlayoutSelection Select(int rotationIndex, string? excludeQueueEntryId = null);
+    PlayoutSelection? SelectPrepared(int rotationIndex,IReadOnlySet<string> excludedQueueEntries)
+    {
+        if(excludedQueueEntries.Count>1)throw new NotSupportedException("This planner cannot exclude every in-flight queue entry.");
+        return Select(rotationIndex,excludedQueueEntries.FirstOrDefault());
+    }
 }
 public sealed record PlayoutCheckpoint(string StationId, string State, int RotationIndex, MediaItem? Item,
     string OccurrenceId, long ItemSamples, long ProgramSamples, bool Announced, DateTimeOffset SavedAtUtc,
@@ -86,7 +92,7 @@ public sealed record StationSnapshot(string Id, string State, long Samples, long
     string? CurrentAssetId = null, long CurrentItemSamples = 0, bool Recovered = false,
     bool Enabled = true, bool RequestedRunning = true, string? LastError = null, DateTimeOffset? RetryAtUtc = null,
     string? CurrentArtist = null, double? CurrentDurationSeconds = null, PlayoutItemSnapshot? NextItem = null,
-    ProgrammeLoudnessSnapshot? Loudness = null, SourceGain? SourceGain = null);
+    ProgrammeLoudnessSnapshot? Loudness = null, SourceGain? SourceGain = null, LimiterSnapshot? Limiter = null);
 
 public interface IStationSession : IAsyncDisposable
 {

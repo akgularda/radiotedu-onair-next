@@ -54,6 +54,8 @@
     const gain=RadioTeduMeter.sourceGain(connected&&station?.CurrentTitle?station.SourceGain:null);
     text('source-processing',connected&&station?.CurrentTitle?gain.text:'Source gain appears during playback.');
     $('source-processing').classList.toggle('warning',connected&&!!station?.CurrentTitle&&gain.warning);
+    const processing=RadioTeduMeter.limiter(connected?station?.Limiter:null);text('limiter-processing',connected?processing.text:'Final-mix limiter status unavailable.');
+    $('limiter-processing').classList.toggle('warning',connected&&processing.warning);
     $('start-station').disabled=!connected||state.busy||!!pending()||!station||running||!station.Enabled||!station.Outputs?.length;
     $('stop-station').disabled=!connected||state.busy||!!pending()||!station||!running;
     const seconds=station?.CurrentDurationSeconds, elapsed=(station?.CurrentItemSamples??0)/48000;
@@ -66,7 +68,7 @@
     const next=connected?station?.NextItem:null;
     if(next){const row=element('tr');const title=element('td');title.append(element('span','asset-title',next.Title),element('span','asset-artist',next.Artist||'Unknown artist'));row.append(element('td','row-number','1'),title,element('td','',next.Kind),element('td','align-right',duration(next.DurationSeconds)));$('queue-rows').replaceChildren(row);text('queue-count','1');text('queue-footer','Prepared by the engine · order may change');}
     else{const cell=element('td','table-empty');cell.colSpan=4;cell.append(icon('library'),element('strong','',connected?'No next item prepared':'Next item will appear here'),element('span','',connected?'Add music to the library. The engine will prepare the next item.':'Connect the engine to view channel status.'));if(!connected){const connect=element('button','button subtle','Connect engine');connect.addEventListener('click',()=>navigate('system'));cell.append(connect);}const row=element('tr');row.append(cell);$('queue-rows').replaceChildren(row);text('queue-count','—');text('queue-footer',connected?'Waiting for a prepared item':'Not loaded');}
-    $('skip-item').disabled=!connected||state.busy||!!pending()||station?.State!=='Running';
+    $('skip-item').disabled=!connected||state.busy||!!pending()||station?.State!=='Running'||!station?.CurrentTitle;
     text('transport-note',connected?(station?.Outputs?.length?'Selected station only':'Configure outputs before starting'):'Controls unavailable');
     const outputs=connected?(station?.Outputs??[]):[];text('output-count',connected?String(outputs.length):'—');
     if(outputs.length){$('output-rows').className='';$('output-rows').replaceChildren(...outputs.map(output=>{const row=element('div','output-row');row.append(element('span','',output.Id),element('span','',output.State));row.title=output.LastError??'';return row;}));}

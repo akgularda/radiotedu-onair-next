@@ -46,3 +46,12 @@ test('invalid metrics and unsettled range are absent rather than zero',()=>{
  assert.equal(meter.sourceGain({...gain,AppliedDb:NaN}).warning,true);
  assert.equal(meter.sourceGain({...gain,TargetLufs:-16}).warning,true);
  });
+
+test('limiter readout requires measured processed frames and never invents compliance',()=>{
+ const {limiter}=require('../../src/OnAirNext.Web/wwwroot/programme-meter.js');
+ assert.equal(limiter(null).warning,true);
+ const state={State:'Processing',CeilingDbtp:-1.5,LookaheadFrames:2880,InputFrames:3840,OutputFrames:960,GainReductionDb:2,MaximumGainReductionDb:3};
+ assert.equal(limiter(state).warning,false);assert.match(limiter(state).text,/2.0 dB reduction/);
+ assert.equal(limiter({...state,OutputFrames:0}).warning,true);assert.equal(limiter({...state,MaximumGainReductionDb:1}).warning,true);
+ assert.equal(limiter({...state,CeilingDbtp:0}).warning,true);assert.doesNotMatch(limiter(state).text,/compliant/i);
+});

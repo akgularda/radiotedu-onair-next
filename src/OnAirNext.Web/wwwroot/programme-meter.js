@@ -20,7 +20,7 @@
     if(snapshot&&snapshot.Continuous===false)notes.push('Measurement gaps: this session has incomplete coverage.');
     if(snapshot?.HistoryFailures>0)notes.push('Measurement history is incomplete.');
     if(usable&&finite(reading.TruePeakDbtp)&&reading.TruePeakDbtp>-1)notes.push('Above the −1 dBTP linear ceiling.');
-    if(!notes.length)notes.push(usable?'Final-mix limiting and encoded-output verification are pending.':active?'Waiting for programme samples.':'Start a station to measure its final programme mix.');
+    if(!notes.length)notes.push(usable?'Final-mix measurements do not establish encoded-output compliance.':active?'Waiting for programme samples.':'Start a station to measure its final programme mix.');
     return {state,usable,stale:active&&!fresh&&scope,levels,
       range:statisticsUsable&&reading.RangeSettled?metric(reading.LoudnessRangeLu).text:'—',
       elapsedSeconds:usable&&finite(reading.SampleFrames)?reading.SampleFrames/48000:null,
@@ -33,5 +33,14 @@
     return {text:gain.State+' · '+(gain.AppliedDb>=0?'+':'')+gain.AppliedDb.toFixed(1)+' dB'+
       (finite(gain.PredictedLufs)?' · predicted '+gain.PredictedLufs.toFixed(1)+' LUFS':''),warning:gain.State!=='Target gain'};
   }
-  return Object.freeze({view,metric,sourceGain});
+  function limiter(processing){
+    if(!processing||!['Processing','Finished'].includes(processing.State)||!finite(processing.CeilingDbtp)||processing.CeilingDbtp>-1.4||
+      processing.LookaheadFrames!==2880||!finite(processing.OutputFrames)||processing.OutputFrames<=0||!finite(processing.InputFrames)||
+      processing.InputFrames<processing.OutputFrames||!finite(processing.GainReductionDb)||processing.GainReductionDb<0||
+      !finite(processing.MaximumGainReductionDb)||processing.MaximumGainReductionDb<processing.GainReductionDb)
+      return {text:'Final-mix limiter status unavailable.',warning:true};
+    return {text:'Final-mix limiter · last output '+processing.GainReductionDb.toFixed(1)+' dB reduction · max '+processing.MaximumGainReductionDb.toFixed(1)+
+      ' dB · '+processing.CeilingDbtp.toFixed(1)+' dBTP setting · 60 ms lookahead',warning:false};
+  }
+  return Object.freeze({view,metric,sourceGain,limiter});
 });

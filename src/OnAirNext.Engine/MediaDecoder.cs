@@ -95,7 +95,7 @@ public sealed class MediaDecoder : IAsyncDisposable
     private static void ValidateSamples(ReadOnlySpan<byte> pcm)
     {
         foreach (var value in MemoryMarshal.Cast<byte, float>(pcm))
-            if (!float.IsFinite(value)) throw new InvalidDataException("The asset contains nonfinite PCM samples.");
+            if (!float.IsFinite(value) || Math.Abs(value) > AudioFormat.MaximumSourceSample) throw new InvalidDataException("The asset contains nonfinite or out-of-domain PCM samples.");
     }
 
     public async ValueTask<PcmBlock?> ReadAsync(CancellationToken token)

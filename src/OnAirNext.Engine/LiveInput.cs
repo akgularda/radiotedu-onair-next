@@ -61,7 +61,7 @@ public sealed class LiveInput : IDisposable
 
     private static bool ValidSamples(ReadOnlySpan<byte> pcm)
     {
-        foreach (var value in MemoryMarshal.Cast<byte, float>(pcm)) if (!float.IsFinite(value)) return false;
+        foreach (var value in MemoryMarshal.Cast<byte, float>(pcm)) if (!float.IsFinite(value) || Math.Abs(value) > AudioFormat.MaximumSourceSample) return false;
         return true;
     }
 

@@ -68,12 +68,14 @@ foreach (var test in cases)
     }
     finally { if (File.Exists(file)) File.Delete(file); }
 }
+var limiterResults = await LimiterReferenceChecks.RunAsync(root, RunAsync);
+results.AddRange(limiterResults); passed &= limiterResults.All(x=>x.Passed);
 await File.WriteAllTextAsync(Path.Combine(root, "summary.json"), JsonSerializer.Serialize(new
 {
     Source = Environment.GetEnvironmentVariable("GITHUB_SHA"), AtUtc = DateTimeOffset.UtcNow,
-    Completed = results.Count == cases.Length, Passed = passed, Cases = results,
+    Completed = results.Count == cases.Length + LimiterReferenceChecks.CaseCount, Passed = passed, Cases = results,
     ReferenceVersion = referenceVersion.Split('\n')[0].Trim(), SampleRate = 48000, Channels = 2,
-    Scope = "Synthetic stereo instrument comparison only. No encoded outputs, broadcasting PC, normalization, limiter, UI or full EBU test-set acceptance."
+    Scope = "Synthetic stereo meter and six oversampled final-limiter signal comparisons only. No encoded-output limiter, broadcasting PC, UI, full programme loudness workflow or full EBU test-set acceptance."
 }, new JsonSerializerOptions { WriteIndented = true }));
 return passed ? 0 : 1;
 

@@ -8,7 +8,7 @@ New-Item -ItemType Directory -Path $audioEvidence -Force | Out-Null
 $audioTools = Join-Path $env:RUNNER_TEMP ('onair-next-audio-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $audioTools | Out-Null
 $audioSummary = [ordered]@{ Source=$env:GITHUB_SHA; Completed=$false; Passed=$false; ProductionChanged=$false;
-    Scope='Real isolated AAC-LC/24-bit Ogg FLAC, synthetic live mix and recovery only. Includes five-signal fixed source gain and two low-crest normalized AAC-LC/FLAC branches. No HE-AAC/18-output/final limiter/worst-case codec headroom/actual-PC/24-72h or mouse acceptance.';
+    Scope='Real isolated AAC-LC/24-bit Ogg FLAC, synthetic live mix and recovery only. Includes five-signal fixed source gain and two low-crest normalized AAC-LC/FLAC branches. Includes synthetic final-mix limiter and prepared/audible recovery ownership. No HE-AAC/18-output/worst-case encoded limiter/headroom/actual-PC/24-72h or mouse acceptance.';
     HeAacTested=$false; Cases=@(); Tools=@(); Error=$null }
 try {
     $audioArchives = @(
@@ -37,7 +37,7 @@ try {
     $audioDotnet = (Get-Command dotnet.exe -ErrorAction Stop).Source
     $audioLab = Join-Path $BuildRoot 'OnAirNext.Lab\release\OnAirNext.Lab.dll'
     if (-not (Test-Path -LiteralPath $audioLab)) { throw 'The compiled audio lab is missing.' }
-    $audioScenarios = @('baseline','precision','normalization','live','recovery','finite','backpressure','corrupt')
+    $audioScenarios = @('baseline','precision','normalization','processing','live','recovery','finite','backpressure','corrupt')
     foreach ($audioScenario in $audioScenarios) {
         $audioLog = Join-Path $audioEvidence ($audioScenario + '.log')
         $audioOutput = @(& (Join-Path $PSScriptRoot 'Test-Engine.ps1') -PreparedCiBuild -Scenario $audioScenario -DurationSeconds 12 -FfmpegRuntime $audioFfmpeg -IcecastRuntime $audioIcecast 2>&1)

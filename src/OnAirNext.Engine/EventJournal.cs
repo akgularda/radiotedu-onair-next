@@ -138,7 +138,7 @@ public sealed partial class EventJournal : IAsyncDisposable
             if (!WriteEvent(connection, transaction, entry)) return false;
             if (checkpoint is not null) WriteCheckpoint(connection, transaction, checkpoint);
             if (entry.Type == "ended") CompleteCadence(connection, transaction, entry);
-            if (entry.Type is "skipped" or "ended" or "failed")
+            if (entry.Type is "skipped" or "ended" or "failed" or "decode_failed")
                 ConsumeSkips(connection, transaction, entry.StationId, entry.OccurrenceId);
             if (entry.QueueEntryId is not null)
             {
@@ -149,7 +149,7 @@ public sealed partial class EventJournal : IAsyncDisposable
                     using var update = connection.CreateCommand(); update.Transaction = transaction;
                     update.CommandText = "UPDATE studio_queue SET state=$state WHERE id=$id";
                     update.Parameters.AddWithValue("$id", entry.QueueEntryId);
-                    update.Parameters.AddWithValue("$state", entry.Type is "started" or "resumed" ? "playing" : entry.Type is "ended" or "skipped" or "failed" ? "completed" : "pending");
+                    update.Parameters.AddWithValue("$state", entry.Type is "started" or "resumed" ? "playing" : entry.Type == "decode_failed" ? "failed" : entry.Type is "ended" or "skipped" or "failed" ? "completed" : "pending");
                     update.ExecuteNonQuery();
                 }
             }
@@ -210,7 +210,15 @@ public sealed partial class EventJournal : IAsyncDisposable
         command.Parameters.AddWithValue("$id", id); command.Parameters.AddWithValue("$station", station);
         command.Parameters.AddWithValue("$target", (object?)targetOccurrence ?? DBNull.Value);
         command.Parameters.AddWithValue("$request", (object?)requestTarget ?? DBNull.Value);
-        return command.ExecuteNonQuery() == 1;
+        var inserted = command.ExecuteNonQuery() == 1;
+        if (inserted && requestTarget is null && targetOccurrence is not null)
+        {
+            using var completed = connection.CreateCommand(); completed.Transaction = transaction;
+            completed.CommandText = "UPDATE engine_commands SET processed=1 WHERE id=$id AND EXISTS(SELECT 1 FROM playback_events WHERE station_id=$station AND occurrence_id=$target AND event_type IN ('ended','skipped','failed','decode_failed'))";
+            completed.Parameters.AddWithValue("$id", id); completed.Parameters.AddWithValue("$station", station); completed.Parameters.AddWithValue("$target", targetOccurrence);
+            completed.ExecuteNonQuery();
+        }
+        return inserted;
     });
 
     internal Task<bool> HasObservedSkipReceiptAsync(string station, string id) => TransactionAsync((connection, transaction)
