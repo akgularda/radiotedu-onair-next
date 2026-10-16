@@ -17,16 +17,17 @@ if (args.SequenceEqual(new[] { "-hide_banner", "-encoders" }) && Path.GetFileNam
 var arguments = args.Chunk(2).ToDictionary(x => x[0], x => x.Length == 2 ? x[1] : throw new ArgumentException("Arguments require values."));
 var localRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadioTEDU", "OnAirNext-Dev");
 var ffmpeg = arguments.GetValueOrDefault("--ffmpeg") ?? "ffmpeg";
+var dotnet = arguments.GetValueOrDefault("--dotnet") ?? Path.Combine(localRoot, "tools", "dotnet", "dotnet.exe");
 var icecastRoot = arguments.GetValueOrDefault("--icecast-root") ?? Path.Combine(localRoot, "tools", "icecast");
 var scenario = arguments.GetValueOrDefault("--scenario") ?? "all";
 var duration = int.Parse(arguments.GetValueOrDefault("--duration-seconds") ?? "12", System.Globalization.CultureInfo.InvariantCulture);
 if (duration is < 6 or > 259200) throw new ArgumentException("Choose 6 seconds through 72 hours.");
-if (scenario is not ("all" or "baseline" or "recovery" or "durable" or "lifecycle" or "finite" or "offline" or "fleet" or "live" or "soak" or "backpressure" or "corrupt" or "host")) throw new ArgumentException("Unknown lab scenario.");
+if (scenario is not ("all" or "baseline" or "recovery" or "durable" or "lifecycle" or "finite" or "offline" or "fleet" or "live" or "soak" or "backpressure" or "corrupt" or "host" or "precision")) throw new ArgumentException("Unknown lab scenario.");
 var runRoot = Path.Combine(localRoot, "runs", DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N")[..8]);
 Directory.CreateDirectory(runRoot);
 var fixtures = Sandbox.Fixtures(Path.Combine(runRoot, "fixtures"));
 var results = new List<CaseResult>();
-foreach (var name in scenario == "all" ? new[] { "baseline", "recovery", "durable", "lifecycle", "finite", "offline", "fleet", "live", "backpressure", "corrupt", "host" } : new[] { scenario })
+foreach (var name in scenario == "all" ? new[] { "baseline", "precision", "recovery", "durable", "lifecycle", "finite", "offline", "fleet", "live", "backpressure", "corrupt", "host" } : new[] { scenario })
 {
     var result = new CaseResult(name);
     Console.WriteLine($"Starting {name}; all origins and mounts are loopback test resources.");
@@ -46,6 +47,7 @@ foreach (var name in scenario == "all" ? new[] { "baseline", "recovery", "durabl
             case "backpressure": await BackpressureAsync(result); break;
             case "corrupt": await CorruptAsync(result); break;
             case "host": await HostAsync(result); break;
+            case "precision": await PrecisionAsync(result); break;
         }
         result.Passed = true;
     }
@@ -57,13 +59,58 @@ foreach (var name in scenario == "all" ? new[] { "baseline", "recovery", "durabl
     {
         SchemaVersion = 1, CreatedAtUtc = DateTimeOffset.UtcNow, Machine = Environment.MachineName,
         OS = RuntimeInformation.OSDescription, Runtime = RuntimeInformation.FrameworkDescription,
-        Icecast = "2.5.0", TestProfiles = new[] { "AAC-LC 192 kbps", "Ogg FLAC" },
+        Icecast = "2.5.0", TestProfiles = new[] { "AAC-LC 192 kbps", "24-bit Ogg FLAC" },
         HeAacTested = false, Source = "New independent implementation; no production configuration or services accessed.",
+        ExecutionSource = Environment.GetEnvironmentVariable("GITHUB_SHA"), PcmFormat = "48k stereo float32 little-endian",
+        ExecutionBuild = typeof(StationEngine).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .Cast<System.Reflection.AssemblyInformationalVersionAttribute>().Single().InformationalVersion,
         Results = results, RemainingOwnedChildren = ChildProcess.ActiveProcesses
     }, new JsonSerializerOptions { WriteIndented = true }));
 }
 Console.WriteLine("Evidence: " + Path.Combine(runRoot, "results.json"));
 return results.All(x => x.Passed) && ChildProcess.ActiveProcesses.Count == 0 ? 0 : 1;
+
+async Task PrecisionAsync(CaseResult result)
+{
+    var root = Path.Combine(runRoot, result.Name);
+    var fixture = PrecisionProbe.Fixture(Path.Combine(root, "fixtures"));
+    await using var origin = new Sandbox(icecastRoot, root); await origin.StartAsync();
+    await using var journal = new EventJournal(Path.Combine(root, "playback.db"));
+    await using var station = new StationEngine(ffmpeg, new StationSettings("precision", [fixture.Item],
+        [origin.Output("precision", CodecProfile.OggFlac)]), journal);
+    await station.StartAsync();
+    await WaitAsync(() => station.Snapshot().Outputs[0].State == "SourceConnected", "Precision source connects.");
+    await using (var probe = new PrecisionProbe(ffmpeg, origin.Port, "/next-precision", fixture.Left, fixture.Right))
+    {
+        var measured = await probe.Result.WaitAsync(TimeSpan.FromSeconds(15)); result.Details["listener"] = measured;
+        Check(result, measured.ComparedFrames >= 2 * 48000, "Real Ogg FLAC listener decoded at least two seconds of stereo PCM.");
+        Check(result, measured.FirstFixtureFrame is not null && measured.MismatchedFrames == 0 && measured.MaximumErrorLsb24 <= 1,
+            "Decoded FLAC follows the original 24-bit sample sequence across repeated file boundaries.");
+        Check(result, measured.SubSixteenBitFrames > measured.ComparedFrames * 0.9, "Sub-16-bit sample detail survives the entire decoder/mix/encoder/listener path.");
+        Check(result, measured.StereoDifferentFrames > measured.ComparedFrames * 0.9, "Distinct left and right channels remain distinct.");
+    }
+    var ffprobe = Path.Combine(Path.GetDirectoryName(ffmpeg)!, "ffprobe.exe");
+    var info = ChildProcess.Start(ffprobe, ["-v", "error", "-rw_timeout", "5000000", "-read_intervals", "%+#1", "-show_entries",
+        "stream=codec_name,sample_rate,channels,bits_per_raw_sample", "-of", "json", $"http://127.0.0.1:{origin.Port}/next-precision"], output: true, role: "precision-format-probe");
+    try
+    {
+        var json = info.StandardOutput.ReadToEndAsync(); var errors = ChildProcess.DrainErrorAsync(info);
+        await info.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        using var metadata = JsonDocument.Parse(await json); var stream = metadata.RootElement.GetProperty("streams")[0];
+        result.Details["stream"] = stream.Clone();
+        Check(result, info.ExitCode == 0 && stream.GetProperty("codec_name").GetString() == "flac" && stream.GetProperty("sample_rate").GetString() == "48000" &&
+            stream.GetProperty("channels").GetInt32() == 2 && stream.GetProperty("bits_per_raw_sample").GetString() == "24", "Independent stream probe confirms 48 kHz stereo 24-bit FLAC.");
+        _ = await errors;
+    }
+    finally { await ChildProcess.StopAsync(info); }
+    await WaitAsync(() => station.Snapshot().Loudness?.Current?.Reading?.SampleFrames >= 48000, "Final-mix meter processes real engine PCM.");
+    var beforeStop = station.Snapshot(); result.Details["station"] = beforeStop;
+    Check(result, beforeStop.Loudness?.Continuous == true && beforeStop.Loudness.HistoryFailures == 0, "Real audio loop publishes continuous measured final-mix coverage without blocking outputs.");
+    await station.DisposeAsync();
+    var history = journal.MeasurementHistory("precision"); result.Details["measurementHistory"] = history;
+    Check(result, history.Any(w => w.Phase == "Finished" && w.Reading?.IntegratedLufs is not null && !w.HasMeasurementGap), "Measured final-mix window closes durably with real sample boundaries.");
+    result.Details["scope"] = "Synthetic pre-encoder meter and 24-bit FLAC precision only; no normalization, true-peak limiting, HE-AAC or production compliance.";
+}
 
 async Task WaitAsync(Func<bool> condition, string description, int seconds = 12)
 {
@@ -267,10 +314,10 @@ async Task LiveAsync(CaseResult result)
         for (var frame = 0; frame < 75; frame++)
         {
             var input = PcmBlock.Rent();
-            var samples = MemoryMarshal.Cast<byte, short>(input.Memory.Span);
+            var samples = MemoryMarshal.Cast<byte, float>(input.Memory.Span);
             for (var i = 0; i < 960; i++)
             {
-                var value = (short)(9000 * Math.Sin(2 * Math.PI * 1760 * position++ / 48000));
+                var value = (float)(9000 / 32768.0 * Math.Sin(2 * Math.PI * 1760 * position++ / 48000));
                 samples[i * 2] = value; samples[i * 2 + 1] = value;
             }
             station.Live.Push(input); await Task.Delay(20);
@@ -361,7 +408,7 @@ async Task DurableAsync(CaseResult result)
         Ffmpeg = ffmpeg, DataRoot = root, PipeName = pipeName,
         Stations = new[] { new StationSettings("durable", songs, [origin.Output("durable")], Repeat: false) }
     }));
-    var sdk = Path.Combine(localRoot, "tools", "dotnet", "dotnet.exe");
+    var sdk = dotnet;
     var assembly = Path.Combine(localRoot, "build", "bin", "OnAirNext.Host", "release", "OnAirNext.Host.dll");
     var hostLogs = new List<Task>();
     var generation = 0;
@@ -498,7 +545,7 @@ async Task LifecycleAsync(CaseResult result)
         Stations = new[] { new StationSettings("a", fixtures, [origin.Output("life-a")], AutoStart: false),
             new StationSettings("b", fixtures, [origin.Output("life-b")]) }
     }));
-    var sdk = Path.Combine(localRoot, "tools", "dotnet", "dotnet.exe");
+    var sdk = dotnet;
     var assembly = Path.Combine(localRoot, "build", "bin", "OnAirNext.Host", "release", "OnAirNext.Host.dll");
     async Task Accepted(ControlHost host, string action, string station, string id)
     {
@@ -587,7 +634,7 @@ async Task FiniteAsync(CaseResult result)
         Ffmpeg = ffmpeg, DataRoot = root, PipeName = pipe,
         Stations = new[] { new StationSettings("finite", [fixtures[0]], [origin.Output("finite")], Repeat: false) }
     }));
-    var sdk = Path.Combine(localRoot, "tools", "dotnet", "dotnet.exe");
+    var sdk = dotnet;
     var assembly = Path.Combine(localRoot, "build", "bin", "OnAirNext.Host", "release", "OnAirNext.Host.dll");
     var database = Path.Combine(root, "playback.db");
     await using (var first = new ControlHost(sdk, assembly, configuration, pipe, Path.Combine(root, "host-1")))
@@ -625,7 +672,7 @@ async Task HostAsync(CaseResult result)
         Ffmpeg = ffmpeg, DataRoot = root, PipeName = pipeName,
         Stations = new[] { new StationSettings("host", fixtures, [origin.Output("host")]) }
     }));
-    var sdk = Path.Combine(localRoot, "tools", "dotnet", "dotnet.exe");
+    var sdk = dotnet;
     var assembly = Path.Combine(localRoot, "build", "bin", "OnAirNext.Host", "release", "OnAirNext.Host.dll");
     var host = ChildProcess.Start(sdk, [assembly, "--config", config], output: true, role: "engine-host");
     var stderr = ChildProcess.DrainErrorAsync(host); var stdout = host.StandardOutput.ReadToEndAsync();

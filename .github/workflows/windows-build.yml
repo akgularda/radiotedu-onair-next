@@ -59,6 +59,10 @@ jobs:
         run: dotnet build OnAirNext.slnx -c Release --no-restore -m:1 /p:UseSharedCompilation=false /p:BuildInParallel=false
       - name: Run focused unit tests
         run: dotnet test tests/OnAirNext.Tests/OnAirNext.Tests.csproj -c Release --no-build --logger "trx;LogFileName=engine-tests.trx" --results-directory artifacts/test-results
+      - name: Verify meter display states and script syntax
+        run: |
+          node --check src/OnAirNext.Web/wwwroot/studio.js
+          node --test tests/browser/loudness-view.test.cjs
       - name: Retain unit test results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -68,6 +72,15 @@ jobs:
           if-no-files-found: warn
       - name: Locate compiled binaries
         run: '"ONAIR_BUILD_BIN=$env:LOCALAPPDATA/RadioTEDU/OnAirNext-Dev/build/bin" >> $env:GITHUB_ENV'
+      - name: Qualify real float PCM and isolated audio codecs
+        run: ./scripts/Test-WindowsAudio.ps1 -BuildRoot "$env:ONAIR_BUILD_BIN"
+      - name: Retain real isolated audio qualification
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-real-audio-qualification
+          path: artifacts/windows-audio/summary.json
+          if-no-files-found: warn
       - name: Qualify isolated Windows service lifecycle
         run: ./scripts/Test-WindowsService.ps1 -BuildRoot "$env:ONAIR_BUILD_BIN"
       - name: Retain isolated service qualification

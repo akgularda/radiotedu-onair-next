@@ -76,9 +76,52 @@
     $('engine-label').replaceChildren(document.createTextNode(connected?'Engine connected':'Engine not connected'),element('small','',connected?'Isolated development engine':'Existing broadcasts unchanged'));
     $('disconnect-engine').disabled=!state.engine;
     $('retry-command').hidden=!pending();$('retry-command').disabled=!connected||state.busy;
-    libraryControls();
+    libraryControls();renderProgrammeMeter();
   }
   function libraryControls(){const enabled=fresh()&&!state.busy&&!pending();$('choose-folder').disabled=!enabled;$('add-files').disabled=!enabled||!state.library?.canImportFiles;$('managed-folder').disabled=!enabled;$('rescan').disabled=!enabled||!state.library?.page?.Root;$('library-prev').disabled=!fresh()||state.offset===0;$('library-next').disabled=!fresh()||state.library?.page?.Items?.length!==50;document.querySelectorAll('.transfer-action').forEach(button=>button.disabled=!enabled);document.querySelectorAll('.asset-action').forEach(button=>button.disabled=!enabled);assetDialogControls();folderControls();}
+  function renderProgrammeMeter(){
+    const station=current(),connected=fresh(),offered=station?.Loudness;
+    const cached=state.meter?.engine===state.engine&&state.meter?.station===state.station?state.meter.snapshot:null;
+    const snapshot=cached&&(!offered||Date.parse(cached.UpdatedAtUtc)>=Date.parse(offered.UpdatedAtUtc))?cached:offered;
+    const model=RadioTeduMeter.view(connected?snapshot:null,Date.now(),connected&&station?.State==='Running');
+    text('meter-state',model.state);text('meter-range',model.range);text('meter-note',model.note);
+    $('meter-note').classList.toggle('warning',model.warning);$('meter-note').closest('.programme-meter').classList.toggle('stale',model.stale);
+    for(const [name,level] of Object.entries(model.levels)){
+      text('meter-'+name,level.text);const bar=$('bar-'+name);if(!bar)continue;
+      bar.firstElementChild.style.transform=`scaleX(${level.ratio})`;
+      if(level.value===null){bar.removeAttribute('aria-valuenow');bar.setAttribute('aria-valuetext','No fresh measurement');}
+      else{const min=Number(bar.getAttribute('aria-valuemin')),max=Number(bar.getAttribute('aria-valuemax'));bar.setAttribute('aria-valuenow',String(Math.max(min,Math.min(max,level.value))));bar.setAttribute('aria-valuetext',level.text+(name==='peak'?' dBTP':' LUFS'));}
+      bar.classList.toggle('over',name==='peak'&&level.value!==null&&level.value>-1);
+    }
+    text('meter-window',model.elapsedSeconds===null?'1-hour continuous windows':duration(model.elapsedSeconds)+' / 1 hour');
+    $('meter-history').disabled=!connected;
+  }
+  async function pollProgrammeMeter(){
+    if(state.meterPolling||state.consoleClosed||document.hidden||state.page!=='air'||!fresh()||current()?.State!=='Running'||!$('channel-inspector').offsetParent)return;
+    const engine=state.engine,station=state.station;state.meterPolling=true;
+    try{const result=await api('/api/loudness?engine='+encodeURIComponent(engine)+'&station='+encodeURIComponent(station),{timeout:1200});
+      if(engine===state.engine&&station===state.station&&result.station===station)state.meter={engine,station,snapshot:result.meter};}
+    catch{}finally{state.meterPolling=false;renderProgrammeMeter();}
+  }
+  async function loadMeterHistory(){
+    const target=state.meterHistoryTarget;if(!target||state.meterHistoryBusy)return;
+    state.meterHistoryBusy=true;$('meter-history-prev').disabled=true;$('meter-history-next').disabled=true;text('meter-history-error','Loading saved measurements…');
+    try{const result=await api('/api/loudness-history?engine='+encodeURIComponent(target.engine)+'&station='+encodeURIComponent(target.station)+'&offset='+target.offset);
+      if(state.meterHistoryTarget!==target)return;if(result.station!==target.station||!Array.isArray(result.items))throw new Error(result.error??'Measurement history is unavailable.');
+      $('meter-history-rows').replaceChildren(...result.items.map(item=>{const row=element('tr'),reading=item.Reading;
+        row.append(element('td','mono',item.StartedAtUtc?.replace('T',' ').slice(0,19)??'—'),element('td','',item.Phase+(item.HasMeasurementGap?' · incomplete':'')),
+          element('td','mono',duration((reading?.SampleFrames??0)/48000)),element('td','mono',RadioTeduMeter.metric(reading?.IntegratedLufs).text),element('td','mono',RadioTeduMeter.metric(reading?.TruePeakDbtp).text));
+        row.title=item.Reason+(item.MissingTail?' · unknown or missing tail':'');return row;}));
+      text('meter-history-error',result.items.length?'Saved snapshots '+(target.offset+1)+'–'+(target.offset+result.items.length):'No saved measurement snapshots.');
+      $('meter-history-prev').disabled=target.offset===0;$('meter-history-next').disabled=result.items.length!==50;
+    }catch(error){if(state.meterHistoryTarget===target)text('meter-history-error',error.message);}
+    finally{state.meterHistoryBusy=false;if(state.meterHistoryTarget&&state.meterHistoryTarget!==target&&$('meter-history-dialog').open)void loadMeterHistory();}
+  }
+  $('meter-history').addEventListener('click',()=>{state.meterHistoryTarget={engine:state.engine,station:state.station,offset:0};text('meter-history-context',stationName()+' · Continuous programme windows · UTC');$('meter-history-rows').replaceChildren();$('meter-history-dialog').showModal();void loadMeterHistory();});
+  $('meter-history-dialog').addEventListener('close',()=>{state.meterHistoryTarget=null;});
+  $('meter-history-prev').addEventListener('click',()=>{const t=state.meterHistoryTarget;if(t){state.meterHistoryTarget={...t,offset:Math.max(0,t.offset-50)};void loadMeterHistory();}});
+  $('meter-history-next').addEventListener('click',()=>{const t=state.meterHistoryTarget;if(t){state.meterHistoryTarget={...t,offset:t.offset+50};void loadMeterHistory();}});
+  setInterval(()=>{if(!document.hidden&&!state.consoleClosed&&state.page==='air'){renderProgrammeMeter();void pollProgrammeMeter();}},100);
   async function discover(){
     try{const result=await api('/api/engines');const options=result.engines??[];$('engine-select').replaceChildren(...(options.length?options.map(name=>{const option=element('option','',name);option.value=name;return option;}):[element('option','','No engines available')]));$('engine-select').disabled=!options.length;$('connect-engine').disabled=!options.length;text('engine-discovery',options.length?`${options.length} isolated engine${options.length===1?'':'s'} found on this computer.`:result.preview?'Visual preview. No broadcasting engine is connected.':'No isolated engine is running. Review the separate installation below or refresh discovery after service startup.');}
     catch(error){text('engine-discovery','Engine discovery unavailable: '+error.message);}

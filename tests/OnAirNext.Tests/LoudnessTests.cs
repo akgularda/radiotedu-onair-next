@@ -207,4 +207,35 @@ public sealed class LoudnessTests
         for (var i = 0; i < 100; i++) meter.Feed(block);
         Assert.Equal(before, GC.GetAllocatedBytesForCurrentThread());
     }
+
+    [Fact]
+    public void FastLiveReadKeepsItsStatisticsWindowExplicitUntilRecomputed()
+    {
+        var meter = NewMeter();
+        StereoReferenceSignals.Render(b => meter.Feed(b.Span), new ToneSegment(1, -23));
+        var first = meter.Read(); Near(-23, first.IntegratedLufs);
+        StereoReferenceSignals.Render(b => meter.Feed(b.Span), new ToneSegment(1, -33));
+        var live = meter.ReadLevels();
+        Assert.Equal(96000, live.SampleFrames); Assert.Equal(48000, live.StatisticsSampleFrames);
+        Assert.Equal(first.IntegratedLufs, live.IntegratedLufs); Assert.Equal(first.IntegratedFrames, live.IntegratedFrames);
+        Near(-33, live.MomentaryLufs);
+        var recomputed = meter.Read(); Assert.Equal(96000, recomputed.StatisticsSampleFrames);
+        Assert.NotEqual(first.IntegratedLufs, recomputed.IntegratedLufs);
+    }
+
+    [Fact]
+    public void LongSilentTailCannotBecomeALoudProgrammeOrEraseItsPreviousPeak()
+    {
+        var meter = NewMeter();
+        StereoReferenceSignals.Render(b => meter.Feed(b.Span), new ToneSegment(1, -23));
+        var first = meter.Read();
+        StereoReferenceSignals.Render(b => meter.Feed(b.Span), new ToneSegment(5, double.NegativeInfinity));
+        meter.Finish(); var tail = meter.Read();
+        Assert.True(tail.MomentaryLufs is null || tail.MomentaryLufs < -70);
+        Assert.True(tail.ShortTermLufs is null || tail.ShortTermLufs < -70);
+        Assert.Equal(first.SamplePeakDbfs, tail.SamplePeakDbfs);
+        // Seven full and three trailing 75/50/25-percent 400 ms gating blocks remain above the gates.
+        Near(-23 + 10 * Math.Log10(0.85), tail.IntegratedLufs);
+        Assert.Equal(6 * 48000, tail.SampleFrames);
+    }
 }

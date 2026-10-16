@@ -4,7 +4,8 @@ namespace OnAirNext.Engine;
 
 public sealed record LoudnessReading(long SampleFrames, long IntegratedFrames, double? MomentaryLufs,
     double? ShortTermLufs, double? IntegratedLufs, double? LoudnessRangeLu, double? MaximumMomentaryLufs,
-    double? MaximumShortTermLufs, double? SamplePeakDbfs, double? TruePeakDbtp, bool RangeSettled, bool Finished);
+    double? MaximumShortTermLufs, double? SamplePeakDbfs, double? TruePeakDbtp, bool RangeSettled, bool Finished,
+    long StatisticsSampleFrames = 0);
 
 /// <summary>
 /// Single-owner, fixed 48 kHz stereo measurement. No gain, limiter, I/O, background work or compliance verdict.
@@ -40,6 +41,8 @@ public sealed class StereoLoudnessMeter48k
     private double _quantumEnergy, _momentarySum, _shortTermSum, _samplePeak, _truePeak;
     private double? _momentary, _shortTerm, _maximumMomentary, _maximumShortTerm;
     private bool _finished;
+    private double? _integratedValue, _rangeValue;
+    private long _statisticsFrames, _integratedFrames;
 
     public StereoLoudnessMeter48k(TimeSpan maximumWindow)
     {
@@ -93,6 +96,7 @@ public sealed class StereoLoudnessMeter48k
         _quanta[index] = energy;
         _momentarySum += energy; _shortTermSum += energy;
         _quantumCount++; _withinQuantum = 0; _quantumEnergy = 0;
+        _left.ClearNegligibleState(); _right.ClearNegligibleState();
         if (_quantumCount >= 20)
         {
             _momentary = Lufs(_momentarySum / 20);
@@ -121,23 +125,28 @@ public sealed class StereoLoudnessMeter48k
         double sum = 0; var included = 0;
         foreach (var energy in _integrated.AsSpan(0, _integratedCount))
             if (energy > gate) { sum += energy; included++; }
-        var integrated = included == 0 ? null : Lufs(sum / included);
+        _integratedValue = included == 0 ? null : Lufs(sum / included);
         var rangeGate = Gate(_shortTerms.AsSpan(0, _shortTermCount), 0.01, includeAbsoluteBoundary: true);
         var rangeCount = 0;
         foreach (var energy in _shortTerms.AsSpan(0, _shortTermCount))
             if (energy >= rangeGate && energy > 0) _rangeScratch[rangeCount++] = energy;
-        double? range = null;
+        _rangeValue = null;
         if (rangeCount > 0)
         {
             Array.Sort(_rangeScratch, 0, rangeCount);
             var low = (int)Math.Round((rangeCount - 1) * 0.10, MidpointRounding.AwayFromZero);
             var high = (int)Math.Round((rangeCount - 1) * 0.95, MidpointRounding.AwayFromZero);
-            range = 10 * Math.Log10(_rangeScratch[high] / _rangeScratch[low]);
+            _rangeValue = 10 * Math.Log10(_rangeScratch[high] / _rangeScratch[low]);
         }
-        var integratedFrames = _integratedCount == 0 ? 0 : 19200L + (_integratedCount - 1L) * 4800;
-        return new(_frames, integratedFrames, _momentary, _shortTerm, integrated, range, _maximumMomentary,
-            _maximumShortTerm, Db(_samplePeak), Db(Math.Max(_samplePeak, _truePeak)), _frames >= SampleRate * 60L, _finished);
+        _integratedFrames = _integratedCount == 0 ? 0 : 19200L + (_integratedCount - 1L) * 4800;
+        _statisticsFrames = _frames;
+        return ReadLevels();
     }
+
+    /// <summary>Constant-work live levels with the last computed I/LRA and their explicit sample age.</summary>
+    public LoudnessReading ReadLevels() => new(_frames, _integratedFrames, _momentary, _shortTerm,
+        _integratedValue, _rangeValue, _maximumMomentary, _maximumShortTerm, Db(_samplePeak),
+        Db(Math.Max(_samplePeak, _truePeak)), _statisticsFrames >= SampleRate * 60L, _finished, _statisticsFrames);
 
     private static double Gate(ReadOnlySpan<double> energies, double relativeFactor, bool includeAbsoluteBoundary = false)
     {
@@ -158,6 +167,14 @@ public sealed class StereoLoudnessMeter48k
         private double _s1, _s2, _h1, _h2;
         private readonly double[] _history = new double[12];
         private int _index;
+        public void ClearNegligibleState()
+        {
+            // Far below even float32's minimum signal; prevent denormal CPU spikes after silence.
+            if (Math.Abs(_s1) < 1e-100) _s1 = 0;
+            if (Math.Abs(_s2) < 1e-100) _s2 = 0;
+            if (Math.Abs(_h1) < 1e-100) _h1 = 0;
+            if (Math.Abs(_h2) < 1e-100) _h2 = 0;
+        }
         public double Weighted(double sample)
         {
             // BS.1770-5 Annex 1, tables 1 and 2; transposed direct form II, double state.

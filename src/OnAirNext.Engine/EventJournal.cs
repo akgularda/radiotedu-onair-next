@@ -78,6 +78,11 @@ public sealed partial class EventJournal : IAsyncDisposable
                   PRIMARY KEY(station_id,occurrence_id));
                 CREATE TABLE IF NOT EXISTS playout_checkpoints(station_id TEXT PRIMARY KEY,payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS engine_commands(id TEXT PRIMARY KEY,station_id TEXT NOT NULL,kind TEXT NOT NULL,processed INTEGER NOT NULL DEFAULT 0);
+                CREATE TABLE IF NOT EXISTS programme_measurements(sequence INTEGER PRIMARY KEY,
+                  window_id TEXT NOT NULL,station_id TEXT NOT NULL,end_sample INTEGER NOT NULL,phase TEXT NOT NULL,
+                  payload TEXT NOT NULL,payload_hash TEXT NOT NULL,UNIQUE(window_id,end_sample,phase));
+                CREATE INDEX IF NOT EXISTS programme_measurement_station ON programme_measurements(station_id,window_id,sequence);
+                CREATE INDEX IF NOT EXISTS programme_measurement_window ON programme_measurements(window_id,sequence);
                 """;
             command.ExecuteNonQuery();
             using var version = _connection.CreateCommand();

@@ -1,6 +1,6 @@
 # Loudness instrument development
 
-This is a stereo 48 kHz measurement foundation with scoped synthetic qualification, not completed broadcast loudness processing or an EBU compliance declaration. It is deliberately not attached to the programme loop yet. No production station has migrated.
+This is a stereo 48 kHz measurement foundation with scoped synthetic qualification, not completed broadcast loudness processing or an EBU compliance declaration. Newer [float pipeline and asynchronous worker source](PCM_AND_METER_WORKER.md) connects it to final programme audio and the browser, under fresh qualification. The older exact-source results below do not qualify that continuation. No production station has migrated.
 
 ## Instrument and boundaries
 
@@ -24,8 +24,8 @@ The first comparison at source `331b9716` failed because it incorrectly treated 
 
 ## Required processing and acceptance still open
 
-- The existing programme decoder/mixer/output interface is 16-bit PCM. Upgrade/qualify internal precision and final mic/music mixing before claiming preservation of high-resolution FLAC or unclipped mix headroom.
-- Implement bounded asynchronous measurement delivery and explicit programme/continuous-service windows, persisted results, English UI controls/meters/warnings and stale/gap indication.
+- The newer decoder/mixer/output interface uses float32 PCM and requests 24-bit FLAC, pending real-codec qualification. Verify the exact decoded sample sequence, mic/music headroom and target performance before quality claims.
+- Bounded asynchronous delivery, explicit one-hour continuous-service windows, prefix persistence and read-only English UI meters/history are now in source under qualification. Complete programme ownership, normalization controls and connected mouse acceptance.
 - Non-destructive -23.0 LUFS playback normalization, programme-aware gain decisions and a genuine true-peak ceiling remain unfinished. Do not use a fast AGC to chase instantaneous loudness or unnecessarily compress classical/jazz material.
 - R128 (November 2023) gives a -23.0 LUFS programme target, +/-0.2 LU workflow/QC allowance and +/-1 LU allowance when exact normalization is not practically achievable, such as live programming. The live allowance must not become the routine target range. These are different concepts.
 - The linear programme ceiling is -1 dBTP. Lossy distribution can create new peaks. Determine additional AAC-LC/HE-AAC headroom from distribution guidance and independently decoded results; a guessed fixed setting is not measured acceptance. Keep the approved -23 LUFS target; broadcaster distribution examples in Tech 3401 are not authorization to adopt their different targets.

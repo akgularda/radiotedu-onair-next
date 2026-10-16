@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading.Channels;
 
 namespace OnAirNext.Engine;
@@ -19,7 +20,7 @@ public sealed class MediaDecoder : IAsyncDisposable
     public MediaDecoder(string ffmpeg, MediaItem item, long startSample = 0)
     {
         _process = ChildProcess.Start(ffmpeg, ["-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", item.Path,
-            "-vn", "-sn", "-dn", "-threads", "1", "-af", "aresample=48000,atrim=start_sample=" + startSample.ToString(System.Globalization.CultureInfo.InvariantCulture), "-f", "s16le", "-acodec", "pcm_s16le", "-ar", "48000", "-ac", "2", _pcm.Path]);
+            "-vn", "-sn", "-dn", "-threads", "1", "-af", "aresample=48000,atrim=start_sample=" + startSample.ToString(System.Globalization.CultureInfo.InvariantCulture), "-f", "f32le", "-acodec", "pcm_f32le", "-ar", "48000", "-ac", "2", _pcm.Path]);
         _stderr = ChildProcess.DrainErrorAsync(_process);
         Ready = _ready.Task;
         _pump = PumpAsync();
@@ -51,6 +52,7 @@ public sealed class MediaDecoder : IAsyncDisposable
                     if (count == 0) break;
                     if (count % AudioFormat.BytesPerSampleFrame != 0) throw new InvalidDataException("Unaligned decoded PCM.");
                     block.Length = count;
+                    ValidateSamples(block.Memory.Span);
                     await _blocks.Writer.WriteAsync(block, _stop.Token);
                     transferred = true;
                     _ready.TrySetResult();
@@ -69,6 +71,12 @@ public sealed class MediaDecoder : IAsyncDisposable
             // Readiness means the preparation attempt completed, not that the asset is valid.
             _ready.TrySetResult();
         }
+    }
+
+    private static void ValidateSamples(ReadOnlySpan<byte> pcm)
+    {
+        foreach (var value in MemoryMarshal.Cast<byte, float>(pcm))
+            if (!float.IsFinite(value)) throw new InvalidDataException("The asset contains nonfinite PCM samples.");
     }
 
     public async ValueTask<PcmBlock?> ReadAsync(CancellationToken token)

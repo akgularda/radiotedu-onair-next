@@ -25,7 +25,9 @@ The measured package payload is 274,556,343 bytes logically extracted, with 112,
 
 ## Loudness instrument foundation
 
-A bounded stereo 48 kHz BS.1770-5/EBU-mode measurement core now has scoped synthetic qualification: exact source `6488c439` passed 160 unit cases, 35 service checks, 20 installer/console checks and nine independent FFmpeg signal comparisons in run 38830016334. It provides K-weighted gated I, rectangular M/S, LRA and four-times oversampled true peak. It does not alter audio and is not attached to the programme loop. See [measurement scope and evidence](docs/LOUDNESS_MEASUREMENT.md); normalization, limiting, UI and all 18 real decoded-output measurements remain unfinished.
+Newer source adds a [float programme pipeline and bounded measurement worker](docs/PCM_AND_METER_WORKER.md), with final-mix browser readouts, immutable prefix history and real Windows loopback qualification under construction. It has not yet passed the new acceptance run. Earlier foundation evidence below is scoped to its stated source.
+
+A bounded stereo 48 kHz BS.1770-5/EBU-mode measurement core has scoped synthetic qualification: exact source `6488c439` passed 160 unit cases, 35 service checks, 20 installer/console checks and nine independent FFmpeg signal comparisons in run 38830016334. It provides K-weighted gated I, rectangular M/S, LRA and four-times oversampled true peak. That foundation did not alter audio or attach to the programme loop. See [measurement scope and evidence](docs/LOUDNESS_MEASUREMENT.md); normalization, limiting, full UI and all 18 real decoded-output measurements remain unfinished.
 
 ## Engine and library foundation
 

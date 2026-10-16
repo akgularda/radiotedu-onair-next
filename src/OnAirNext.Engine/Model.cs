@@ -7,7 +7,9 @@ public static class AudioFormat
 {
     public const int SampleRate = 48000;
     public const int Channels = 2;
-    public const int BytesPerSampleFrame = 4;
+    // Engine/codec-pipe contract: interleaved little-endian IEEE float32, stereo, 48 kHz.
+    public const int BytesPerSample = sizeof(float);
+    public const int BytesPerSampleFrame = Channels * BytesPerSample;
     public const int SamplesPerBlock = 960;
     public const int BlockBytes = SamplesPerBlock * BytesPerSampleFrame;
     public static readonly TimeSpan BlockDuration = TimeSpan.FromMilliseconds(20);
@@ -82,7 +84,8 @@ public sealed record StationSnapshot(string Id, string State, long Samples, long
     string? CurrentTitle, long LateBlocks, long AuditRejectedEvents, IReadOnlyList<OutputSnapshot> Outputs,
     string? CurrentAssetId = null, long CurrentItemSamples = 0, bool Recovered = false,
     bool Enabled = true, bool RequestedRunning = true, string? LastError = null, DateTimeOffset? RetryAtUtc = null,
-    string? CurrentArtist = null, double? CurrentDurationSeconds = null, PlayoutItemSnapshot? NextItem = null);
+    string? CurrentArtist = null, double? CurrentDurationSeconds = null, PlayoutItemSnapshot? NextItem = null,
+    ProgrammeLoudnessSnapshot? Loudness = null);
 
 public interface IStationSession : IAsyncDisposable
 {

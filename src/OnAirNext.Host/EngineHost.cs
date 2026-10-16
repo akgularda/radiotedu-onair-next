@@ -106,6 +106,13 @@ internal static class EngineHost
                             case "start-station" or "stop-station" when request.StationId is { } targetStation:
                                 await coordinator.RequestRunningAsync(targetStation, request.Action == "start-station", request.Id);
                                 result = "{\"accepted\":true}"; break;
+                            case "loudness" when request.StationId is { } meterStation:
+                                result = JsonSerializer.Serialize(new { station = meterStation, meter = coordinator.Loudness(meterStation) });
+                                break;
+                            case "loudness-history" when request.StationId is { } historyStation:
+                                if (!config.Stations.Any(station => station.Id == historyStation)) throw new ArgumentException("Unknown station.");
+                                result = JsonSerializer.Serialize(new { station = historyStation, items = journal.MeasurementHistory(historyStation, request.Offset) });
+                                break;
                             case "skip" when request.StationId is { } skipStation:
                                 await coordinator.SkipAsync(skipStation, request.Id);
                                 result = "{\"accepted\":true}"; break;

@@ -29,6 +29,7 @@ public sealed class StationEngine : IStationSession
     private readonly SemaphoreSlim _disposeGate = new(1, 1);
     private readonly bool[] _releasedOutputs;
     private bool _disposed, _exhausted;
+    private ProgrammeLoudnessMonitor? _loudness;
     public LiveInput Live { get; } = new();
     public Task Completion => _run ?? Task.CompletedTask;
 
@@ -71,7 +72,8 @@ public sealed class StationEngine : IStationSession
             Interlocked.Read(ref _late), Interlocked.Read(ref _auditRejected), _outputs.Select(x => x.Snapshot()).ToArray(),
             current?.Id, Interlocked.Read(ref _itemSamples), _recovered,
             CurrentArtist: current?.Artist, CurrentDurationSeconds: current?.DurationSeconds,
-            NextItem: next is null ? null : new(next.Id, next.Artist, next.Title, next.Kind, next.DurationSeconds));
+            NextItem: next is null ? null : new(next.Id, next.Artist, next.Title, next.Kind, next.DurationSeconds),
+            Loudness: _loudness?.Snapshot());
     }
 
     private async Task RunAsync()
@@ -80,6 +82,7 @@ public sealed class StationEngine : IStationSession
         try
         {
             var saved = await _journal.PrepareRecoveryAsync(_settings.Id);
+            await _journal.RecoverLoudnessAsync(_settings.Id);
             if (saved is not null)
             {
                 _index = saved.RotationIndex; _samples = saved.ProgramSamples;
@@ -103,6 +106,8 @@ public sealed class StationEngine : IStationSession
                 await Task.Delay(10, _stop.Token);
             _clockStart = _samples;
             _anchor = DateTimeOffset.UtcNow.AddSeconds(-(double)_samples / AudioFormat.SampleRate);
+            _loudness = new ProgrammeLoudnessMonitor(_settings.Id, _sessionId, _anchor, _samples,
+                history: window => _journal.SaveMeasurementAsync(window));
             if (await _journal.HasPendingSkipAsync(_settings.Id, _occurrence)) Interlocked.Exchange(ref _skip, 1);
             var clock = Stopwatch.StartNew();
             var checkpointClock = Stopwatch.StartNew();
@@ -123,8 +128,9 @@ public sealed class StationEngine : IStationSession
                 frame.SamplePosition = _samples;
                 var filled = await FillAsync(frame.Memory, _stop.Token);
                 if (filled == 0) break;
-                if (filled < AudioFormat.BlockBytes) frame.Memory.Span[filled..].Clear();
+                frame.Length = filled; // Do not encode invented padding beyond a finite programme's exact EOF.
                 Live.Mix(frame.Memory.Span);
+                _loudness.Publish(frame);
                 foreach (var output in _outputs) output.Publish(frame);
                 Interlocked.Add(ref _samples, filled / AudioFormat.BytesPerSampleFrame);
                 if (checkpointClock.ElapsedMilliseconds >= 250)
@@ -168,10 +174,10 @@ public sealed class StationEngine : IStationSession
                 {
                     if (_announced)
                     {
-                        Emit("failed", _samples + offset / 4, "Decoding stopped during the asset.");
+                        Emit("failed", _samples + offset / AudioFormat.BytesPerSampleFrame, "Decoding stopped during the asset.");
                         _announced = false;
                     }
-                    Emit("decode_failed", _samples + offset / 4, "Asset rejected: " + ex.GetType().Name);
+                    Emit("decode_failed", _samples + offset / AudioFormat.BytesPerSampleFrame, "Asset rejected: " + ex.GetType().Name);
                     if (++failedAssets >= Math.Max(1, _planner?.AvailableItems ?? _settings.Playlist.Count)) throw new InvalidDataException("No approved asset could be decoded.");
                     await AdvanceAsync();
                     continue;
@@ -179,7 +185,7 @@ public sealed class StationEngine : IStationSession
                 _decodedOffset = 0;
                 if (_decoded is null)
                 {
-                    if (_announced) { Emit("ended", _samples + offset / 4); Interlocked.Increment(ref _completed); }
+                    if (_announced) { Emit("ended", _samples + offset / AudioFormat.BytesPerSampleFrame); Interlocked.Increment(ref _completed); }
                     else if (++failedAssets >= Math.Max(1, _planner?.AvailableItems ?? _settings.Playlist.Count)) throw new InvalidDataException("Approved playlist contains no audio.");
                     await AdvanceAsync();
                     continue;
@@ -188,12 +194,12 @@ public sealed class StationEngine : IStationSession
                 {
                     _announced = true;
                     _currentTitle = _selection!.Item.Title;
-                    Emit("started", _samples + offset / 4);
+                    Emit("started", _samples + offset / AudioFormat.BytesPerSampleFrame);
                 }
             }
             var take = Math.Min(target.Length - offset, _decoded.Length - _decodedOffset);
             _decoded.Memory.Slice(_decodedOffset, take).CopyTo(target[offset..]);
-            offset += take; _decodedOffset += take; Interlocked.Add(ref _itemSamples, take / 4);
+            offset += take; _decodedOffset += take; Interlocked.Add(ref _itemSamples, take / AudioFormat.BytesPerSampleFrame);
             if (_decodedOffset == _decoded.Length) { _decoded.Dispose(); _decoded = null; }
         }
         return offset;
@@ -279,6 +285,7 @@ public sealed class StationEngine : IStationSession
         var pending = new List<Task>();
         if (_decoder is not null) pending.Add(ReleaseDecoderAsync(_decoder, false));
         if (_next is not null) pending.Add(ReleaseDecoderAsync(_next, true));
+        if (_loudness is not null) pending.Add(_loudness.DisposeAsync().AsTask());
         for (var i = 0; i < _outputs.Count; i++)
             if (!_releasedOutputs[i]) pending.Add(ReleaseOutputAsync(i));
         // One failed branch must not prevent the other outputs from closing.

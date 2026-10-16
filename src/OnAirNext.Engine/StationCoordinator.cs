@@ -92,6 +92,12 @@ public sealed class StationCoordinator : IAsyncDisposable
         finally { _commands.Release(); }
     }
 
+    public ProgrammeLoudnessSnapshot? Loudness(string station)
+    {
+        var slot = Get(station);
+        return slot.Session?.Snapshot().Loudness ?? slot.Last?.Loudness;
+    }
+
     public async Task<bool> StopAllAsync(string commandId)
     {
         await _commands.WaitAsync();

@@ -10,6 +10,7 @@ public sealed class LiveInput : IDisposable
     private bool _enabled;
     private float _musicGain = 1;
     public long DroppedBlocks { get; private set; }
+    public long RejectedBlocks { get; private set; }
     public void SetEnabled(bool enabled)
     {
         lock (_gate)
@@ -24,7 +25,9 @@ public sealed class LiveInput : IDisposable
     {
         lock (_gate)
         {
-            if (!_enabled || block.Length != AudioFormat.BlockBytes) { block.Dispose(); return; }
+            if (!_enabled) { block.Dispose(); return; }
+            if (block.Length != AudioFormat.BlockBytes || !ValidSamples(block.Memory.Span))
+            { block.Dispose(); RejectedBlocks++; return; }
             if (_blocks.Count >= 5) { _blocks.Dequeue().Dispose(); DroppedBlocks++; }
             _blocks.Enqueue(block);
         }
@@ -32,13 +35,14 @@ public sealed class LiveInput : IDisposable
 
     public void Mix(Span<byte> program)
     {
+        if (program.Length % AudioFormat.BytesPerSampleFrame != 0) throw new ArgumentException("Programme PCM must contain complete stereo frames.", nameof(program));
         PcmBlock? input;
         lock (_gate) input = _enabled && _blocks.TryDequeue(out var available) ? available : null;
         if (input is null && _musicGain >= 1f) return;
         try
         {
-            var samples = MemoryMarshal.Cast<byte, short>(program);
-            ReadOnlySpan<short> mic = input is null ? [] : MemoryMarshal.Cast<byte, short>(input.Memory.Span);
+            var samples = MemoryMarshal.Cast<byte, float>(program);
+            ReadOnlySpan<float> mic = input is null ? [] : MemoryMarshal.Cast<byte, float>(input.Memory.Span);
             var target = input is null ? 1f : 0.25f;
             var step = input is null ? 0.75f / (AudioFormat.SampleRate * 0.20f) : 0.75f / (AudioFormat.SampleRate * 0.04f);
             for (var frame = 0; frame < samples.Length / 2; frame++)
@@ -48,11 +52,17 @@ public sealed class LiveInput : IDisposable
                 {
                     var index = frame * 2 + channel;
                     var value = samples[index] * _musicGain + (input is null ? 0 : mic[index]);
-                    samples[index] = (short)Math.Clamp(value, short.MinValue, short.MaxValue);
+                    samples[index] = value; // Preserve headroom. True-peak processing belongs after the final mix.
                 }
             }
         }
         finally { input?.Dispose(); }
+    }
+
+    private static bool ValidSamples(ReadOnlySpan<byte> pcm)
+    {
+        foreach (var value in MemoryMarshal.Cast<byte, float>(pcm)) if (!float.IsFinite(value)) return false;
+        return true;
     }
 
     public void Dispose() => SetEnabled(false);

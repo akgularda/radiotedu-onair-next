@@ -47,33 +47,66 @@ public sealed class EngineTests
     }
 
     [Fact]
-    public void LiveMixerLimitsSamplesAndReturnsToFullMusicWhenInputDisappears()
+    public void LiveMixerPreservesOverFullScaleHeadroomAndReturnsToMusicWhenInputDisappears()
     {
         using var live = new LiveInput();
         live.SetEnabled(true);
         using var program = PcmBlock.Rent();
         for (var i = 0; i < 4; i++)
         {
-            var mic = PcmBlock.Rent(); MemoryMarshal.Cast<byte, short>(mic.Memory.Span).Fill(30000);
-            live.Push(mic); MemoryMarshal.Cast<byte, short>(program.Memory.Span).Fill(20000);
+            var mic = PcmBlock.Rent(); MemoryMarshal.Cast<byte, float>(mic.Memory.Span).Fill(0.9f);
+            live.Push(mic); MemoryMarshal.Cast<byte, float>(program.Memory.Span).Fill(0.6f);
             live.Mix(program.Memory.Span);
-            Assert.All(MemoryMarshal.Cast<byte, short>(program.Memory.Span).ToArray(), x => Assert.InRange(x, (short)0, short.MaxValue));
-            Assert.Equal(short.MaxValue, MemoryMarshal.Cast<byte, short>(program.Memory.Span)[^1]);
+            Assert.All(MemoryMarshal.Cast<byte, float>(program.Memory.Span).ToArray(), x => Assert.InRange(x, 1.04f, 1.51f));
+            if (i >= 1) Assert.InRange(MemoryMarshal.Cast<byte, float>(program.Memory.Span)[^1], 1.049f, 1.051f);
         }
         for (var i = 0; i < 12; i++)
         {
-            MemoryMarshal.Cast<byte, short>(program.Memory.Span).Fill(20000);
+            MemoryMarshal.Cast<byte, float>(program.Memory.Span).Fill(0.6f);
             live.Mix(program.Memory.Span);
         }
-        Assert.InRange(MemoryMarshal.Cast<byte, short>(program.Memory.Span)[^1], 19990, 20000);
+        Assert.InRange(MemoryMarshal.Cast<byte, float>(program.Memory.Span)[^1], 0.5999f, 0.6001f);
     }
 
     [Fact]
     public void LiveCaptureQueueIsBounded()
     {
         using var live = new LiveInput(); live.SetEnabled(true);
-        for (var i = 0; i < 100; i++) live.Push(PcmBlock.Rent());
+        for (var i = 0; i < 100; i++)
+        { var input = PcmBlock.Rent(); input.Memory.Span.Clear(); live.Push(input); }
         Assert.Equal(95, live.DroppedBlocks);
+    }
+
+    [Fact]
+    public void MicrophoneKeepsSubSixteenBitSignalAndChannelsSeparate()
+    {
+        using var live = new LiveInput(); live.SetEnabled(true);
+        var mic = PcmBlock.Rent();
+        var input = MemoryMarshal.Cast<byte, float>(mic.Memory.Span);
+        for (var i = 0; i < input.Length; i += 2) { input[i] = 1f / 1048576; input[i + 1] = -input[i]; }
+        var expected = input.ToArray();
+        using var program = PcmBlock.Rent(); program.Memory.Span.Clear();
+        live.Push(mic); live.Mix(program.Memory.Span);
+        Assert.True(expected.AsSpan().SequenceEqual(MemoryMarshal.Cast<byte, float>(program.Memory.Span)));
+        Assert.Equal(8, AudioFormat.BytesPerSampleFrame);
+        Assert.Equal(7680, AudioFormat.BlockBytes);
+    }
+
+    [Fact]
+    public void InvalidMicrophonePcmIsRejectedWithoutMutingOrPoisoningMusic()
+    {
+        using var live = new LiveInput(); live.SetEnabled(true);
+        var bad = PcmBlock.Rent(); bad.Memory.Span.Clear();
+        MemoryMarshal.Cast<byte, float>(bad.Memory.Span)[9] = float.NaN;
+        live.Push(bad);
+        var partial = PcmBlock.Rent(); partial.Length -= sizeof(float); live.Push(partial);
+        using var program = PcmBlock.Rent(); MemoryMarshal.Cast<byte, float>(program.Memory.Span).Fill(0.1234567f);
+        live.Mix(program.Memory.Span);
+        Assert.Equal(2, live.RejectedBlocks);
+        Assert.All(MemoryMarshal.Cast<byte, float>(program.Memory.Span).ToArray(), value => Assert.Equal(0.1234567f, value));
+        Assert.Throws<ObjectDisposedException>(() => bad.Memory);
+        Assert.Throws<ObjectDisposedException>(() => partial.Memory);
+        Assert.Throws<ArgumentException>(() => live.Mix(new byte[7]));
     }
 
     [Fact]
