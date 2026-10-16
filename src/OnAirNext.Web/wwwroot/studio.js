@@ -336,12 +336,13 @@
   });
   $('folder-retry').addEventListener('click',async()=>{const saved=pending();if(!folderContext()||saved?.request.Action!=='library-root'||saved.request.Path!==state.folder)return;const result=await command('library-root',{},saved);if(result?.accepted)$('folder-dialog').close();else text('folder-access-info',$('action-status').textContent);folderControls();});
   $('folder-dialog').addEventListener('close',()=>{state.folderGeneration++;state.folderSource=null;state.folderTarget=null;});
-  let setupState=null,setupPath=null,setupParent=null,setupLoading=false;
+  let setupState=null,setupPath=null,setupParent=null,setupLoading=false,setupInputDirty=false;
   function setupControls(){
     const available=!state.session?.preview&&setupState?.supported&&setupState.packageAvailable;
     const busy=setupState?.busy||setupLoading,installed=!!setupState?.receipt||!!setupState?.service;
     $('close-console').disabled=!!state.session?.preview||state.consoleClosed;$('setup-browse').disabled=!available||busy||installed;$('setup-check').disabled=!available||busy||installed||!$('setup-runtime').value;
-    $('setup-start').disabled=!available||busy||installed;$('setup-shortcuts').disabled=!available||busy||setupState?.receipt?.phase!=='Installed';$('setup-install').disabled=!available||busy||!setupState?.plan||setupState.receipt?.phase==='Installed';
+    $('setup-runtime').disabled=!available||busy||installed;
+    $('setup-start').disabled=!available||busy||installed;$('setup-shortcuts').disabled=!available||busy||setupState?.receipt?.phase!=='Installed';$('setup-install').disabled=!available||busy||!setupState?.plan||setupInputDirty||setupState.receipt?.phase==='Installed';
   }
   async function loadSetup(){
     if(setupLoading)return;
@@ -350,7 +351,7 @@
     try{
       const previous=setupState?.receipt?.phase;setupState=await api('/api/setup');const plan=setupState.plan,receipt=setupState.receipt;
       text('setup-phase',receipt?.phase??setupState.phase);text('setup-detail',setupState.systemError??setupState.detail);
-      if(plan){$('setup-runtime').value=plan.runtimeRoot;$('setup-start').checked=plan.startService;}
+      if(plan&&!setupInputDirty&&!setupState.busy){$('setup-runtime').value=plan.runtimeRoot;$('setup-start').checked=plan.startService;}
       $('setup-review').hidden=!plan;
       const properties=plan?[['Installation',setupState.installRoot],['Separate data',setupState.dataRoot],['Windows service account','LocalService'],['Studio operator',plan.operatorSid],['Audio runtime',plan.runtimeRoot],['Package checksum',plan.bundle],['Initial channels','Eight stopped channels · zero armed outputs']]:[];
       $('setup-review').replaceChildren(...properties.map(([name,value])=>{const row=element('div');row.append(element('dt','',name),element('dd','',value));return row;}));
@@ -364,10 +365,13 @@
       $('setup-folder-list').replaceChildren(...(result.folders??[]).map(folder=>{const button=element('button','folder-choice',folder.Name??folder.name);button.type='button';button.addEventListener('click',()=>void setupFolders(folder.Path??folder.path));return button;}));}
     catch(error){text('setup-folder-error',error.message);}
   }
+  $('setup-runtime').addEventListener('input',()=>{setupInputDirty=true;setupControls();});
+  $('setup-start').addEventListener('change',()=>{setupInputDirty=true;setupControls();});
+  $('migration-root').addEventListener('input',()=>migrationControls());
   $('setup-browse').addEventListener('click',async()=>{setupFolderTarget='setup-runtime';text('setup-folder-heading','Choose the audio runtime folder');$('setup-folder-dialog').showModal();await setupFolders($('setup-runtime').value||null);});
   $('setup-folder-up').addEventListener('click',()=>void setupFolders(setupParent));
-  $('setup-folder-select').addEventListener('click',()=>{if(!setupPath)return;$(setupFolderTarget).value=setupPath;$('setup-folder-dialog').close();setupControls();migrationControls();});
-  $('setup-check').addEventListener('click',async()=>{try{await api('/api/setup/prepare',{method:'POST',body:{RuntimeFolder:$('setup-runtime').value,StartService:$('setup-start').checked}});await loadSetup();}catch(error){text('setup-detail',error.message);}});
+  $('setup-folder-select').addEventListener('click',()=>{if(!setupPath)return;$(setupFolderTarget).value=setupPath;if(setupFolderTarget==='setup-runtime')setupInputDirty=true;$('setup-folder-dialog').close();setupControls();migrationControls();});
+  $('setup-check').addEventListener('click',async()=>{try{await api('/api/setup/prepare',{method:'POST',body:{RuntimeFolder:$('setup-runtime').value.trim(),StartService:$('setup-start').checked}});setupInputDirty=false;await loadSetup();}catch(error){text('setup-detail',error.message);}});
   $('setup-install').addEventListener('click',async()=>{if(!setupState?.plan)return;try{await api('/api/setup/install',{method:'POST',body:{Id:setupState.plan.id}});await loadSetup();}catch(error){text('setup-detail',error.message);}});
   $('setup-shortcuts').addEventListener('click',async()=>{try{await api('/api/setup/shortcuts',{method:'POST'});text('setup-detail','Desktop and Start menu shortcuts are available. They open the local console without Codex; the service runs independently.');}catch(error){text('setup-detail',error.message);}});
   $('close-console').addEventListener('click',async()=>{if(!confirm('Close this local console? The broadcast service keeps running.'))return;try{await api('/api/console/close',{method:'POST'});state.consoleClosed=true;state.engine=null;state.sampleAt=0;renderStatus();setupControls();message('Console closed. Broadcast service continues. Open the installed shortcut or new package to return.');}catch(error){message(error.message);}});
@@ -379,6 +383,7 @@
     const unarmed=connected&&state.stations.length>0&&state.stations.every(s=>s.State==='Stopped'&&(s.Outputs??[]).length===0);
     const preview=migration.engine===state.engine?migration.preview:null;
     const active=preview&&['Inspecting','Verifying backup'].includes(preview.State);
+    $('migration-root').disabled=!!state.session?.preview||!state.session||migration.busy||!!pending||!!active;
     $('migration-browse').disabled=!!state.session?.preview||!state.session||migration.busy||!!pending||!!active;
     $('migration-create').disabled=!unarmed||migration.busy||!!pending||!!active||!$('migration-root').value;
     $('migration-refresh').disabled=!connected||migration.loading;
