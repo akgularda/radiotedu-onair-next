@@ -112,9 +112,14 @@ public static class EncoderCapabilities
     public static async Task ValidateAsync(string ffmpeg, IEnumerable<OutputSettings> outputs)
     {
         var encoders = await ChildProcess.CaptureAsync(ffmpeg, "-hide_banner", "-encoders");
+        ValidateListing(encoders, outputs);
+    }
+
+    public static void ValidateListing(string encoders, IEnumerable<OutputSettings> outputs)
+    {
         foreach (var profile in outputs.Select(x => x.Profile).Distinct())
         {
-            var required = profile switch { CodecProfile.HeAacV2_64 => "libfdk_aac", CodecProfile.OggFlac => "flac", _ => "aac" };
+            var required = profile switch { CodecProfile.AacLc192 or CodecProfile.HeAacV2_64 => "libfdk_aac", CodecProfile.OggFlac => "flac", _ => throw new NotSupportedException("Unsupported configured codec profile.") };
             if (!encoders.Split('\n').Any(line => line.Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(1).FirstOrDefault() == required))
                 throw new NotSupportedException($"Configured {profile} needs encoder {required}; quality substitution is prohibited.");
         }

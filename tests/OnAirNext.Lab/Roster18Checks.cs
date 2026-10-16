@@ -79,9 +79,13 @@ internal static class Roster18Checks
             catch(Exception ex){runFailure=ex;}
             finally
             {
+                result.Details["journalAtCleanup"]=new{journal.CommittedTransactions,journal.CommittedEvents,journal.PendingEvents};
+                result.Details["stationsAtCleanup"]=engines.Select(e=>e.Snapshot()).ToArray();
+                result.Details["resourcesAtCleanup"]=resources.Snapshot();
                 foreach(var probe in probes)try{await probe.DisposeAsync();}catch(Exception ex){cleanupFailures.Add(ex);}
                 foreach(var engine in engines)try{await engine.DisposeAsync();}catch(Exception ex){cleanupFailures.Add(ex);}
             }
+            result.Details["statesAfterCleanup"]=engines.Select(e=>e.Snapshot()).ToArray();
             if(runFailure is not null)cleanupFailures.Insert(0,runFailure);
             if(cleanupFailures.Count>0)throw new AggregateException("Full roster validation or owned cleanup failed.",cleanupFailures);
             result.Details["journalAfterStop"]=new{journal.CommittedTransactions,journal.CommittedEvents,journal.PendingEvents,Stations=engines.Select(e=>e.Snapshot()).ToArray()};
@@ -93,11 +97,10 @@ internal static class Roster18Checks
 
     private static async Task MeasureOutputAsync(string ffmpeg,int port,string root,OutputSettings output,List<object> readings,CaseResult result)
     {
-        var encoded=Path.Combine(root,output.Id+(output.Profile==CodecProfile.OggFlac?".ogg":".aac"));
-        await ToolAsync(ffmpeg,["-nostdin","-hide_banner","-v","error","-y","-rw_timeout","5000000","-analyzeduration","2000000","-probesize","65536",
-            "-i",$"http://127.0.0.1:{port}{output.Mount}","-t","4.1","-vn","-sn","-dn","-c:a","copy","-f",output.Profile==CodecProfile.OggFlac?"ogg":"adts",encoded],"roster-capture");
+        var address=$"http://127.0.0.1:{port}{output.Mount}";
         var ffprobe=Path.Combine(Path.GetDirectoryName(ffmpeg)!,"ffprobe.exe");
-        var (probeText,_)=await ToolAsync(ffprobe,["-v","error","-show_entries","stream=codec_name,profile,sample_rate,channels,bits_per_raw_sample,bit_rate","-of","json",encoded],"roster-format-probe",true);
+        var (probeText,_)=await ToolAsync(ffprobe,["-v","error","-rw_timeout","5000000","-analyzeduration","2000000","-probesize","65536",
+            "-read_intervals","%+#1","-show_entries","stream=codec_name,profile,sample_rate,channels,bits_per_raw_sample,bit_rate","-of","json",address],"roster-format-probe",true);
         using var document=JsonDocument.Parse(probeText);
         var streams=document.RootElement.GetProperty("streams");
         Check(result,streams.GetArrayLength()==1,output.Id+": actual encoded stream has one audio track.");
@@ -115,7 +118,7 @@ internal static class Roster18Checks
         var pcm=Path.Combine(root,output.Id+"-decoded.f32");
         var decode=new List<string>{"-nostdin","-hide_banner","-nostats","-y"};
         if(output.Profile!=CodecProfile.OggFlac)decode.AddRange(["-c:a","aac"]);
-        decode.AddRange(["-i",encoded,"-vn","-sn","-dn","-filter_threads","1","-af",SourceNormalization.DecodeFormat+",asetpts=N/SR/TB,atrim=end_sample=192000,ebur128=peak=true:framelog=verbose","-c:a","pcm_f32le","-f","f32le",pcm]);
+        decode.AddRange(["-rw_timeout","5000000","-analyzeduration","200000","-probesize","32768","-i",address,"-t","4","-vn","-sn","-dn","-filter_threads","1","-af",SourceNormalization.DecodeFormat+",asetpts=N/SR/TB,atrim=end_sample=192000,ebur128=peak=true:framelog=verbose","-c:a","pcm_f32le","-f","f32le",pcm]);
         var (_,diagnostic)=await ToolAsync(ffmpeg,decode,"roster-listener-meter");
         var at=diagnostic.LastIndexOf("Summary:",StringComparison.Ordinal);
         if(at<0)throw new InvalidDataException("Final decoded meter summary missing: "+output.Id);
@@ -129,7 +132,7 @@ internal static class Roster18Checks
         var integrated=Metric("I","LUFS"); var peak=Metric("Peak","dBFS");
         var bytes=await File.ReadAllBytesAsync(pcm);
         var (frames,different,finite)=Analyze(bytes);
-        var measured=new{output.Id,Profile=output.Profile.ToString(),ActualStream=stream.Clone(),DecodedFrames=frames,DistinctStereoFrames=different,IntegratedLufs=integrated,TruePeakDbtp=peak,LraAcceptance="Withheld: window shorter than one minute",Scope="Four-second low-crest decoded window only; no worst-case codec headroom proof"};
+        var measured=new{output.Id,Profile=output.Profile.ToString(),ActualStream=stream.Clone(),DecodedFrames=frames,DistinctStereoFrames=different,IntegratedLufs=integrated,TruePeakDbtp=peak,LraAcceptance="Withheld: window shorter than one minute",Scope="Four-second low-crest native-decoded live window, sample clock rebased before exact trimming; no worst-case codec headroom proof"};
         readings.Add(measured);
         Check(result,frames==192000&&finite,output.Id+": exactly 192000 finite native-decoded stereo frames are measured.");
         Check(result,different>frames/2,output.Id+": decoded left/right signals remain distinct.");

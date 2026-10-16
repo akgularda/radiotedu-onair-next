@@ -39,3 +39,5 @@ Fourth attempt 73b3af65cb0e8d284ef6a2da3bd8d6d3786585b5 / 38854945518 produced A
 Delay/flush primary sources: https://raw.githubusercontent.com/mstorsjo/fdk-aac/v2.0.3/libAACenc/include/aacenc_lib.h and https://raw.githubusercontent.com/FFmpeg/FFmpeg/n9.0.2/libavcodec/libfdk-aacenc.c
 
 At source d92e250, real codec smoke and 197 unit tests passed. The first complete 18-branch audio trial then failed its bounded shutdown audit drain despite passing all 186 completed audio/listener checks. That run is retained as a failure; see docs/JOURNAL_GROUP_COMMIT.md for the group-commit correction and fresh acceptance requirements.
+
+Primary encoder correction: the broadcasting-PC UI confirms FDK AAC-LC192 for the existing primary profile. The new primary and smoke case now require/use FDK rather than the earlier native AAC development encoder; independent native AAC decoding is preserved. See docs/APPROVED_ENCODER_PRESERVATION.md.

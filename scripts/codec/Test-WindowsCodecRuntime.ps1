@@ -44,7 +44,7 @@ try {
     if ($codecConfig -match '--enable-(?:gpl|nonfree|version3)' -or $codecConfig -notmatch '--enable-libfdk-aac') { throw 'Codec build configuration differs from the required license/features.' }
     $null = Run-CodecTool $codecFfmpeg @('-hide_banner','-L') 'license.txt'
     $codecEncoders = (Run-CodecTool $codecFfmpeg @('-hide_banner','-encoders') 'encoders.txt') -join [Environment]::NewLine
-    foreach ($codecEncoder in @('aac','libfdk_aac','flac','pcm_f32le')) {
+    foreach ($codecEncoder in @('libfdk_aac','flac','pcm_f32le')) {
         if ($codecEncoders -notmatch ('(?m)^\s*A\S*\s+' + [regex]::Escape($codecEncoder) + '\s')) { throw "Missing required encoder: $codecEncoder" }
     }
     if ($IntegrityOnly) {
@@ -64,7 +64,7 @@ try {
         }
     } finally { $codecWriter.Dispose() }
     $codecCases = @(
-        @{ Name='aac-lc'; Encoder='aac'; Profile='aac_low'; ExpectedProfile='LC'; Rate='192k'; Extension='aac'; Mux='adts' },
+        @{ Name='aac-lc'; Encoder='libfdk_aac'; Profile='aac_low'; ExpectedProfile='LC'; Rate='192k'; Extension='aac'; Mux='adts' },
         @{ Name='he-aac-v2'; Encoder='libfdk_aac'; Profile='aac_he_v2'; ExpectedProfile='HE-AACv2'; Rate='64k'; Extension='aac'; Mux='adts' },
         @{ Name='ogg-flac-24'; Encoder='flac'; Extension='ogg'; Mux='ogg' }
     )
@@ -87,7 +87,7 @@ try {
         $codecDecodeArgs += @('-i',$codecEncoded,'-ar','48000','-ac','2','-c:a','pcm_f32le','-f','f32le',$codecDecoded)
         $null = Run-CodecTool $codecFfmpeg $codecDecodeArgs ($codecCase.Name + '-decode.txt')
         $codecFrames = (Get-Item -LiteralPath $codecDecoded).Length / 8
-        $codecPaddingBudget=if($codecCase.Name -eq 'he-aac-v2'){12000}elseif($codecCase.Name -eq 'aac-lc'){2048}else{0}
+        $codecPaddingBudget=if($codecCase.Name -eq 'he-aac-v2'){12000}elseif($codecCase.Name -eq 'aac-lc'){4096}else{0}
         $codecFrameJson=(Run-CodecTool $codecProbe @('-v','error','-select_streams','a:0','-show_frames','-show_entries','frame=nb_samples','-of','json',$codecEncoded) ($codecCase.Name + '-frames-probe.json')) -join [Environment]::NewLine
         $codecProbedFrames=0L
         foreach($codecFrameInfo in (ConvertFrom-Json $codecFrameJson).frames){$codecProbedFrames += [long]$codecFrameInfo.nb_samples}

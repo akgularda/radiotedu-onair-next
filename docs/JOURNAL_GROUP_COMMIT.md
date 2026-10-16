@@ -11,3 +11,5 @@ The station drain remains two seconds. Its pending-audit display now decreases w
 Fresh qualification is pending. This does not change production data or permit a station transfer. Operational setup and station-by-station migration must be performed with the application's visible UI and verified readback.
 
 Microsoft documents transactional grouping and savepoint rollback at https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/transactions.
+
+The group-commit source 09d41ec5 passed all 200 unit cases. Its next audio trial failed the exact native decoded-window count (190464 instead of192000 frames) before the complete roster/Stop checks. No drain timeout or owned cleanup failure was reported in that short trial, but it is not the required long complete-roster evidence. The measurement source is corrected in docs/APPROVED_ENCODER_PRESERVATION.md; fresh full-roster acceptance remains pending.
