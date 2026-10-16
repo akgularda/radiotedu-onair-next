@@ -1,0 +1,1788 @@
+{
+  "kind": "scoped-float-pcm-asynchronous-meter-real-loopback-qualification",
+  "source": "e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+  "runId": "38835930561",
+  "url": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38835930561",
+  "status": "completed",
+  "conclusion": "success",
+  "verifiedAt": "2026-10-16T01:51:23.663Z",
+  "unit": {
+    "total": 171,
+    "executed": 171,
+    "passed": 171,
+    "failed": 0,
+    "error": 0,
+    "timeout": 0,
+    "aborted": 0,
+    "inconclusive": 0,
+    "passedButRunAborted": 0,
+    "notRunnable": 0,
+    "notExecuted": 0,
+    "disconnected": 0,
+    "warning": 0,
+    "completed": 0,
+    "inProgress": 0,
+    "pending": 0
+  },
+  "browserModelCases": 7,
+  "service": {
+    "Source": "e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+    "Completed": true,
+    "Passed": true,
+    "checks": 35,
+    "ProductionChanged": false
+  },
+  "setup": {
+    "Source": "e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+    "Completed": true,
+    "Passed": true,
+    "checks": 20,
+    "ProductionChanged": false
+  },
+  "package": {
+    "Scope": "Windows x64 self-contained development package; no FFmpeg, music, credentials or production configuration",
+    "UncompressedBytes": 274624114,
+    "Files": 736,
+    "Source": "e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+    "UniquePayloadBytes": 112519156,
+    "Commissioned": false,
+    "ManifestSha256": "5694E4A0C2EF763C176CB9DD434C64C7A135DDF74CDED050E9C3AD44D176AC29"
+  },
+  "reference": {
+    "Source": "e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+    "AtUtc": "2026-10-16T01:36:12.6417+00:00",
+    "Completed": true,
+    "Passed": true,
+    "Cases": [
+      {
+        "Name": "stereo-calibration",
+        "Passed": true,
+        "SampleSha256": "0DAC73B2224CB912D4C5F22C07B40627B33C6633AF9470901ACEEF8C3D75EDF5",
+        "Reading": {
+          "SampleFrames": 960000,
+          "IntegratedFrames": 960000,
+          "MomentaryLufs": -22.99329558036168,
+          "ShortTermLufs": -22.993295580361682,
+          "IntegratedLufs": -22.993297101682888,
+          "LoudnessRangeLu": 6.750292265873005e-15,
+          "MaximumMomentaryLufs": -22.993290068425228,
+          "MaximumShortTermLufs": -22.993294845436413,
+          "SamplePeakDbfs": -23.000000432125567,
+          "TruePeakDbtp": -22.993304465401287,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 960000
+        },
+        "Reference": {
+          "IntegratedLufs": -23,
+          "LoudnessRangeLu": 0,
+          "TruePeakDbtp": -23
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.006702898317112016,
+          "RangeLu": null,
+          "PeakDb": 0.006695534598712527
+        }
+      },
+      {
+        "Name": "absolute-and-relative-gates",
+        "Passed": true,
+        "SampleSha256": "2B3D060134854F497A40132E2532CA0CA2884A92A444EC30EB139D69C9E15D45",
+        "Reading": {
+          "SampleFrames": 4800000,
+          "IntegratedFrames": 4800000,
+          "MomentaryLufs": -71.99329547223726,
+          "ShortTermLufs": -71.99329547289443,
+          "IntegratedLufs": -23.013868674469784,
+          "LoudnessRangeLu": 12.999999977485114,
+          "MaximumMomentaryLufs": -22.99329130982563,
+          "MaximumShortTermLufs": -22.99329501095662,
+          "SamplePeakDbfs": -23.000000432125567,
+          "TruePeakDbtp": -22.993304465401287,
+          "RangeSettled": true,
+          "Finished": true,
+          "StatisticsSampleFrames": 4800000
+        },
+        "Reference": {
+          "IntegratedLufs": -23,
+          "LoudnessRangeLu": 13,
+          "TruePeakDbtp": -23
+        },
+        "RangeCompared": true,
+        "RangeComparisonNote": "At least 60 seconds measured.",
+        "Difference": {
+          "IntegratedLu": 0.01386867446978357,
+          "RangeLu": 2.2514885955615682e-8,
+          "PeakDb": 0.006695534598712527
+        }
+      },
+      {
+        "Name": "energy-gated-programme",
+        "Passed": true,
+        "SampleSha256": "589A8B6487216B180D1ABD22595E28BC1F90B85F576B501E335DE9FFBFF41FFB",
+        "Reading": {
+          "SampleFrames": 2884800,
+          "IntegratedFrames": 2884800,
+          "MomentaryLufs": -25.993295532240094,
+          "ShortTermLufs": -25.9932955322401,
+          "IntegratedLufs": -22.97865743657876,
+          "LoudnessRangeLu": 5.999999945639276,
+          "MaximumMomentaryLufs": -19.99329284786913,
+          "MaximumShortTermLufs": -19.9932952214365,
+          "SamplePeakDbfs": -19.99999987057016,
+          "TruePeakDbtp": -19.993303920245964,
+          "RangeSettled": true,
+          "Finished": true,
+          "StatisticsSampleFrames": 2884800
+        },
+        "Reference": {
+          "IntegratedLufs": -23,
+          "LoudnessRangeLu": 6,
+          "TruePeakDbtp": -20
+        },
+        "RangeCompared": true,
+        "RangeComparisonNote": "At least 60 seconds measured.",
+        "Difference": {
+          "IntegratedLu": 0.02134256342123919,
+          "RangeLu": 5.4360723922286525e-8,
+          "PeakDb": 0.006696079754036077
+        }
+      },
+      {
+        "Name": "loudness-range",
+        "Passed": true,
+        "SampleSha256": "E992A30C60BC949492FEF5D8F636CCF74E5E0FC078F50FD028DD20A5162C5011",
+        "Reading": {
+          "SampleFrames": 4800000,
+          "IntegratedFrames": 4800000,
+          "MomentaryLufs": -49.99329568842328,
+          "ShortTermLufs": -49.99329568843113,
+          "IntegratedLufs": -24.491887635789624,
+          "LoudnessRangeLu": 14.999999957082206,
+          "MaximumMomentaryLufs": -19.99329106109395,
+          "MaximumShortTermLufs": -19.99329498319964,
+          "SamplePeakDbfs": -19.99999987057016,
+          "TruePeakDbtp": -19.993303920245964,
+          "RangeSettled": true,
+          "Finished": true,
+          "StatisticsSampleFrames": 4800000
+        },
+        "Reference": {
+          "IntegratedLufs": -24.5,
+          "LoudnessRangeLu": 15,
+          "TruePeakDbtp": -20
+        },
+        "RangeCompared": true,
+        "RangeComparisonNote": "At least 60 seconds measured.",
+        "Difference": {
+          "IntegratedLu": 0.0081123642103762,
+          "RangeLu": 4.291779376330851e-8,
+          "PeakDb": 0.006696079754036077
+        }
+      },
+      {
+        "Name": "opposite-phase-stereo",
+        "Passed": true,
+        "SampleSha256": "22F423A9CC3BE892F9A6A3DBB1A0AC289FBE462E9B3BF3507E7C7815BBA59602",
+        "Reading": {
+          "SampleFrames": 960000,
+          "IntegratedFrames": 960000,
+          "MomentaryLufs": -22.99329558036168,
+          "ShortTermLufs": -22.993295580361682,
+          "IntegratedLufs": -22.993297101682888,
+          "LoudnessRangeLu": 6.750292265873005e-15,
+          "MaximumMomentaryLufs": -22.993290068425228,
+          "MaximumShortTermLufs": -22.993294845436413,
+          "SamplePeakDbfs": -23.000000432125567,
+          "TruePeakDbtp": -22.993304465401287,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 960000
+        },
+        "Reference": {
+          "IntegratedLufs": -23,
+          "LoudnessRangeLu": 0,
+          "TruePeakDbtp": -23
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.006702898317112016,
+          "RangeLu": null,
+          "PeakDb": 0.006695534598712527
+        }
+      },
+      {
+        "Name": "true-peak-phase-45",
+        "Passed": true,
+        "SampleSha256": "8EE3AFDB9A19BF6A1D0C0956B9E03E7D226A1D8FAFD38F3AD6A65EF622C51B89",
+        "Reading": {
+          "SampleFrames": 144000,
+          "IntegratedFrames": 144000,
+          "MomentaryLufs": -2.742026062965096,
+          "ShortTermLufs": -2.6883113835253676,
+          "IntegratedLufs": -2.6743094676631167,
+          "LoudnessRangeLu": 0,
+          "MaximumMomentaryLufs": -2.6689361129086335,
+          "MaximumShortTermLufs": -2.6883113835253676,
+          "SamplePeakDbfs": -9.030900018572105,
+          "TruePeakDbtp": -5.9759090337932275,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 144000
+        },
+        "Reference": {
+          "IntegratedLufs": -2.7,
+          "LoudnessRangeLu": 20,
+          "TruePeakDbtp": -6
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.025690532336883454,
+          "RangeLu": null,
+          "PeakDb": 0.024090966206772535
+        }
+      },
+      {
+        "Name": "true-peak-phase-60",
+        "Passed": true,
+        "SampleSha256": "BE65A2D4E4B700F2CFB0084D6B5B6B797ECD1FA7DEA33A254E57C027FDAB8689",
+        "Reading": {
+          "SampleFrames": 144000,
+          "IntegratedFrames": 144000,
+          "MomentaryLufs": -2.7451545931357884,
+          "ShortTermLufs": -2.6915633278587157,
+          "IntegratedLufs": -2.6775613959589943,
+          "LoudnessRangeLu": 0,
+          "MaximumMomentaryLufs": -2.6721880350283533,
+          "MaximumShortTermLufs": -2.6915633278587157,
+          "SamplePeakDbfs": -7.269987435258983,
+          "TruePeakDbtp": -6.3132751595923935,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 144000
+        },
+        "Reference": {
+          "IntegratedLufs": -2.7,
+          "LoudnessRangeLu": 20,
+          "TruePeakDbtp": -6
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.02243860404100584,
+          "RangeLu": null,
+          "PeakDb": 0.3132751595923935
+        }
+      },
+      {
+        "Name": "true-peak-phase-67.5",
+        "Passed": true,
+        "SampleSha256": "80BFB460D68143DBB00F3FE8746A6B4D1CFDCD676661195B697D4FF07937140F",
+        "Reading": {
+          "SampleFrames": 144000,
+          "IntegratedFrames": 144000,
+          "MomentaryLufs": -2.7549914295943245,
+          "ShortTermLufs": -2.7014518964216356,
+          "IntegratedLufs": -2.68744997551718,
+          "LoudnessRangeLu": 0,
+          "MaximumMomentaryLufs": -2.682076618753773,
+          "MaximumShortTermLufs": -2.7014518964216356,
+          "SamplePeakDbfs": -6.7082932609946955,
+          "TruePeakDbtp": -6.026489256977294,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 144000
+        },
+        "Reference": {
+          "IntegratedLufs": -2.7,
+          "LoudnessRangeLu": 20,
+          "TruePeakDbtp": -6
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.012550024482820277,
+          "RangeLu": null,
+          "PeakDb": 0.026489256977294318
+        }
+      },
+      {
+        "Name": "above-full-scale-float",
+        "Passed": true,
+        "SampleSha256": "F00FD36335EA9E6610A07A4195363E06F423B7009C928FE760A7204E3FB187AB",
+        "Reading": {
+          "SampleFrames": 144000,
+          "IntegratedFrames": 144000,
+          "MomentaryLufs": 6.262956088004012,
+          "ShortTermLufs": 6.3166707673259515,
+          "IntegratedLufs": 6.330672683157755,
+          "LoudnessRangeLu": 0,
+          "MaximumMomentaryLufs": 6.336046037900572,
+          "MaximumShortTermLufs": 6.3166707673259515,
+          "SamplePeakDbfs": -0.025917867762879594,
+          "TruePeakDbtp": 3.0290731170159995,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 144000
+        },
+        "Reference": {
+          "IntegratedLufs": 6.3,
+          "LoudnessRangeLu": 20,
+          "TruePeakDbtp": 3
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.030672683157755287,
+          "RangeLu": null,
+          "PeakDb": 0.02907311701599946
+        }
+      }
+    ],
+    "ReferenceVersion": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+    "SampleRate": 48000,
+    "Channels": 2,
+    "Scope": "Synthetic stereo instrument comparison only. No encoded outputs, broadcasting PC, normalization, limiter, UI or full EBU test-set acceptance."
+  },
+  "audio": {
+    "Source": "e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+    "Completed": true,
+    "Passed": true,
+    "ProductionChanged": false,
+    "Scope": "Real isolated AAC-LC/24-bit Ogg FLAC, synthetic live mix and recovery only. No HE-AAC/18-output/normalization/limiter/actual-PC/24-72h or mouse acceptance.",
+    "HeAacTested": false,
+    "Cases": [
+      {
+        "SchemaVersion": 1,
+        "CreatedAtUtc": "2026-10-16T01:37:42.6279578+00:00",
+        "Machine": "runnervm0xl3a",
+        "OS": "Microsoft Windows 10.0.26100",
+        "Runtime": ".NET 10.0.13",
+        "Icecast": "2.5.0",
+        "TestProfiles": [
+          "AAC-LC 192 kbps",
+          "24-bit Ogg FLAC"
+        ],
+        "HeAacTested": false,
+        "Source": "New independent implementation; no production configuration or services accessed.",
+        "ExecutionSource": "e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+        "PcmFormat": "48k stereo float32 little-endian",
+        "ExecutionBuild": "1.0.0+e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+        "Results": [
+          {
+            "Name": "baseline",
+            "Passed": true,
+            "DurationSeconds": 13.0217991,
+            "Checks": [
+              {
+                "Description": "The program continues across a full song/ad/sweeper cycle.",
+                "Passed": true
+              },
+              {
+                "Description": "Both encoders and source sessions remain persistent across content boundaries.",
+                "Passed": true
+              },
+              {
+                "Description": "Healthy outputs lose no PCM blocks.",
+                "Passed": true
+              },
+              {
+                "Description": "Audit work does not overflow or fail.",
+                "Passed": true
+              },
+              {
+                "Description": "No decoder error on /next-baseline-aac",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded listener audio exceeds 8 seconds on /next-baseline-aac",
+                "Passed": true
+              },
+              {
+                "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-baseline-aac",
+                "Passed": true
+              },
+              {
+                "Description": "Listener hears multiple actual content transitions on /next-baseline-aac",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded tone order has no skips or repeats on /next-baseline-aac",
+                "Passed": true
+              },
+              {
+                "Description": "No decoder error on /next-baseline-flac",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded listener audio exceeds 8 seconds on /next-baseline-flac",
+                "Passed": true
+              },
+              {
+                "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-baseline-flac",
+                "Passed": true
+              },
+              {
+                "Description": "Listener hears multiple actual content transitions on /next-baseline-flac",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded tone order has no skips or repeats on /next-baseline-flac",
+                "Passed": true
+              },
+              {
+                "Description": "Playback journal hash chain is valid.",
+                "Passed": true
+              },
+              {
+                "Description": "Event acknowledgements do not duplicate journal rows.",
+                "Passed": true
+              },
+              {
+                "Description": "Music, advertisements and sweepers produce separate occurrence records.",
+                "Passed": true
+              },
+              {
+                "Description": "Orderly stop leaves a terminal record for every started occurrence.",
+                "Passed": true
+              },
+              {
+                "Description": "Completed assets retain their exact sample counts, including boundaries inside a 20 ms block.",
+                "Passed": true
+              },
+              {
+                "Description": "Program sample positions never reset during output recovery: baseline",
+                "Passed": true
+              },
+              {
+                "Description": "No track is repeated or advanced by transport recovery: baseline",
+                "Passed": true
+              },
+              {
+                "Description": "Daily local report contains one record per station occurrence, independent of output variants.",
+                "Passed": true
+              }
+            ],
+            "Details": {
+              "station": {
+                "Id": "baseline",
+                "State": "Running",
+                "Samples": 598080,
+                "CompletedItems": 8,
+                "SkippedItems": 0,
+                "CurrentTitle": "song-a",
+                "LateBlocks": 2,
+                "AuditRejectedEvents": 0,
+                "Outputs": [
+                  {
+                    "Id": "baseline-aac",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 1,
+                    "Connections": 1,
+                    "FramesWritten": 622,
+                    "DroppedBlocks": 0,
+                    "QueuedBlocks": 1,
+                    "EncoderPid": 688,
+                    "LastError": null
+                  },
+                  {
+                    "Id": "baseline-flac",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 1,
+                    "Connections": 1,
+                    "FramesWritten": 622,
+                    "DroppedBlocks": 0,
+                    "QueuedBlocks": 1,
+                    "EncoderPid": 4004,
+                    "LastError": null
+                  }
+                ],
+                "CurrentAssetId": "song-a",
+                "CurrentItemSamples": 20928,
+                "Recovered": false,
+                "Enabled": true,
+                "RequestedRunning": true,
+                "LastError": null,
+                "RetryAtUtc": null,
+                "CurrentArtist": "RadioTEDU synthetic fixture",
+                "CurrentDurationSeconds": null,
+                "NextItem": {
+                  "Id": "advert",
+                  "Artist": "RadioTEDU synthetic fixture",
+                  "Title": "advert",
+                  "Kind": "Advertisement",
+                  "DurationSeconds": null
+                },
+                "Loudness": {
+                  "State": "Measuring",
+                  "UpdatedAtUtc": "2026-10-16T01:37:42.4328354+00:00",
+                  "Current": {
+                    "Id": "9baac5604f384d92a9b6009aeb28a9af",
+                    "StationId": "baseline",
+                    "SessionId": "de911b4fe3fa47dcaa6ca69451d3f18b",
+                    "StartSample": 0,
+                    "EndSample": 595200,
+                    "StartedAtUtc": "2026-10-16T01:37:30.0438232+00:00",
+                    "Phase": "Live",
+                    "Reason": "ContinuousWindow",
+                    "MaximumFrames": 172800000,
+                    "HasMeasurementGap": false,
+                    "GapBeforeFrames": 0,
+                    "MissingTail": false,
+                    "Reading": {
+                      "SampleFrames": 595200,
+                      "IntegratedFrames": 576000,
+                      "MomentaryLufs": -14.081216793850327,
+                      "ShortTermLufs": -13.635637753108853,
+                      "IntegratedLufs": -13.616079219330977,
+                      "LoudnessRangeLu": 0.7556244727756902,
+                      "MaximumMomentaryLufs": -12.559930016892745,
+                      "MaximumShortTermLufs": -13.246895500410039,
+                      "SamplePeakDbfs": -13.407037898909222,
+                      "TruePeakDbtp": -12.441079148559389,
+                      "RangeSettled": false,
+                      "Finished": false,
+                      "StatisticsSampleFrames": 576000
+                    },
+                    "KnownEndAtUtc": "2026-10-16T01:37:42.4438232+00:00",
+                    "Scope": "pre_encoder_final_mix"
+                  },
+                  "LastClosed": null,
+                  "DroppedBlocks": 0,
+                  "DroppedFrames": 0,
+                  "InvalidBlocks": 0,
+                  "Gaps": 0,
+                  "HistoryFailures": 0,
+                  "Error": null,
+                  "HistoryError": null,
+                  "QueuedBlocks": 1,
+                  "Continuous": true
+                }
+              },
+              "decodedListeners": [
+                {
+                  "Mount": "/next-baseline-aac",
+                  "DecodedSeconds": 12,
+                  "SilentWindows": 0,
+                  "LongestSilentRun": 0,
+                  "ToneTransitions": 8,
+                  "UnexpectedToneTransitions": 0,
+                  "LiveToneWindows": 0,
+                  "FirstTones": [
+                    440,
+                    880,
+                    1320,
+                    660,
+                    440,
+                    880,
+                    1320,
+                    660,
+                    440
+                  ],
+                  "Error": null
+                },
+                {
+                  "Mount": "/next-baseline-flac",
+                  "DecodedSeconds": 11.86,
+                  "SilentWindows": 0,
+                  "LongestSilentRun": 0,
+                  "ToneTransitions": 7,
+                  "UnexpectedToneTransitions": 0,
+                  "LiveToneWindows": 0,
+                  "FirstTones": [
+                    440,
+                    880,
+                    1320,
+                    660,
+                    440,
+                    880,
+                    1320,
+                    660
+                  ],
+                  "Error": null
+                }
+              ],
+              "report": {
+                "SchemaVersion": 1,
+                "LocalDate": "2026-10-16",
+                "Timezone": "Europe/Istanbul",
+                "Records": 9,
+                "IncompleteRecords": 0,
+                "Sha256": "cf09a5c2817c666701a16388b9225da4e3a2bf4c0ac3fb7088eb2af990d0e7bb",
+                "FileName": "2026-10-16.csv",
+                "GeneratedAtUtc": "2026-10-16T01:37:42.6119769+00:00"
+              }
+            },
+            "Error": null
+          }
+        ],
+        "RemainingOwnedChildren": {}
+      },
+      {
+        "SchemaVersion": 1,
+        "CreatedAtUtc": "2026-10-16T01:37:47.6792475+00:00",
+        "Machine": "runnervm0xl3a",
+        "OS": "Microsoft Windows 10.0.26100",
+        "Runtime": ".NET 10.0.13",
+        "Icecast": "2.5.0",
+        "TestProfiles": [
+          "AAC-LC 192 kbps",
+          "24-bit Ogg FLAC"
+        ],
+        "HeAacTested": false,
+        "Source": "New independent implementation; no production configuration or services accessed.",
+        "ExecutionSource": "e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+        "PcmFormat": "48k stereo float32 little-endian",
+        "ExecutionBuild": "1.0.0+e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+        "Results": [
+          {
+            "Name": "precision",
+            "Passed": true,
+            "DurationSeconds": 4.815964,
+            "Checks": [
+              {
+                "Description": "Real Ogg FLAC listener decoded at least two seconds of stereo PCM.",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded FLAC follows the original 24-bit sample sequence across repeated file boundaries.",
+                "Passed": true
+              },
+              {
+                "Description": "Sub-16-bit sample detail survives the entire decoder/mix/encoder/listener path.",
+                "Passed": true
+              },
+              {
+                "Description": "Distinct left and right channels remain distinct.",
+                "Passed": true
+              },
+              {
+                "Description": "Independent stream probe confirms 48 kHz stereo 24-bit FLAC.",
+                "Passed": true
+              },
+              {
+                "Description": "Real audio loop publishes continuous measured final-mix coverage without blocking outputs.",
+                "Passed": true
+              },
+              {
+                "Description": "Measured final-mix window closes durably with real sample boundaries.",
+                "Passed": true
+              }
+            ],
+            "Details": {
+              "listener": {
+                "ComparedFrames": 135808,
+                "MismatchedFrames": 0,
+                "SubSixteenBitFrames": 135805,
+                "StereoDifferentFrames": 135808,
+                "MaximumErrorLsb24": 0,
+                "FirstFixtureFrame": 8192
+              },
+              "stream": {
+                "codec_name": "flac",
+                "sample_rate": "48000",
+                "channels": 2,
+                "bits_per_raw_sample": "24"
+              },
+              "station": {
+                "Id": "precision",
+                "State": "Running",
+                "Samples": 187200,
+                "CompletedItems": 3,
+                "SkippedItems": 0,
+                "CurrentTitle": "24-bit stereo precision",
+                "LateBlocks": 2,
+                "AuditRejectedEvents": 0,
+                "Outputs": [
+                  {
+                    "Id": "precision",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 1,
+                    "Connections": 1,
+                    "FramesWritten": 195,
+                    "DroppedBlocks": 0,
+                    "QueuedBlocks": 0,
+                    "EncoderPid": 7656,
+                    "LastError": null
+                  }
+                ],
+                "CurrentAssetId": "stereo-detail",
+                "CurrentItemSamples": 43200,
+                "Recovered": false,
+                "Enabled": true,
+                "RequestedRunning": true,
+                "LastError": null,
+                "RetryAtUtc": null,
+                "CurrentArtist": "Synthetic engineering signal",
+                "CurrentDurationSeconds": 1,
+                "NextItem": {
+                  "Id": "stereo-detail",
+                  "Artist": "Synthetic engineering signal",
+                  "Title": "24-bit stereo precision",
+                  "Kind": "Music",
+                  "DurationSeconds": 1
+                },
+                "Loudness": {
+                  "State": "Measuring",
+                  "UpdatedAtUtc": "2026-10-16T01:37:47.6146935+00:00",
+                  "Current": {
+                    "Id": "e00f1c66fad6479db08afd4702a1fe19",
+                    "StationId": "precision",
+                    "SessionId": "7f8edfa59681489689f9becdea2ae4d1",
+                    "StartSample": 0,
+                    "EndSample": 187200,
+                    "StartedAtUtc": "2026-10-16T01:37:43.27391+00:00",
+                    "Phase": "Live",
+                    "Reason": "ContinuousWindow",
+                    "MaximumFrames": 172800000,
+                    "HasMeasurementGap": false,
+                    "GapBeforeFrames": 0,
+                    "MissingTail": false,
+                    "Reading": {
+                      "SampleFrames": 187200,
+                      "IntegratedFrames": 144000,
+                      "MomentaryLufs": -25.67055015025356,
+                      "ShortTermLufs": -25.670557042793657,
+                      "IntegratedLufs": -25.670599913507434,
+                      "LoudnessRangeLu": 0,
+                      "MaximumMomentaryLufs": -25.670544098225047,
+                      "MaximumShortTermLufs": -25.67055601829979,
+                      "SamplePeakDbfs": -24.08041183823007,
+                      "TruePeakDbtp": -24.067291628904577,
+                      "RangeSettled": false,
+                      "Finished": false,
+                      "StatisticsSampleFrames": 144000
+                    },
+                    "KnownEndAtUtc": "2026-10-16T01:37:47.17391+00:00",
+                    "Scope": "pre_encoder_final_mix"
+                  },
+                  "LastClosed": null,
+                  "DroppedBlocks": 0,
+                  "DroppedFrames": 0,
+                  "InvalidBlocks": 0,
+                  "Gaps": 0,
+                  "HistoryFailures": 0,
+                  "Error": null,
+                  "HistoryError": null,
+                  "QueuedBlocks": 0,
+                  "Continuous": true
+                }
+              },
+              "measurementHistory": [
+                {
+                  "Id": "e00f1c66fad6479db08afd4702a1fe19",
+                  "StationId": "precision",
+                  "SessionId": "7f8edfa59681489689f9becdea2ae4d1",
+                  "StartSample": 0,
+                  "EndSample": 187200,
+                  "StartedAtUtc": "2026-10-16T01:37:43.27391+00:00",
+                  "Phase": "Finished",
+                  "Reason": "SessionEnded",
+                  "MaximumFrames": 172800000,
+                  "HasMeasurementGap": false,
+                  "GapBeforeFrames": 0,
+                  "MissingTail": false,
+                  "Reading": {
+                    "SampleFrames": 187200,
+                    "IntegratedFrames": 187200,
+                    "MomentaryLufs": -25.67055015025356,
+                    "ShortTermLufs": -25.670557042793657,
+                    "IntegratedLufs": -25.670589089157183,
+                    "LoudnessRangeLu": 1.0029005652154069e-13,
+                    "MaximumMomentaryLufs": -25.670544098225047,
+                    "MaximumShortTermLufs": -25.67055601829979,
+                    "SamplePeakDbfs": -24.08041183823007,
+                    "TruePeakDbtp": -24.067291628904577,
+                    "RangeSettled": false,
+                    "Finished": true,
+                    "StatisticsSampleFrames": 187200
+                  },
+                  "KnownEndAtUtc": "2026-10-16T01:37:47.17391+00:00",
+                  "Scope": "pre_encoder_final_mix"
+                },
+                {
+                  "Id": "e00f1c66fad6479db08afd4702a1fe19",
+                  "StationId": "precision",
+                  "SessionId": "7f8edfa59681489689f9becdea2ae4d1",
+                  "StartSample": 0,
+                  "EndSample": 0,
+                  "StartedAtUtc": "2026-10-16T01:37:43.27391+00:00",
+                  "Phase": "Started",
+                  "Reason": "ContinuousWindow",
+                  "MaximumFrames": 172800000,
+                  "HasMeasurementGap": false,
+                  "GapBeforeFrames": 0,
+                  "MissingTail": false,
+                  "Reading": null,
+                  "KnownEndAtUtc": "2026-10-16T01:37:43.27391+00:00",
+                  "Scope": "pre_encoder_final_mix"
+                }
+              ],
+              "scope": "Synthetic pre-encoder meter and 24-bit FLAC precision only; no normalization, true-peak limiting, HE-AAC or production compliance."
+            },
+            "Error": null
+          }
+        ],
+        "RemainingOwnedChildren": {}
+      },
+      {
+        "SchemaVersion": 1,
+        "CreatedAtUtc": "2026-10-16T01:37:56.6708746+00:00",
+        "Machine": "runnervm0xl3a",
+        "OS": "Microsoft Windows 10.0.26100",
+        "Runtime": ".NET 10.0.13",
+        "Icecast": "2.5.0",
+        "TestProfiles": [
+          "AAC-LC 192 kbps",
+          "24-bit Ogg FLAC"
+        ],
+        "HeAacTested": false,
+        "Source": "New independent implementation; no production configuration or services accessed.",
+        "ExecutionSource": "e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+        "PcmFormat": "48k stereo float32 little-endian",
+        "ExecutionBuild": "1.0.0+e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+        "Results": [
+          {
+            "Name": "live",
+            "Passed": true,
+            "DurationSeconds": 8.8049846,
+            "Checks": [
+              {
+                "Description": "Synthetic live PCM takeover, input loss and return keep one encoder/source session.",
+                "Passed": true
+              },
+              {
+                "Description": "The listener actually receives at least 600 ms of the distinct synthetic microphone tone.",
+                "Passed": true
+              },
+              {
+                "Description": "No decoder error on /next-live",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded listener audio exceeds 4 seconds on /next-live",
+                "Passed": true
+              },
+              {
+                "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-live",
+                "Passed": true
+              },
+              {
+                "Description": "Playback journal hash chain is valid.",
+                "Passed": true
+              },
+              {
+                "Description": "Event acknowledgements do not duplicate journal rows.",
+                "Passed": true
+              },
+              {
+                "Description": "Music, advertisements and sweepers produce separate occurrence records.",
+                "Passed": true
+              },
+              {
+                "Description": "Orderly stop leaves a terminal record for every started occurrence.",
+                "Passed": true
+              },
+              {
+                "Description": "Completed assets retain their exact sample counts, including boundaries inside a 20 ms block.",
+                "Passed": true
+              },
+              {
+                "Description": "Program sample positions never reset during output recovery: live",
+                "Passed": true
+              },
+              {
+                "Description": "No track is repeated or advanced by transport recovery: live",
+                "Passed": true
+              },
+              {
+                "Description": "Daily local report contains one record per station occurrence, independent of output variants.",
+                "Passed": true
+              }
+            ],
+            "Details": {
+              "station": {
+                "Id": "live",
+                "State": "Running",
+                "Samples": 398400,
+                "CompletedItems": 5,
+                "SkippedItems": 0,
+                "CurrentTitle": "advert",
+                "LateBlocks": 2,
+                "AuditRejectedEvents": 0,
+                "Outputs": [
+                  {
+                    "Id": "live",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 1,
+                    "Connections": 1,
+                    "FramesWritten": 415,
+                    "DroppedBlocks": 0,
+                    "QueuedBlocks": 0,
+                    "EncoderPid": 4672,
+                    "LastError": null
+                  }
+                ],
+                "CurrentAssetId": "advert",
+                "CurrentItemSamples": 12048,
+                "Recovered": false,
+                "Enabled": true,
+                "RequestedRunning": true,
+                "LastError": null,
+                "RetryAtUtc": null,
+                "CurrentArtist": "RadioTEDU synthetic fixture",
+                "CurrentDurationSeconds": null,
+                "NextItem": {
+                  "Id": "sweeper",
+                  "Artist": "RadioTEDU synthetic fixture",
+                  "Title": "sweeper",
+                  "Kind": "Sweeper",
+                  "DurationSeconds": null
+                },
+                "Loudness": {
+                  "State": "Measuring",
+                  "UpdatedAtUtc": "2026-10-16T01:37:56.5384612+00:00",
+                  "Current": {
+                    "Id": "0be42ff466bf477cabe3c9ed7a88a412",
+                    "StationId": "live",
+                    "SessionId": "2bdae596e3284cad95ba5852e04e19ab",
+                    "StartSample": 0,
+                    "EndSample": 398400,
+                    "StartedAtUtc": "2026-10-16T01:37:48.2480529+00:00",
+                    "Phase": "Live",
+                    "Reason": "ContinuousWindow",
+                    "MaximumFrames": 172800000,
+                    "HasMeasurementGap": false,
+                    "GapBeforeFrames": 0,
+                    "MissingTail": false,
+                    "Reading": {
+                      "SampleFrames": 398400,
+                      "IntegratedFrames": 384000,
+                      "MomentaryLufs": -13.801616997509631,
+                      "ShortTermLufs": -14.014601326284483,
+                      "IntegratedLufs": -12.791567454708177,
+                      "LoudnessRangeLu": 2.627969908492706,
+                      "MaximumMomentaryLufs": -10.063342594377247,
+                      "MaximumShortTermLufs": -11.264738230312991,
+                      "SamplePeakDbfs": -6.293269191125317,
+                      "TruePeakDbtp": -6.290569440864038,
+                      "RangeSettled": false,
+                      "Finished": false,
+                      "StatisticsSampleFrames": 384000
+                    },
+                    "KnownEndAtUtc": "2026-10-16T01:37:56.5480529+00:00",
+                    "Scope": "pre_encoder_final_mix"
+                  },
+                  "LastClosed": null,
+                  "DroppedBlocks": 0,
+                  "DroppedFrames": 0,
+                  "InvalidBlocks": 0,
+                  "Gaps": 0,
+                  "HistoryFailures": 0,
+                  "Error": null,
+                  "HistoryError": null,
+                  "QueuedBlocks": 0,
+                  "Continuous": true
+                }
+              },
+              "decodedListeners": [
+                {
+                  "Mount": "/next-live",
+                  "DecodedSeconds": 8.2,
+                  "SilentWindows": 0,
+                  "LongestSilentRun": 0,
+                  "ToneTransitions": 5,
+                  "UnexpectedToneTransitions": 0,
+                  "LiveToneWindows": 75,
+                  "FirstTones": [
+                    440,
+                    880,
+                    1320,
+                    660,
+                    440,
+                    880
+                  ],
+                  "Error": null
+                }
+              ],
+              "limitation": "Synthetic audio-agent input only; physical WASAPI microphone capture and listening QA remain future work.",
+              "report": {
+                "SchemaVersion": 1,
+                "LocalDate": "2026-10-16",
+                "Timezone": "Europe/Istanbul",
+                "Records": 6,
+                "IncompleteRecords": 0,
+                "Sha256": "aaade989bc5abd3a7621cad31ef486602c9c011527bc6f1a81c317e565a8d6cd",
+                "FileName": "2026-10-16.csv",
+                "GeneratedAtUtc": "2026-10-16T01:37:56.6542368+00:00"
+              }
+            },
+            "Error": null
+          }
+        ],
+        "RemainingOwnedChildren": {}
+      },
+      {
+        "SchemaVersion": 1,
+        "CreatedAtUtc": "2026-10-16T01:38:10.8721675+00:00",
+        "Machine": "runnervm0xl3a",
+        "OS": "Microsoft Windows 10.0.26100",
+        "Runtime": ".NET 10.0.13",
+        "Icecast": "2.5.0",
+        "TestProfiles": [
+          "AAC-LC 192 kbps",
+          "24-bit Ogg FLAC"
+        ],
+        "HeAacTested": false,
+        "Source": "New independent implementation; no production configuration or services accessed.",
+        "ExecutionSource": "e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+        "PcmFormat": "48k stereo float32 little-endian",
+        "ExecutionBuild": "1.0.0+e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+        "Results": [
+          {
+            "Name": "recovery",
+            "Passed": true,
+            "DurationSeconds": 14.0075225,
+            "Checks": [
+              {
+                "Description": "Fault injection targets an owned encoder only.",
+                "Passed": true
+              },
+              {
+                "Description": "Killing a peer encoder leaves the healthy encoder and source connection unchanged.",
+                "Passed": true
+              },
+              {
+                "Description": "No decoder error on /next-recovery-main",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded listener audio exceeds 3 seconds on /next-recovery-main",
+                "Passed": true
+              },
+              {
+                "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-recovery-main",
+                "Passed": true
+              },
+              {
+                "Description": "Listener hears multiple actual content transitions on /next-recovery-main",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded tone order has no skips or repeats on /next-recovery-main",
+                "Passed": true
+              },
+              {
+                "Description": "Recovered source delivers newly decoded listener audio.",
+                "Passed": true
+              },
+              {
+                "Description": "Origin outage never restarts or rewinds the program timeline.",
+                "Passed": true
+              },
+              {
+                "Description": "Playback journal hash chain is valid.",
+                "Passed": true
+              },
+              {
+                "Description": "Event acknowledgements do not duplicate journal rows.",
+                "Passed": true
+              },
+              {
+                "Description": "Music, advertisements and sweepers produce separate occurrence records.",
+                "Passed": true
+              },
+              {
+                "Description": "Orderly stop leaves a terminal record for every started occurrence.",
+                "Passed": true
+              },
+              {
+                "Description": "Completed assets retain their exact sample counts, including boundaries inside a 20 ms block.",
+                "Passed": true
+              },
+              {
+                "Description": "Program sample positions never reset during output recovery: recovery",
+                "Passed": true
+              },
+              {
+                "Description": "No track is repeated or advanced by transport recovery: recovery",
+                "Passed": true
+              },
+              {
+                "Description": "Daily local report contains one record per station occurrence, independent of output variants.",
+                "Passed": true
+              }
+            ],
+            "Details": {
+              "decodedListeners": [
+                {
+                  "Mount": "/next-recovery-main",
+                  "DecodedSeconds": 6.9,
+                  "SilentWindows": 0,
+                  "LongestSilentRun": 0,
+                  "ToneTransitions": 4,
+                  "UnexpectedToneTransitions": 0,
+                  "LiveToneWindows": 0,
+                  "FirstTones": [
+                    440,
+                    880,
+                    1320,
+                    660,
+                    440
+                  ],
+                  "Error": null
+                }
+              ],
+              "station": {
+                "Id": "recovery",
+                "State": "Running",
+                "Samples": 647040,
+                "CompletedItems": 8,
+                "SkippedItems": 0,
+                "CurrentTitle": "song-a",
+                "LateBlocks": 2,
+                "AuditRejectedEvents": 0,
+                "Outputs": [
+                  {
+                    "Id": "recovery-main",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 2,
+                    "Connections": 2,
+                    "FramesWritten": 653,
+                    "DroppedBlocks": 20,
+                    "QueuedBlocks": 1,
+                    "EncoderPid": 3352,
+                    "LastError": null
+                  },
+                  {
+                    "Id": "recovery-peer",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 3,
+                    "Connections": 3,
+                    "FramesWritten": 611,
+                    "DroppedBlocks": 62,
+                    "QueuedBlocks": 1,
+                    "EncoderPid": 3444,
+                    "LastError": null
+                  }
+                ],
+                "CurrentAssetId": "song-a",
+                "CurrentItemSamples": 69888,
+                "Recovered": false,
+                "Enabled": true,
+                "RequestedRunning": true,
+                "LastError": null,
+                "RetryAtUtc": null,
+                "CurrentArtist": "RadioTEDU synthetic fixture",
+                "CurrentDurationSeconds": null,
+                "NextItem": {
+                  "Id": "advert",
+                  "Artist": "RadioTEDU synthetic fixture",
+                  "Title": "advert",
+                  "Kind": "Advertisement",
+                  "DurationSeconds": null
+                },
+                "Loudness": {
+                  "State": "Measuring",
+                  "UpdatedAtUtc": "2026-10-16T01:38:10.6715175+00:00",
+                  "Current": {
+                    "Id": "beb365522fe842b893c2b11555ae619f",
+                    "StationId": "recovery",
+                    "SessionId": "bd1da3425cc741a7b12e7f668e41f1a2",
+                    "StartSample": 0,
+                    "EndSample": 643200,
+                    "StartedAtUtc": "2026-10-16T01:37:57.2837973+00:00",
+                    "Phase": "Live",
+                    "Reason": "ContinuousWindow",
+                    "MaximumFrames": 172800000,
+                    "HasMeasurementGap": false,
+                    "GapBeforeFrames": 0,
+                    "MissingTail": false,
+                    "Reading": {
+                      "SampleFrames": 643200,
+                      "IntegratedFrames": 624000,
+                      "MomentaryLufs": -14.090634104690373,
+                      "ShortTermLufs": -14.007104762216184,
+                      "IntegratedLufs": -13.649690718450362,
+                      "LoudnessRangeLu": 0.7513150250155952,
+                      "MaximumMomentaryLufs": -12.559930016892745,
+                      "MaximumShortTermLufs": -13.246895500410039,
+                      "SamplePeakDbfs": -13.407037898909222,
+                      "TruePeakDbtp": -12.441079148559389,
+                      "RangeSettled": false,
+                      "Finished": false,
+                      "StatisticsSampleFrames": 624000
+                    },
+                    "KnownEndAtUtc": "2026-10-16T01:38:10.6837973+00:00",
+                    "Scope": "pre_encoder_final_mix"
+                  },
+                  "LastClosed": null,
+                  "DroppedBlocks": 0,
+                  "DroppedFrames": 0,
+                  "InvalidBlocks": 0,
+                  "Gaps": 0,
+                  "HistoryFailures": 0,
+                  "Error": null,
+                  "HistoryError": null,
+                  "QueuedBlocks": 1,
+                  "Continuous": true
+                }
+              },
+              "report": {
+                "SchemaVersion": 1,
+                "LocalDate": "2026-10-16",
+                "Timezone": "Europe/Istanbul",
+                "Records": 9,
+                "IncompleteRecords": 0,
+                "Sha256": "5778ef96ec1a94efb00112b4e32c16d6e9d69bf28855142ed8c84728b29b7c19",
+                "FileName": "2026-10-16.csv",
+                "GeneratedAtUtc": "2026-10-16T01:38:10.8529622+00:00"
+              }
+            },
+            "Error": null
+          }
+        ],
+        "RemainingOwnedChildren": {}
+      },
+      {
+        "SchemaVersion": 1,
+        "CreatedAtUtc": "2026-10-16T01:38:14.3988163+00:00",
+        "Machine": "runnervm0xl3a",
+        "OS": "Microsoft Windows 10.0.26100",
+        "Runtime": ".NET 10.0.13",
+        "Icecast": "2.5.0",
+        "TestProfiles": [
+          "AAC-LC 192 kbps",
+          "24-bit Ogg FLAC"
+        ],
+        "HeAacTested": false,
+        "Source": "New independent implementation; no production configuration or services accessed.",
+        "ExecutionSource": "e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+        "PcmFormat": "48k stereo float32 little-endian",
+        "ExecutionBuild": "1.0.0+e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+        "Results": [
+          {
+            "Name": "finite",
+            "Passed": true,
+            "DurationSeconds": 3.3437088,
+            "Checks": [
+              {
+                "Description": "Finite programme has exactly one real start and one committed completion.",
+                "Passed": true
+              },
+              {
+                "Description": "The finite programme reached a real encoder/source before completion.",
+                "Passed": true
+              },
+              {
+                "Description": "Restart at committed EOF cannot replay the completed finite playlist.",
+                "Passed": true
+              },
+              {
+                "Description": "Exhausted recovery does not open a duplicate encoder/source session.",
+                "Passed": true
+              },
+              {
+                "Description": "EOF recovery preserves the complete event hash chain.",
+                "Passed": true
+              }
+            ],
+            "Details": {},
+            "Error": null
+          }
+        ],
+        "RemainingOwnedChildren": {}
+      },
+      {
+        "SchemaVersion": 1,
+        "CreatedAtUtc": "2026-10-16T01:38:25.1526808+00:00",
+        "Machine": "runnervm0xl3a",
+        "OS": "Microsoft Windows 10.0.26100",
+        "Runtime": ".NET 10.0.13",
+        "Icecast": "2.5.0",
+        "TestProfiles": [
+          "AAC-LC 192 kbps",
+          "24-bit Ogg FLAC"
+        ],
+        "HeAacTested": false,
+        "Source": "New independent implementation; no production configuration or services accessed.",
+        "ExecutionSource": "e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+        "PcmFormat": "48k stereo float32 little-endian",
+        "ExecutionBuild": "1.0.0+e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+        "Results": [
+          {
+            "Name": "backpressure",
+            "Passed": true,
+            "DurationSeconds": 10.6026517,
+            "Checks": [
+              {
+                "Description": "A real non-reading source transport reaches bounded recovery.",
+                "Passed": true
+              },
+              {
+                "Description": "The blocked output cannot grow its PCM queue.",
+                "Passed": true
+              },
+              {
+                "Description": "Network backpressure does not restart or drop audio on the healthy sibling.",
+                "Passed": true
+              },
+              {
+                "Description": "No decoder error on /next-survivor",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded listener audio exceeds 6 seconds on /next-survivor",
+                "Passed": true
+              },
+              {
+                "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-survivor",
+                "Passed": true
+              },
+              {
+                "Description": "Listener hears multiple actual content transitions on /next-survivor",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded tone order has no skips or repeats on /next-survivor",
+                "Passed": true
+              },
+              {
+                "Description": "Playback journal hash chain is valid.",
+                "Passed": true
+              },
+              {
+                "Description": "Event acknowledgements do not duplicate journal rows.",
+                "Passed": true
+              },
+              {
+                "Description": "Music, advertisements and sweepers produce separate occurrence records.",
+                "Passed": true
+              },
+              {
+                "Description": "Orderly stop leaves a terminal record for every started occurrence.",
+                "Passed": true
+              },
+              {
+                "Description": "Completed assets retain their exact sample counts, including boundaries inside a 20 ms block.",
+                "Passed": true
+              },
+              {
+                "Description": "Program sample positions never reset during output recovery: backpressure",
+                "Passed": true
+              },
+              {
+                "Description": "No track is repeated or advanced by transport recovery: backpressure",
+                "Passed": true
+              },
+              {
+                "Description": "Daily local report contains one record per station occurrence, independent of output variants.",
+                "Passed": true
+              }
+            ],
+            "Details": {
+              "station": {
+                "Id": "backpressure",
+                "State": "Running",
+                "Samples": 480000,
+                "CompletedItems": 6,
+                "SkippedItems": 0,
+                "CurrentTitle": "sweeper",
+                "LateBlocks": 9,
+                "AuditRejectedEvents": 0,
+                "Outputs": [
+                  {
+                    "Id": "survivor",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 1,
+                    "Connections": 1,
+                    "FramesWritten": 500,
+                    "DroppedBlocks": 0,
+                    "QueuedBlocks": 0,
+                    "EncoderPid": 4608,
+                    "LastError": null
+                  },
+                  {
+                    "Id": "blocked",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 5,
+                    "Connections": 5,
+                    "FramesWritten": 208,
+                    "DroppedBlocks": 290,
+                    "QueuedBlocks": 0,
+                    "EncoderPid": 9012,
+                    "LastError": null
+                  }
+                ],
+                "CurrentAssetId": "sweeper",
+                "CurrentItemSamples": 60048,
+                "Recovered": false,
+                "Enabled": true,
+                "RequestedRunning": true,
+                "LastError": null,
+                "RetryAtUtc": null,
+                "CurrentArtist": "RadioTEDU synthetic fixture",
+                "CurrentDurationSeconds": null,
+                "NextItem": {
+                  "Id": "song-b",
+                  "Artist": "RadioTEDU synthetic fixture",
+                  "Title": "song-b",
+                  "Kind": "Music",
+                  "DurationSeconds": null
+                },
+                "Loudness": {
+                  "State": "Measuring",
+                  "UpdatedAtUtc": "2026-10-16T01:38:24.9436882+00:00",
+                  "Current": {
+                    "Id": "9247bd30f86e4e1495592329fa97ac7e",
+                    "StationId": "backpressure",
+                    "SessionId": "141bbb21c9da48ce863c3bf07aab40bf",
+                    "StartSample": 0,
+                    "EndSample": 480000,
+                    "StartedAtUtc": "2026-10-16T01:38:14.94539+00:00",
+                    "Phase": "Live",
+                    "Reason": "ContinuousWindow",
+                    "MaximumFrames": 172800000,
+                    "HasMeasurementGap": false,
+                    "GapBeforeFrames": 0,
+                    "MissingTail": false,
+                    "Reading": {
+                      "SampleFrames": 480000,
+                      "IntegratedFrames": 480000,
+                      "MomentaryLufs": -12.559933299573563,
+                      "ShortTermLufs": -13.29792074573937,
+                      "IntegratedLufs": -13.57772740684092,
+                      "LoudnessRangeLu": 0.758102936873142,
+                      "MaximumMomentaryLufs": -12.559930016892745,
+                      "MaximumShortTermLufs": -13.246895500410039,
+                      "SamplePeakDbfs": -13.407037898909222,
+                      "TruePeakDbtp": -12.441079148559389,
+                      "RangeSettled": false,
+                      "Finished": false,
+                      "StatisticsSampleFrames": 480000
+                    },
+                    "KnownEndAtUtc": "2026-10-16T01:38:24.94539+00:00",
+                    "Scope": "pre_encoder_final_mix"
+                  },
+                  "LastClosed": null,
+                  "DroppedBlocks": 0,
+                  "DroppedFrames": 0,
+                  "InvalidBlocks": 0,
+                  "Gaps": 0,
+                  "HistoryFailures": 0,
+                  "Error": null,
+                  "HistoryError": null,
+                  "QueuedBlocks": 0,
+                  "Continuous": true
+                }
+              },
+              "decodedListeners": [
+                {
+                  "Mount": "/next-survivor",
+                  "DecodedSeconds": 9.88,
+                  "SilentWindows": 0,
+                  "LongestSilentRun": 0,
+                  "ToneTransitions": 6,
+                  "UnexpectedToneTransitions": 0,
+                  "LiveToneWindows": 0,
+                  "FirstTones": [
+                    440,
+                    880,
+                    1320,
+                    660,
+                    440,
+                    880,
+                    1320
+                  ],
+                  "Error": null
+                }
+              ],
+              "report": {
+                "SchemaVersion": 1,
+                "LocalDate": "2026-10-16",
+                "Timezone": "Europe/Istanbul",
+                "Records": 8,
+                "IncompleteRecords": 0,
+                "Sha256": "966302714cb8974e20416729ab922052e22c56e766683437e5aa030942ffe112",
+                "FileName": "2026-10-16.csv",
+                "GeneratedAtUtc": "2026-10-16T01:38:25.1329002+00:00"
+              }
+            },
+            "Error": null
+          }
+        ],
+        "RemainingOwnedChildren": {}
+      },
+      {
+        "SchemaVersion": 1,
+        "CreatedAtUtc": "2026-10-16T01:38:34.5854555+00:00",
+        "Machine": "runnervm0xl3a",
+        "OS": "Microsoft Windows 10.0.26100",
+        "Runtime": ".NET 10.0.13",
+        "Icecast": "2.5.0",
+        "TestProfiles": [
+          "AAC-LC 192 kbps",
+          "24-bit Ogg FLAC"
+        ],
+        "HeAacTested": false,
+        "Source": "New independent implementation; no production configuration or services accessed.",
+        "ExecutionSource": "e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+        "PcmFormat": "48k stereo float32 little-endian",
+        "ExecutionBuild": "1.0.0+e3b19c5bb0322ec055fba06a76ada439b2eb518f",
+        "Results": [
+          {
+            "Name": "corrupt",
+            "Passed": true,
+            "DurationSeconds": 9.2432661,
+            "Checks": [
+              {
+                "Description": "A corrupt upcoming file is rejected without restarting the source or stalling its successor.",
+                "Passed": true
+              },
+              {
+                "Description": "No decoder error on /next-corrupt",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded listener audio exceeds 5 seconds on /next-corrupt",
+                "Passed": true
+              },
+              {
+                "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-corrupt",
+                "Passed": true
+              },
+              {
+                "Description": "Listener hears multiple actual content transitions on /next-corrupt",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded tone order has no skips or repeats on /next-corrupt",
+                "Passed": true
+              },
+              {
+                "Description": "Rejected media has an explicit incident event.",
+                "Passed": true
+              },
+              {
+                "Description": "Playback journal hash chain is valid.",
+                "Passed": true
+              },
+              {
+                "Description": "Event acknowledgements do not duplicate journal rows.",
+                "Passed": true
+              },
+              {
+                "Description": "Music, advertisements and sweepers produce separate occurrence records.",
+                "Passed": true
+              },
+              {
+                "Description": "Orderly stop leaves a terminal record for every started occurrence.",
+                "Passed": true
+              },
+              {
+                "Description": "Completed assets retain their exact sample counts, including boundaries inside a 20 ms block.",
+                "Passed": true
+              },
+              {
+                "Description": "Program sample positions never reset during output recovery: corrupt",
+                "Passed": true
+              },
+              {
+                "Description": "No track is repeated or advanced by transport recovery: corrupt",
+                "Passed": true
+              },
+              {
+                "Description": "Daily local report contains one record per station occurrence, independent of output variants.",
+                "Passed": true
+              }
+            ],
+            "Details": {
+              "station": {
+                "Id": "corrupt",
+                "State": "Running",
+                "Samples": 408960,
+                "CompletedItems": 5,
+                "SkippedItems": 0,
+                "CurrentTitle": "advert",
+                "LateBlocks": 55,
+                "AuditRejectedEvents": 0,
+                "Outputs": [
+                  {
+                    "Id": "corrupt",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 1,
+                    "Connections": 1,
+                    "FramesWritten": 425,
+                    "DroppedBlocks": 0,
+                    "QueuedBlocks": 0,
+                    "EncoderPid": 8224,
+                    "LastError": null
+                  }
+                ],
+                "CurrentAssetId": "advert",
+                "CurrentItemSamples": 22608,
+                "Recovered": false,
+                "Enabled": true,
+                "RequestedRunning": true,
+                "LastError": null,
+                "RetryAtUtc": null,
+                "CurrentArtist": "RadioTEDU synthetic fixture",
+                "CurrentDurationSeconds": null,
+                "NextItem": {
+                  "Id": "sweeper",
+                  "Artist": "RadioTEDU synthetic fixture",
+                  "Title": "sweeper",
+                  "Kind": "Sweeper",
+                  "DurationSeconds": null
+                },
+                "Loudness": {
+                  "State": "Measuring",
+                  "UpdatedAtUtc": "2026-10-16T01:38:34.2349039+00:00",
+                  "Current": {
+                    "Id": "12314eb62fe94254951eab78fb1a7cdf",
+                    "StationId": "corrupt",
+                    "SessionId": "2fc0f4eb2d834d64b918923a4d7fed21",
+                    "StartSample": 0,
+                    "EndSample": 408000,
+                    "StartedAtUtc": "2026-10-16T01:38:25.736897+00:00",
+                    "Phase": "Live",
+                    "Reason": "ContinuousWindow",
+                    "MaximumFrames": 172800000,
+                    "HasMeasurementGap": false,
+                    "GapBeforeFrames": 0,
+                    "MissingTail": false,
+                    "Reading": {
+                      "SampleFrames": 408000,
+                      "IntegratedFrames": 384000,
+                      "MomentaryLufs": -13.642267119261343,
+                      "ShortTermLufs": -13.993913432863069,
+                      "IntegratedLufs": -13.723822325470156,
+                      "LoudnessRangeLu": 0.7607219547760579,
+                      "MaximumMomentaryLufs": -12.55993217334244,
+                      "MaximumShortTermLufs": -13.246895500410039,
+                      "SamplePeakDbfs": -13.407037898909222,
+                      "TruePeakDbtp": -12.441079148559389,
+                      "RangeSettled": false,
+                      "Finished": false,
+                      "StatisticsSampleFrames": 384000
+                    },
+                    "KnownEndAtUtc": "2026-10-16T01:38:34.236897+00:00",
+                    "Scope": "pre_encoder_final_mix"
+                  },
+                  "LastClosed": null,
+                  "DroppedBlocks": 0,
+                  "DroppedFrames": 0,
+                  "InvalidBlocks": 0,
+                  "Gaps": 0,
+                  "HistoryFailures": 0,
+                  "Error": null,
+                  "HistoryError": null,
+                  "QueuedBlocks": 0,
+                  "Continuous": true
+                }
+              },
+              "decodedListeners": [
+                {
+                  "Mount": "/next-corrupt",
+                  "DecodedSeconds": 8.4,
+                  "SilentWindows": 0,
+                  "LongestSilentRun": 0,
+                  "ToneTransitions": 5,
+                  "UnexpectedToneTransitions": 0,
+                  "LiveToneWindows": 0,
+                  "FirstTones": [
+                    440,
+                    880,
+                    1320,
+                    660,
+                    440,
+                    880
+                  ],
+                  "Error": null
+                }
+              ],
+              "report": {
+                "SchemaVersion": 1,
+                "LocalDate": "2026-10-16",
+                "Timezone": "Europe/Istanbul",
+                "Records": 6,
+                "IncompleteRecords": 0,
+                "Sha256": "a08bf85491aa316299ad877dfda0fdfffa284ad768d0f2ac184d400ab53efbeb",
+                "FileName": "2026-10-16.csv",
+                "GeneratedAtUtc": "2026-10-16T01:38:34.562112+00:00"
+              }
+            },
+            "Error": null
+          }
+        ],
+        "RemainingOwnedChildren": {}
+      }
+    ],
+    "Tools": [
+      {
+        "Url": "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-essentials_build.7z",
+        "Sha256": "4705843ccaaf54257c16ad90f3e952ece33c17df964ecf7bfdbb0f49c7171077",
+        "Name": "ffmpeg-9.0.2-essentials_build.7z"
+      },
+      {
+        "Url": "https://downloads.xiph.org/releases/icecast/icecast_win64_2.5.0.exe",
+        "Sha256": "ad412cbe5d3d3804ea6208dfb4be8d8a25ecb94d62f46bc5a9aa8fa0f2f647c9",
+        "Name": "icecast_win64_2.5.0.exe"
+      }
+    ],
+    "Error": null,
+    "FfmpegVersion": "ffmpeg version 9.0.2-essentials_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers"
+  },
+  "realAudioChecks": 95,
+  "artifacts": [
+    {
+      "name": "windows-unit-results",
+      "digest": "sha256:e41cbfd5ac8316d440233eb641d212cf2c1e9dad3981e2e4bbd04e5ad1491dba",
+      "bytes": 41002
+    },
+    {
+      "name": "windows-service-qualification",
+      "digest": "sha256:9ebb6386d8bd440bdab5b6b448c949d4cae8a29fa3c58ae08abeb5e866557ec7",
+      "bytes": 1158
+    },
+    {
+      "name": "windows-setup-qualification",
+      "digest": "sha256:cf0a96be3ebc4b49f4435ced6640029031c6ee98a40c8d6c04d3ab63c12252d0",
+      "bytes": 937
+    },
+    {
+      "name": "windows-runtime-package-evidence",
+      "digest": "sha256:cb6dfc62e7afda7ec073dda8f5d4a8941a59e118386e7c7915d5062dcb23aee5",
+      "bytes": 4233
+    },
+    {
+      "name": "loudness-reference-qualification",
+      "digest": "sha256:e3f77cc866366146691a0e50c601bed1e0e3c9e679d19f0868f3785f0197f91d",
+      "bytes": 2230
+    },
+    {
+      "name": "windows-real-audio-qualification",
+      "digest": "sha256:d639bbd189ff76b9b1d98de37f710ffc826b01ed37aaddaaec7bec595797b5e0",
+      "bytes": 6447
+    }
+  ],
+  "retainedFailure": "float-first-audio-wrapper-failure-20261016.json",
+  "localMousePreview": {
+    "connectedEngine": false,
+    "operationalConfigurationChanged": false,
+    "actions": [
+      "Selected Classic with mouse",
+      "Selected Energize with mouse",
+      "Scrolled to programme meter with mouse"
+    ],
+    "browserErrors": 0,
+    "screenshot": "float-meter-preview-20261016.png"
+  },
+  "productionChanged": false,
+  "migratedGroups": 0,
+  "scope": "Disposable Windows software/real loopback codecs, independent synthetic instruments and unconnected local preview only. No normalization/true-peak limiter, physical audio device, all18 outputs/HE-AAC, actual-PC install/boot/resource, connected mouse or24/72h acceptance."
+}
