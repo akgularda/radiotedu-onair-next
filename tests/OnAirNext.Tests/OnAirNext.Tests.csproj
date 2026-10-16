@@ -11,6 +11,7 @@
     <Compile Include="../../src/OnAirNext.Setup/SetupModels.cs" Link="Installation/SetupModels.cs" />
     <Compile Include="../../src/OnAirNext.Setup/CodecRuntimePackage.cs" Link="Installation/CodecRuntimePackage.cs" />
     <Compile Include="../../src/OnAirNext.Setup/RuntimeSupplement.cs" Link="Installation/RuntimeSupplement.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/RuntimeSupplementReviewProgress.cs" Link="Installation/RuntimeSupplementReviewProgress.cs" />
     <None Include="../../src/OnAirNext.Setup/RuntimeReferences/b39ffcb9.json" Link="RuntimeReferences/b39ffcb9.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="../../src/OnAirNext.Setup/UpdateReviewHandoff.cs" Link="Installation/UpdateReviewHandoff.cs" />
     <Compile Include="../../src/OnAirNext.Setup/AppUpdateModels.cs" Link="Installation/AppUpdateModels.cs" />

@@ -106,8 +106,11 @@ internal sealed class RuntimeSupplementCoordinator:IAsyncDisposable
                 var start=new ProcessStartInfo(_helper){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true,WorkingDirectory=_package};
                 foreach(var arg in new[]{"--prepare-audio-tools",requestPath,Convert.ToHexString(SHA256.HashData(bytes))})start.ArgumentList.Add(arg);
                 SetupPaths.RequireNoLinks(_helper);using var process=Process.Start(start)??throw new IOException("The tools review did not start.");try{process.PriorityClass=ProcessPriorityClass.BelowNormal;}catch(Win32Exception){}
-                using var deadline=CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);deadline.CancelAfter(TimeSpan.FromMinutes(4));
-                var output=DrainAsync(process.StandardOutput,deadline.Token);var errors=DrainAsync(process.StandardError,deadline.Token);
+                using var deadline=CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);deadline.CancelAfter(RuntimeSupplementReviewProgress.ConsoleTimeout);
+                string? lastStage=null;
+                var progress=new RuntimeSupplementReviewProgress.Reader(stage=>
+                {lastStage=stage;lock(_gate){_detail=RuntimeSupplementReviewProgress.Describe(stage)+". No files are installed during review.";}});
+                var output=DrainAsync(process.StandardOutput,deadline.Token);var errors=DrainProgressAsync(process.StandardError,progress,deadline.Token);
                 try
                 {
                     await process.WaitForExitAsync(deadline.Token);var result=await Task.WhenAll(output,errors);using var json=JsonDocument.Parse(result[0]);
@@ -118,6 +121,8 @@ internal sealed class RuntimeSupplementCoordinator:IAsyncDisposable
                     await SaveAsync(Path.Combine(_folder,"latest"),Encoding.ASCII.GetBytes(plan.Id),true,_stop.Token);
                     lock(_gate){_plan=plan;_phase="Review";_detail="Review the missing files below. Windows approval will add them without replacing the original codec binaries or restarting the service.";}
                 }
+                catch(OperationCanceledException error)when(!_stop.IsCancellationRequested)
+                {throw new InvalidOperationException(RuntimeSupplementReviewProgress.FailureMessage(error,lastStage),error);}
                 finally
                 {
                     if(!process.HasExited){process.Kill(entireProcessTree:true);using var cleanup=new CancellationTokenSource(TimeSpan.FromSeconds(5));await process.WaitForExitAsync(cleanup.Token);}
@@ -155,6 +160,8 @@ internal sealed class RuntimeSupplementCoordinator:IAsyncDisposable
     }
     private static async Task<string> DrainAsync(StreamReader reader,CancellationToken token)
     {var text=new StringBuilder();var buffer=new char[4096];int count;while((count=await reader.ReadAsync(buffer,token))>0){if(text.Length+count>524288)throw new IOException("Tools review output exceeded its bound.");text.Append(buffer,0,count);}return text.ToString();}
+    private static async Task<string> DrainProgressAsync(StreamReader reader,RuntimeSupplementReviewProgress.Reader progress,CancellationToken token)
+    {var buffer=new char[4096];int count;while((count=await reader.ReadAsync(buffer,token))>0)progress.Append(buffer.AsSpan(0,count));return string.Empty;}
     private static async Task SaveAsync(string path,byte[] bytes,bool replace,CancellationToken token)
     {
         SetupPaths.RequireNoLinks(path);var temporary=path+".partial-"+Guid.NewGuid().ToString("N");SetupPaths.RequireNoLinks(temporary);

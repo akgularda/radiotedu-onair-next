@@ -7,14 +7,16 @@ using OnAirNext.ConsoleProtocol;
 using OnAirNext.ServiceControl;
 
 if(!OperatingSystem.IsWindows())return 2;
+string? audioReviewStage=null;
 try
 {
     if(args.Length==3&&args[0]=="--prepare-audio-tools")
     {
         WindowsOwnedJob.AttachCurrentProcess();
-        using var deadline=new CancellationTokenSource(TimeSpan.FromMinutes(3));
+        using var deadline=new CancellationTokenSource(RuntimeSupplementReviewProgress.HelperTimeout);
         var request=await SetupPaths.ReadVerifiedAsync<RuntimeSupplementRequest>(args[1],args[2],deadline.Token);
-        Console.WriteLine(JsonSerializer.Serialize(await WindowsRuntimeSupplement.PrepareAsync(request,deadline.Token)));return 0;
+        Console.WriteLine(JsonSerializer.Serialize(await WindowsRuntimeSupplement.PrepareAsync(request,deadline.Token,stage=>
+        {audioReviewStage=stage;Console.Error.WriteLine(RuntimeSupplementReviewProgress.Prefix+stage);})));return 0;
     }
     if(args.Length==3&&args[0]=="--complete-audio-tools")
     {WindowsOwnedJob.AttachCurrentProcess();return await WindowsRuntimeSupplement.ApplyAsync(args[1],args[2]);}
@@ -97,7 +99,7 @@ try
 }
 catch(Exception error)
 {
-    var message=args.Length>0&&args[0] is "--prepare-update" or "--prepare-update-approved" ? WindowsReviewElevation.FailureMessage(error) : error is ArgumentException or InvalidOperationException ? error.Message : "Setup could not complete. Check the reviewed package, runtime files, permissions and free disk space. Existing broadcasts were not taken over.";
+    var message=args.Length>0&&args[0]=="--prepare-audio-tools"?RuntimeSupplementReviewProgress.FailureMessage(error,audioReviewStage):args.Length>0&&args[0] is "--prepare-update" or "--prepare-update-approved" ? WindowsReviewElevation.FailureMessage(error) : error is ArgumentException or InvalidOperationException ? error.Message : "Setup could not complete. Check the reviewed package, runtime files, permissions and free disk space. Existing broadcasts were not taken over.";
     if(args.Length>0&&args[0] is "--prepare" or "--prepare-update" or "--prepare-update-approved" or "--prepare-audio-tools")Console.WriteLine(JsonSerializer.Serialize(new{error=message}));
     else if(args.Length==0||args[0]=="--open-console")SetupMessage.Show(message);
     return 1;

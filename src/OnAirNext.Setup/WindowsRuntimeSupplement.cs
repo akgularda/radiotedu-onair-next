@@ -12,7 +12,7 @@ internal static class WindowsRuntimeSupplement
     private sealed record Initial(SetupPlan Plan,string PlanHash,string OwnershipHash,string ConfigHash,string BundleHash,SetupServiceState Service);
     private static string ReceiptPath=>Path.Combine(ServiceEndpoint.DataRoot,RuntimeSupplementInventory.ReceiptName);
     private static string Package=>Directory.GetParent(Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory))!.FullName;
-    private static async Task<Initial> ReadInitialAsync(string operatorSid,CancellationToken token)
+    private static async Task<Initial> ReadInitialAsync(string operatorSid,CancellationToken token,Action<string>? progress=null)
     {
         var planPath=Path.Combine(ServiceEndpoint.DataRoot,"setup-plan.json");var ownerPath=Path.Combine(ServiceEndpoint.DataRoot,"setup-ownership.json");
         foreach(var path in new[]{ServiceEndpoint.DataRoot,ServiceEndpoint.InstallRoot,ServiceEndpoint.ConfigPath,planPath,ownerPath,Path.Combine(ServiceEndpoint.InstallRoot,"bundle.json")})WindowsInstaller.AssertProtected(path);
@@ -24,18 +24,22 @@ internal static class WindowsRuntimeSupplement
         if(owner.GetProperty("PlanId").GetString()!=plan.Id||!string.Equals(owner.GetProperty("PlanSha256").GetString(),claim,StringComparison.OrdinalIgnoreCase))throw new IOException("The initial installation ownership is inconsistent.");
         var configHash=await SetupPaths.HashAsync(ServiceEndpoint.ConfigPath,token);
         UpdateAdmission.RequireUnarmedConfiguration(await SetupPaths.ReadVerifiedAsync<JsonElement>(ServiceEndpoint.ConfigPath,configHash,token),operatorSid);
+        progress?.Invoke("service");
         var service=SetupService.Read()??throw new InvalidOperationException("Install and connect the separate service before reviewing its audio tools.");SetupService.RequireOwned(service);
         if(service.State!=4||service.StartType!=2||!service.Delayed||service.RecoveryActions!=3||!service.FailureFlag)throw new InvalidOperationException("Connect the healthy owned service with its verified startup and recovery settings first.");
         UpdateAdmission.RequireUnarmedStatus(await AppUpdatePreparation.StatusAsync(token));
         return new(plan,hash,ownerHash,configHash,await SetupPaths.HashAsync(Path.Combine(ServiceEndpoint.InstallRoot,"bundle.json"),token),service);
     }
-    public static async Task<RuntimeSupplementPlan> PrepareAsync(RuntimeSupplementRequest request,CancellationToken token)
+    public static async Task<RuntimeSupplementPlan> PrepareAsync(RuntimeSupplementRequest request,CancellationToken token,Action<string>? progress=null)
     {
         using var identity=WindowsIdentity.GetCurrent();var sid=identity.User?.Value??throw new InvalidOperationException("The Windows operator is unavailable.");
-        var initial=await ReadInitialAsync(sid,token);
+        progress?.Invoke("ownership");
+        var initial=await ReadInitialAsync(sid,token,progress);
         var prior=await RuntimeSupplementInventory.ReadReceiptAsync(ReceiptPath,WindowsInstaller.AssertProtected,token);
         if(prior is not null)throw new InvalidOperationException("Read and resume the saved audio tools operation instead of preparing another one.");
+        progress?.Invoke("installed-image");
         await UpdateSwap.VerifyImageAsync(ServiceEndpoint.InstallRoot,new(initial.BundleHash,SetupPaths.InstalledRuntimeFiles(initial.Plan.RuntimeFiles)),token);
+        progress?.Invoke("candidate-image");
         var package=SetupPaths.CanonicalRoot(Package);var bundleHash=await SetupPaths.HashAsync(SetupPaths.Resolve(package,"bundle.json"),token);
         var bundle=await SetupPaths.VerifyBundleAsync(package,bundleHash,token);var root=SetupPaths.CanonicalRoot(request.RuntimeFolder);
         var providerManifest=SetupPaths.Resolve(root,"runtime-manifest.json");
@@ -48,12 +52,17 @@ internal static class WindowsRuntimeSupplement
             selected=reference;break;
         }
         if(selected is null)throw new ArgumentException("This provider is not a qualified reference in this application package. Select the original complete matching audio tools package.");
+        progress?.Invoke("provider");
         var files=await CodecRuntimePackage.InspectAsync(root,SetupPaths.Resolve(package,selected.Path),selected.Sha256,token);
         if(RuntimeSupplementInventory.Additions(initial.Plan.RuntimeFiles,files).Length==0)throw new InvalidOperationException("The reviewed audio tools inventory is already complete.");
+        progress?.Invoke("analyzer");
         var version=await SetupPreparation.CaptureAsync(SetupPaths.Resolve(root,"bin/ffprobe.exe"),["-version"],token);
         if(!version.Split('\n').Any(line=>line.StartsWith("ffprobe version ",StringComparison.Ordinal)))throw new InvalidOperationException("The matching media analyzer did not report its expected version identity.");
+        progress?.Invoke("provider-readback");
         _=await CodecRuntimePackage.InspectAsync(root,SetupPaths.Resolve(package,selected.Path),selected.Sha256,token);
+        progress?.Invoke("installed-tools");
         await VerifyFilesAsync(SetupPaths.InstalledRuntimeFiles(initial.Plan.RuntimeFiles),token);
+        progress?.Invoke("final-ownership");
         var after=await ReadInitialAsync(sid,token);
         if(after.PlanHash!=initial.PlanHash||after.OwnershipHash!=initial.OwnershipHash||after.ConfigHash!=initial.ConfigHash||after.BundleHash!=initial.BundleHash||after.Service!=initial.Service)throw new IOException("The installation changed during review. Review audio tools again.");
         return new(1,Guid.NewGuid().ToString("N"),sid,package,bundleHash,initial.BundleHash,root,selected.Path,selected.Sha256,initial.PlanHash,initial.OwnershipHash,initial.ConfigHash,files,DateTimeOffset.UtcNow);
