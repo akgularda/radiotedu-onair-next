@@ -46,6 +46,12 @@ public sealed class BrandingRotation
 
     // Ordinals are completed branding plays, not selection attempts. Repeating a
     // preparation or recovering a failed/skipped attempt must choose the same item.
+    public BrandingDecision Decide(BrandingCadence projected)
+    {
+        ArgumentNullException.ThrowIfNull(projected);
+        return Decide(projected, projected.CompletedJingles, projected.CompletedSweepers);
+    }
+
     public BrandingDecision Decide(BrandingCadence projected, long completedJingles, long completedSweepers)
     {
         ArgumentNullException.ThrowIfNull(projected);

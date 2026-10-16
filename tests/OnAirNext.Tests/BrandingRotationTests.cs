@@ -95,6 +95,14 @@ public sealed class BrandingRotationTests
         Assert.Equal("Original artist", rotation.Decide(new("station", 2, 0), 0, 0).Item!.Artist);
     }
 
+    [Fact]
+    public void JournalSnapshotOrdinalSelectsTheNextAssetWithoutAnAttemptCounter()
+    {
+        var rotation = new BrandingRotation(Enabled, Assets);
+        Assert.Equal("jingle-b", rotation.Decide(new("station", 2, 0, 1, 0)).Item!.Id);
+        Assert.Throws<ArgumentNullException>(() => rotation.Decide(null!));
+    }
+
     [Theory]
     [InlineData(0)] [InlineData(101)]
     public void InvalidIntervalsAreRejected(int interval)

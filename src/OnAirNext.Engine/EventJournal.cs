@@ -133,6 +133,7 @@ public sealed partial class EventJournal : IAsyncDisposable
                     migrate.ExecuteNonQuery();
                 }
             }
+            InitializeBrandingOrdinals(_connection);
             _writer = Task.Factory.StartNew(WriteLoop, CancellationToken.None,
                 TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }

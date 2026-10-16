@@ -12,7 +12,9 @@ The current live-folder planner performs no file or database access in `SelectPr
 
 The production planner therefore needs an immutable, journal-consistent completion snapshot plus an ordered projection of preceding in-flight completions. Deduplicate projected occurrences against that snapshot. Decoder failure, Skip, preparation replacement and restart must invalidate the affected prediction without counting an incomplete song. Keep music rotation position separate from inserted branding and explicit queued items. Do not introduce synchronous SQLite/file reads or discard the prepared music fallback on the sample clock.
 
-Persist completed branding play ordinals with the completion transaction, so failed/skipped branding retries select the same asset and process restart preserves order. Pool changes publish a replacement immutable inventory outside the audio callback. Retired, missing, changed or invalid assets cannot remain eligible. Empty pools keep ordinary music available and produce an operator-visible warning.
+Completed branding-play ordinals are now stored with the existing deduplicated completion transaction. An additive schema migration retains existing song debt and starts the new ordinal epoch at zero; it neither scans nor retrospectively counts old history. Category-specific SQLite triggers track the existing completion updates, including writes by the preceding development binary after an application rollback. Duplicate, skipped and failed attempts do not update those category fields, so they cannot consume rotation. The migration and reopen/retry cases require remote test qualification; this has not been applied to an installed database.
+
+Programme integration must use these ordinals rather than an in-memory attempt counter. Pool changes must publish a replacement immutable inventory outside the audio callback. Retired, missing, changed or invalid assets cannot remain eligible. Empty pools must keep ordinary music available and produce an operator-visible warning.
 
 ## Operator and legacy integration still required
 
