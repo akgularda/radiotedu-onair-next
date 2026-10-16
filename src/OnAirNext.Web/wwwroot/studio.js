@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id);
   const roster = [{id:'1',name:'Classic'},{id:'2',name:'Lofi'},{id:'4',name:'Pop'},{id:'5',name:'Cazz'},{id:'8',name:'Rock'},{id:'9',name:'Energize'},{id:'10',name:'Situation'},{id:'11',name:'Main Character'}];
   const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null,folderTarget:null,folderSource:null,editTarget:null,assetStateTarget:null,controller:null,consoleClosed:false,upload:null,uploadSelection:null};
-  const migration={engine:null,preview:null,loading:false,busy:false,key:null,selects:new Map(),pending:null};
+  const migration={engine:null,preview:null,loading:false,busy:false,key:null,selects:new Map(),pending:null,submissionError:null};
   let setupFolderTarget='setup-runtime';
   try{const request=JSON.parse(localStorage.getItem('studio-migration-request')??'null');if(request&&typeof request.engine==='string'&&/^[a-f0-9]{32}$/.test(request.id??'')&&typeof request.legacyRoot==='string')migration.pending=request;}catch{}
 
@@ -455,13 +455,13 @@
     }
     $('migration-table').hidden=!(preview.Stations?.length);migrationControls();
   }
-  async function loadMigration(){
-    if(migration.loading||!fresh()||state.session?.preview)return;
+  async function loadMigration(afterRequest=false){
+    if(migration.loading||(migration.busy&&!afterRequest)||!fresh()||state.session?.preview)return;
     const engine=state.engine,pending=migration.pending?.engine===engine?migration.pending:null;migration.loading=true;migrationControls();
     try{const result=await api('/api/migration-preview?engine='+encodeURIComponent(engine)+(pending?'&id='+pending.id:''));if(engine!==state.engine)return;if(result.accepted===false)throw new Error(result.error??'Preview unavailable.');migration.engine=engine;migration.preview=result.preview??null;
-      if(pending&&migration.preview?.Id===pending.id){migration.pending=null;try{localStorage.removeItem('studio-migration-request');}catch{}}
+      if(pending&&migration.preview?.Id===pending.id){migration.pending=null;migration.submissionError=null;try{localStorage.removeItem('studio-migration-request');}catch{}}
       if(migration.preview&&!migration.pending)$('migration-root').value=migration.preview.LegacyRoot;renderMigration();}
-    catch(error){if(engine===state.engine)text('migration-feedback','Saved preview unavailable: '+error.message);}
+    catch(error){if(engine===state.engine&&(!migration.busy||afterRequest)){const primary=migration.submissionError;text('migration-feedback',primary?.engine===engine&&primary.id===pending?.id?primary.message:'Saved preview unavailable: '+error.message);}}
     finally{migration.loading=false;migrationControls();}
   }
   async function prepareMigration(){
@@ -469,9 +469,9 @@
     const pending=migration.pending?.engine===state.engine?migration.pending:null;
     const request=pending??{engine:state.engine,id:crypto.randomUUID().replaceAll('-',''),legacyRoot:$('migration-root').value};
     migration.pending=request;try{localStorage.setItem('studio-migration-request',JSON.stringify(request));}catch{}
-    migration.busy=true;migrationControls();text('migration-feedback','Saving preview request…');
-    try{const result=await api('/api/migration-preview',{method:'POST',body:request});if(request.engine!==state.engine)return;if(result.accepted!==true)throw new Error(result.error??'Preview was not accepted.');await loadMigration();}
-    catch(error){if(request.engine===state.engine)text('migration-feedback','Confirmation unavailable: '+error.message+' Retry keeps the same preview ID.');}
+    migration.submissionError=null;migration.busy=true;migrationControls();text('migration-feedback','Saving preview request…');
+    try{const result=await api('/api/migration-preview',{method:'POST',body:request});if(request.engine!==state.engine)return;if(result.accepted!==true)throw new Error(result.error??'Preview was not accepted.');await loadMigration(true);}
+    catch(error){if(request.engine===state.engine){const message='Confirmation unavailable: '+error.message+' Retry keeps the same preview ID.';migration.submissionError={engine:request.engine,id:request.id,message};text('migration-feedback',message);}}
     finally{migration.busy=false;migrationControls();}
   }
   $('migration-browse').addEventListener('click',async()=>{setupFolderTarget='migration-root';text('setup-folder-heading','Choose the former program’s data directory');$('setup-folder-dialog').showModal();await setupFolders($('migration-root').value||null);});
@@ -480,7 +480,7 @@
   $('migration-save').addEventListener('click',async()=>{
     const engine=state.engine,preview=migration.preview;if(migration.busy||migration.engine!==engine||!preview||!fresh())return;
     const mappings=[...migration.selects].map(([LegacyStationId,select])=>({LegacyStationId,TargetStationId:select.value||null}));migration.busy=true;migrationControls();
-    try{const result=await api('/api/migration-mapping',{method:'POST',body:{engine,id:preview.Id,revision:preview.Revision,mappings}});if(engine!==state.engine)return;if(result.accepted!==true)throw new Error(result.error??'Mapping was not confirmed.');await loadMigration();}
+    try{const result=await api('/api/migration-mapping',{method:'POST',body:{engine,id:preview.Id,revision:preview.Revision,mappings}});if(engine!==state.engine)return;if(result.accepted!==true)throw new Error(result.error??'Mapping was not confirmed.');await loadMigration(true);}
     catch(error){if(engine===state.engine)text('migration-feedback','Mapping confirmation unavailable: '+error.message+' Refresh the saved preview before retrying.');}
     finally{migration.busy=false;migrationControls();}
   });
