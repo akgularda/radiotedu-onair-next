@@ -50,7 +50,8 @@ try {
         $audioResult = Get-Content -LiteralPath $audioFile -Raw | ConvertFrom-Json
         if ($audioResult.ExecutionSource -ne $env:GITHUB_SHA -or $audioResult.ExecutionBuild -notlike "*$($env:GITHUB_SHA)*") { throw 'Audio execution source differs from the requested build.' }
         $audioSummary.Cases += $audioResult
-        if ($audioExitCode -ne 0 -or @($audioResult.Results).Count -ne 1 -or $audioResult.Results[0].Passed -ne $true -or @($audioResult.RemainingOwnedChildren).Count -ne 0) {
+        $audioOwnedChildren = @($audioResult.RemainingOwnedChildren.PSObject.Properties).Count
+        if ($audioExitCode -ne 0 -or @($audioResult.Results).Count -ne 1 -or $audioResult.Results[0].Passed -ne $true -or $audioOwnedChildren -ne 0) {
             throw "Audio scenario failed or left owned children: $audioScenario"
         }
         Write-Output "$audioScenario passed with $(@($audioResult.Results[0].Checks).Count) real checks."
