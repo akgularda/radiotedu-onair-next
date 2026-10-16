@@ -40,10 +40,10 @@ try {
     $codecProbe = Join-Path $codecRoot 'bin\ffprobe.exe'
     $codecVersion = @(Run-CodecTool $codecFfmpeg @('-version') 'version.txt')
     if ($codecVersion[0] -notmatch '^ffmpeg version n?9\.0\.2(?:[-\s]|$)') { throw 'Pinned FFmpeg version did not start.' }
-    $codecConfig = (Run-CodecTool $codecFfmpeg @('-hide_banner','-buildconf') 'buildconf.txt') -join "\n"
+    $codecConfig = (Run-CodecTool $codecFfmpeg @('-hide_banner','-buildconf') 'buildconf.txt') -join [Environment]::NewLine
     if ($codecConfig -match '--enable-(?:gpl|nonfree|version3)' -or $codecConfig -notmatch '--enable-libfdk-aac') { throw 'Codec build configuration differs from the required license/features.' }
     $null = Run-CodecTool $codecFfmpeg @('-hide_banner','-L') 'license.txt'
-    $codecEncoders = (Run-CodecTool $codecFfmpeg @('-hide_banner','-encoders') 'encoders.txt') -join "\n"
+    $codecEncoders = (Run-CodecTool $codecFfmpeg @('-hide_banner','-encoders') 'encoders.txt') -join [Environment]::NewLine
     foreach ($codecEncoder in @('aac','libfdk_aac','flac','pcm_f32le')) {
         if ($codecEncoders -notmatch ('(?m)^\s*A\S*\s+' + [regex]::Escape($codecEncoder) + '\s')) { throw "Missing required encoder: $codecEncoder" }
     }
@@ -75,7 +75,7 @@ try {
         else { $codecArgs += @('-sample_fmt','s32','-bits_per_raw_sample','24') }
         $codecArgs += @('-f',$codecCase.Mux,$codecEncoded)
         $null = Run-CodecTool $codecFfmpeg $codecArgs ($codecCase.Name + '-encode.txt')
-        $codecProbeText = (Run-CodecTool $codecProbe @('-v','error','-show_streams','-of','json',$codecEncoded) ($codecCase.Name + '-probe.json')) -join "\n"
+        $codecProbeText = (Run-CodecTool $codecProbe @('-v','error','-show_streams','-of','json',$codecEncoded) ($codecCase.Name + '-probe.json')) -join [Environment]::NewLine
         $codecStream = @((ConvertFrom-Json $codecProbeText).streams)
         if ($codecStream.Count -ne 1 -or $codecStream[0].channels -ne 2 -or $codecStream[0].sample_rate -ne '48000') { throw 'Encoded profile/rate/stereo changed.' }
         if ($codecCase.Profile -and ($codecStream[0].codec_name -ne 'aac' -or $codecStream[0].profile -ne $codecCase.ExpectedProfile)) { throw "Wrong actual AAC profile: $($codecCase.Name)" }
