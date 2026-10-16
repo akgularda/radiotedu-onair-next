@@ -184,20 +184,37 @@ public sealed class UpdateSwapTests
     {
         var f=new Fixture();await f.CreateAsync();var operation=await OperationAsync(f);
         await operation.Store.RunAsync(operation.Id,operation.Hash,UpdateDirection.Rollback,Stopped);
-        var snapshots=0;long revision=0;
+        var snapshots=0;long revision=0;var reader=new UpdateOperationStore(f.Swap.InstallRoot,operation.Folder);
         var writer=Task.Run(async()=>
         {
             for(var i=0;i<40;i++)await operation.Store.RunAsync(operation.Id,operation.Hash,UpdateDirection.Rollback,Stopped);
         });
         do
         {
-            var snapshot=await operation.Store.ReadIntentAsync(operation.Id,operation.Hash);Assert.NotNull(snapshot);
+            var snapshot=await reader.ReadIntentAsync(operation.Id,operation.Hash);Assert.NotNull(snapshot);
             Assert.Equal(UpdateDirection.Rollback,snapshot.Direction);Assert.True(snapshot.Revision>=revision);
             revision=snapshot.Revision;snapshots++;await Task.Yield();
         }while(!writer.IsCompleted);
         await writer;Assert.True(snapshots>0);
         var latest=await operation.Store.ReadIntentAsync(operation.Id,operation.Hash);Assert.NotNull(latest);
         Assert.True(latest.Revision>=revision);Assert.Equal(82,latest.Revision);
+        Assert.Equal(UpdateDiskState.Prepared,await f.Swap.InspectAsync());
+    }
+
+    [Fact]
+    public async Task SnapshotWaitHonorsCancellationAndMissingGuardCannotHideAnExistingIntent()
+    {
+        var f=new Fixture();await f.CreateAsync();var operation=await OperationAsync(f);
+        await operation.Store.RunAsync(operation.Id,operation.Hash,UpdateDirection.Rollback,Stopped);
+        var guard=Path.Combine(operation.Folder,operation.Id+".snapshot.lock");
+        await using(var held=new FileStream(guard,FileMode.Open,FileAccess.Read,FileShare.None))
+        {
+            using var cancelled=new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(()=>operation.Store.ReadIntentAsync(operation.Id,operation.Hash,cancelled.Token));
+        }
+        Assert.NotNull(await operation.Store.ReadIntentAsync(operation.Id,operation.Hash));
+        File.Delete(guard);
+        await Assert.ThrowsAsync<IOException>(()=>operation.Store.ReadIntentAsync(operation.Id,operation.Hash));
         Assert.Equal(UpdateDiskState.Prepared,await f.Swap.InspectAsync());
     }
 

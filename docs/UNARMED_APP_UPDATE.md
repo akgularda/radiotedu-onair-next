@@ -20,7 +20,7 @@ The service helper now retains the reviewed process handle, disables the isolate
 
 A guarded, disposable CI setup probe exercises stale-process rejection, the actual SCM disabled-start refusal, repeated fencing, interrupted partial fencing, restored authenticated eight-station status and unchanged configuration bytes. It uses an explicit encoder-listing test double with zero outputs, not audio. It refuses execution outside Windows GitHub CI or when the old broadcasting data root exists. This source is pending fresh CI qualification; no operational update control or target-PC maintenance has executed it.
 
-Intent polling now opens a bounded committed-file snapshot with delete sharing so an atomic progress replacement can proceed while the UI reads the prior complete record. A concurrent reader/writer scenario checks complete, monotonic revisions and retained rollback direction.
+Intent polling now holds a retained per-operation snapshot sidecar lock only while reading the bounded committed record. Atomic replacement holds the same short lock, preventing Windows sharing and temporary-name races across helper/console processes. Operator readers need only read permission on the guard; ACL failures, missing guards for existing records, malformed JSON and review mismatches still fail. A separate store instance concurrently polls monotonic complete revisions and retained rollback direction.
 
 References: [SERVICE_FAILURE_ACTIONS](https://learn.microsoft.com/en-us/windows/win32/api/winsvc/ns-winsvc-service_failure_actionsw), [ChangeServiceConfig2 queued recovery behavior](https://learn.microsoft.com/en-us/windows/win32/api/winsvc/nf-winsvc-changeserviceconfig2w).
 

@@ -22,6 +22,11 @@ public sealed class JournalMaintenanceInspectionTests
     }
     private static void Execute(SqliteConnection connection,string sql)
     {using var command=connection.CreateCommand();command.CommandText=sql;command.ExecuteNonQuery();}
+    private static async Task<byte[]> ReadSharedFixtureAsync(string path)
+    {
+        await using var input=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete,65536,true);
+        using var bytes=new MemoryStream();await input.CopyToAsync(bytes);return bytes.ToArray();
+    }
     [Fact]
     public async Task ReadOnlyInspectionPreservesDisabledAndStoppedStatesAndDatabaseBytes()
     {
@@ -49,9 +54,9 @@ public sealed class JournalMaintenanceInspectionTests
     {
         var path=await CreateAsync();using var connection=Open(path);
         Execute(connection,"PRAGMA journal_mode=WAL;PRAGMA wal_autocheckpoint=0;UPDATE station_desired_state SET requested_running=1 WHERE station_id='2'");
-        var database=await File.ReadAllBytesAsync(path);var wal=await File.ReadAllBytesAsync(path+"-wal");Assert.NotEmpty(wal);
+        var database=await ReadSharedFixtureAsync(path);var wal=await ReadSharedFixtureAsync(path+"-wal");Assert.NotEmpty(wal);
         Assert.Throws<InvalidDataException>(()=>JournalMaintenanceInspection.Read(path,Ids));
-        var afterDatabase=await File.ReadAllBytesAsync(path);var afterWal=await File.ReadAllBytesAsync(path+"-wal");
+        var afterDatabase=await ReadSharedFixtureAsync(path);var afterWal=await ReadSharedFixtureAsync(path+"-wal");
         Assert.Equal(database,afterDatabase);Assert.Equal(wal,afterWal);
     }
     [Fact]

@@ -31,6 +31,9 @@ public sealed class UpdateOperationStore
         var bytes=JsonSerializer.SerializeToUtf8Bytes(review);var path=FilePath(review.Id,".review.json");
         if(bytes.Length>524288)throw new ArgumentException("The update review is too large.");
         await using var held=Lock(review.Id);
+        var snapshotGuard=FilePath(review.Id,".snapshot.lock");SetupPaths.RequireNoLinks(snapshotGuard);
+        if(!File.Exists(snapshotGuard))
+        {await using var created=new FileStream(snapshotGuard,FileMode.CreateNew,FileAccess.Write,FileShare.None);created.Flush(true);}
         if(File.Exists(path))
         {
             var existing=await SetupPaths.ReadVerifiedAsync<UpdateSwapReview>(path,Convert.ToHexString(SHA256.HashData(bytes)),token);
@@ -46,28 +49,31 @@ public sealed class UpdateOperationStore
     }
     public async Task<UpdateIntent?> ReadIntentAsync(string id,string expectedReview,CancellationToken token=default)
     {
-        var path=FilePath(id,".intent.json");if(!File.Exists(path))return null;
-        // Readers retain one committed file identity while allowing the atomic replacement.
-        // No writer shares write access to this stream, so partially written JSON is never read.
-        SetupPaths.RequireNoLinks(path);
-        await using var stream=await OpenSnapshotAsync(path,token);
+        var path=FilePath(id,".intent.json");var guard=FilePath(id,".snapshot.lock");
+        if(!File.Exists(guard))
+        {
+            if(File.Exists(path))throw new IOException("The retained update snapshot guard is missing. Resume the reviewed update workflow before reading its progress.");
+            return null;
+        }
+        await using var snapshot=await SnapshotLockAsync(id,token);
+        SetupPaths.RequireNoLinks(path);if(!File.Exists(path))return null;
+        await using var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read,32768,true);
         if(stream.Length is <1 or >32768)throw new IOException("The saved update direction exceeds its size limit.");
         var intent=await JsonSerializer.DeserializeAsync<UpdateIntent>(stream,cancellationToken:token)??throw new IOException("The saved update direction is unreadable.");
         if(intent.ReviewSha256 is null||!intent.ReviewSha256.Equals(expectedReview,StringComparison.OrdinalIgnoreCase)||!Enum.IsDefined(intent.Direction)||intent.Revision<1||intent.UpdatedAtUtc==default||intent.UpdatedAtUtc.Offset!=TimeSpan.Zero||string.IsNullOrWhiteSpace(intent.Phase)||intent.Phase.Length>128)
             throw new IOException("The saved update direction does not match the reviewed operation.");
         return intent;
     }
-    private static async Task<FileStream> OpenSnapshotAsync(string path,CancellationToken token)
+    private async Task<FileStream> SnapshotLockAsync(string id,CancellationToken token)
     {
-        var clock=System.Diagnostics.Stopwatch.StartNew();
+        var path=FilePath(id,".snapshot.lock");var clock=System.Diagnostics.Stopwatch.StartNew();
         while(true)
         {
             token.ThrowIfCancellationRequested();SetupPaths.RequireNoLinks(path);
-            try{return new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read|FileShare.Delete,32768,true);}
-            // ReplaceFile can briefly hold its own incompatible handle even though an
-            // already-open snapshot permits deletion. Retry only Windows sharing/lock
-            // collisions, never parse failures, wrong review hashes or ACL denials.
-            catch(IOException error)when((error.HResult&0xffff) is 32 or 33&&clock.Elapsed<TimeSpan.FromSeconds(1))
+            // This retained sidecar is never renamed/deleted. Readers need only read
+            // permission, so an operator may poll protected elevated-helper records.
+            try{return new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.None);}
+            catch(IOException error)when(((error.HResult&0xffff) is 32 or 33)&&clock.Elapsed<TimeSpan.FromSeconds(2))
             {await Task.Delay(10,token);}
         }
     }
@@ -87,7 +93,10 @@ public sealed class UpdateOperationStore
         async Task Persist(string phase)
         {
             latest=new(expectedReview,requested,phase,checked(++revision),DateTimeOffset.UtcNow);
-            await WriteAtomicAsync(FilePath(id,".intent.json"),JsonSerializer.SerializeToUtf8Bytes(latest),true,token);
+            // Serialize just this short snapshot transition across process boundaries.
+            // A poll can never overlap ReplaceFile or see its temporary Windows names.
+            await using(var snapshot=await SnapshotLockAsync(id,token))
+                await WriteAtomicAsync(FilePath(id,".intent.json"),JsonSerializer.SerializeToUtf8Bytes(latest),true,token);
             if(progress is not null)await progress(phase);
         }
         // This write is flushed before any filesystem transition, including retries.
