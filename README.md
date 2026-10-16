@@ -78,3 +78,5 @@ The developer verification entry point is scripts/Test-Engine.ps1. Loopback scen
 | artifacts/evidence | Sanitized summaries; no credentials, database or media |
 
 Public source: [akgularda/radiotedu-onair-next](https://github.com/akgularda/radiotedu-onair-next). Report archive remains private. Never commit credentials, real databases, recordings or music.
+
+The source now includes an isolated, pinned-source Windows codec dependency build and real AAC-LC/FDK HE-AACv2/24-bit FLAC smoke qualification. Its result is pending; see [codec runtime scope](docs/CODEC_RUNTIME.md). The qualified engine runtime and production ownership are unchanged.
