@@ -122,7 +122,7 @@ public sealed partial class StationEngine
         catch(Exception ex){failure=ex;}
         while(_audits.TryPeek(out var ticket)&&ticket.Commit.IsCompleted)
         {
-            _audits.Dequeue();
+            _audits.Dequeue();Volatile.Write(ref _pendingAudit,_audits.Count);
             if(ticket.Commit.IsCompletedSuccessfully){if(ticket.ReleaseQueueEntry is not null)_inflightQueue.Remove(ticket.ReleaseQueueEntry);}
             else{Interlocked.Increment(ref _auditRejected);failure??=(Exception?)ticket.Commit.Exception??new IOException("Playback history commit was cancelled.");}
         }

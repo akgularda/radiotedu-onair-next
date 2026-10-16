@@ -10,16 +10,33 @@ namespace OnAirNext.Engine;
 // SQLite writes and reports have a dedicated lane; the program never waits for a CSV or network upload.
 public sealed partial class EventJournal : IAsyncDisposable
 {
-    private readonly Channel<Action> _pending = Channel.CreateBounded<Action>(4096);
+    private abstract class JournalWork
+    {
+        public abstract void Execute(SqliteConnection connection, SqliteTransaction transaction);
+        public abstract void Acknowledge();
+        public abstract void Reject(Exception error);
+    }
+    private sealed class JournalWork<T>(Func<SqliteConnection, SqliteTransaction, T> action) : JournalWork
+    {
+        private readonly TaskCompletionSource<T> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private T _result = default!;
+        public Task<T> Completion => _completion.Task;
+        public override void Execute(SqliteConnection connection, SqliteTransaction transaction) => _result = action(connection, transaction);
+        public override void Acknowledge() => _completion.TrySetResult(_result);
+        public override void Reject(Exception error) => _completion.TrySetException(error);
+    }
+    private readonly Channel<JournalWork> _pending = Channel.CreateBounded<JournalWork>(new BoundedChannelOptions(4096)
+        { SingleReader=true, SingleWriter=false, FullMode=BoundedChannelFullMode.Wait });
     private readonly SqliteConnection _connection;
     private readonly FileStream _ownership;
     private readonly Task _writer;
-    private long _rejected, _committed;
+    private long _rejected, _committed, _committedTransactions;
     private int _transactionEvents;
     private string? _error;
     public string DatabasePath { get; }
     public long RejectedEvents => Interlocked.Read(ref _rejected);
     public long CommittedEvents => Interlocked.Read(ref _committed);
+    public long CommittedTransactions => Interlocked.Read(ref _committedTransactions);
     public int PendingEvents => _pending.Reader.Count;
     public string? Error => _error;
 
@@ -158,29 +175,14 @@ public sealed partial class EventJournal : IAsyncDisposable
 
     public Task<T> TransactionAsync<T>(Func<SqliteConnection, SqliteTransaction, T> action)
     {
-        var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var work = new JournalWork<T>(action);
         async Task SubmitAsync()
         {
-            try
-            {
-                await _pending.Writer.WriteAsync(() =>
-                {
-                    try
-                    {
-                        using var transaction = _connection.BeginTransaction();
-                        _transactionEvents = 0;
-                        var result = action(_connection, transaction);
-                        transaction.Commit();
-                        Interlocked.Add(ref _committed, _transactionEvents);
-                        completion.TrySetResult(result);
-                    }
-                    catch (Exception ex) { completion.TrySetException(ex); }
-                });
-            }
-            catch (Exception ex) { completion.TrySetException(ex); }
+            try { await _pending.Writer.WriteAsync(work); }
+            catch (Exception ex) { work.Reject(ex); }
         }
         _ = SubmitAsync();
-        return completion.Task;
+        return work.Completion;
     }
 
     public Task<PlayoutCheckpoint?> CheckpointAsync(string stationId) => TransactionAsync((connection, transaction) =>
@@ -312,16 +314,57 @@ public sealed partial class EventJournal : IAsyncDisposable
     {
         try
         {
-            // SQLite FULL-WAL commits may block in the OS. One dedicated thread
-            // keeps that wait outside the shared pool used by audio pacing and UI commands.
+            // Keep FULL-WAL storage waits on one dedicated thread. Concurrent station checkpoints
+            // share bounded group commits; each logical request keeps its own rollback savepoint.
             while (_pending.Reader.WaitToReadAsync().AsTask().GetAwaiter().GetResult())
-                while (_pending.Reader.TryRead(out var work)) work();
+            {
+                var batch = new List<JournalWork>(64);
+                while (batch.Count < 64 && _pending.Reader.TryRead(out var work)) batch.Add(work);
+                if (batch.Count == 0) continue;
+                CommitBatch(batch);
+            }
         }
         catch (Exception ex)
         {
             _error = "Audit writer stopped: " + ex.GetType().Name;
             _pending.Writer.TryComplete(ex);
+            while (_pending.Reader.TryRead(out var abandoned)) abandoned.Reject(ex);
             throw;
+        }
+    }
+
+    private void CommitBatch(IReadOnlyList<JournalWork> batch)
+    {
+        var failures = new Exception?[batch.Count];
+        try
+        {
+            using var transaction = _connection.BeginTransaction();
+            _transactionEvents = 0;
+            for (var index=0; index<batch.Count; index++)
+            {
+                var earlierEvents = _transactionEvents;
+                transaction.Save("onair_request");
+                try { batch[index].Execute(_connection,transaction); }
+                catch (Exception ex)
+                {
+                    // A rejected command cannot retain a partial edit or roll back healthy siblings.
+                    // If SQLite invalidated the whole transaction, rollback fails and rejects the group.
+                    transaction.Rollback("onair_request");
+                    _transactionEvents = earlierEvents;
+                    failures[index] = ex;
+                }
+                transaction.Release("onair_request");
+            }
+            transaction.Commit();
+            Interlocked.Add(ref _committed,_transactionEvents);
+            Interlocked.Increment(ref _committedTransactions);
+            // No caller receives success until the shared FULL-WAL commit actually completed.
+            for(var index=0; index<batch.Count; index++)
+                if(failures[index] is {} error)batch[index].Reject(error);else batch[index].Acknowledge();
+        }
+        catch(Exception ex)
+        {
+            foreach(var work in batch)work.Reject(ex);
         }
     }
 

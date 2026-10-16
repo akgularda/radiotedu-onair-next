@@ -1,0 +1,13 @@
+# Journal group commits
+
+The first actual 18-output run at d92e250c823049cafadb554f5e46ca30f31f575c (38855325215) failed shutdown qualification. Its 18 independent low-crest decoded windows and continuous listener checks passed, including 8 AAC-LC, 8 FDK HE-AACv2 and 2 Ogg FLAC branches. All decoded windows contained exactly 192000 stereo frames at -23.1 to -23.0 LUFS and -21.2 to -19.7 dBTP. Those are low-crest synthetic measurements, not worst-case headroom or commissioning proof.
+
+Eight programmes each submitted quarter-second checkpoints as separate FULL-WAL transactions. At the final snapshot there were 20-23 unacknowledged audit tickets per station and one storage-delay measurement incident per station; PCM measurements had no missing blocks. The unchanged two-second Stop drain timed out. The complete run is a failure, and final post-stop hash verification was not reached. Its structured evidence is retained in artifacts/evidence/full18-drain-failure-20261016.json.
+
+The correction keeps SQLite synchronous=FULL, a dedicated writer thread and the bounded 4096-request channel. The writer groups at most 64 already-queued logical requests into one database transaction without adding a batching timer. Every request has a savepoint: a rejected operation rolls back its own partial edits; healthy siblings retain their order and immutable hash chain. A failure that invalidates the whole transaction rejects every affected request. Success is returned only after the shared FULL-WAL commit completes. The event counter counts only committed events, and an explicit committed-transaction counter makes reduced write amplification observable.
+
+The station drain remains two seconds. Its pending-audit display now decreases when shutdown observes completed tickets. The full-roster scenario independently closes every owned listener/station even if one cleanup fails, retains both validation and cleanup errors, requires continuous meter history without storage failures and requires all pending audits to be confirmed after Stop. New regression tests hold the writer to verify unacknowledged operations, retain sibling history around a rejected partial write, and force an entire SQLite transaction rollback to check that no earlier request receives false success and the writer can recover.
+
+Fresh qualification is pending. This does not change production data or permit a station transfer. Operational setup and station-by-station migration must be performed with the application's visible UI and verified readback.
+
+Microsoft documents transactional grouping and savepoint rollback at https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/transactions.

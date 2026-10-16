@@ -38,6 +38,7 @@ internal static class Roster18Checks
         result.Details["scope"]="Eight synthetic station programs: eight AAC-LC 192, eight libfdk HE-AACv2 64 and two 24-bit Ogg FLAC branches, all 48 kHz stereo. Low-crest sources only. This is not an imported production rate/name map, worst-case encoded headroom, actual-PC resource, 24/72h or UI acceptance.";
         await using (var journal=new EventJournal(database))
         {
+            Exception? runFailure=null;var cleanupFailures=new List<Exception>();
             try
             {
                 for(var index=1; index<=8; index++)
@@ -71,13 +72,20 @@ internal static class Roster18Checks
                     Check(result,reading.Error is null&&reading.DecodedSeconds>=30&&reading.LongestSilentRun<=2&&reading.ToneTransitions>=Math.Max(4,Math.Floor(reading.DecodedSeconds/3)-2)&&reading.ToneTransitions<=Math.Ceiling(reading.DecodedSeconds/3)+1&&reading.UnexpectedToneTransitions==0,
                         reading.Mount+": continuous native decoding observes successive expected items without unexplained silence or repeats.");
                 }
+                Check(result,snapshots.All(s=>s.Loudness?.Continuous==true&&s.Loudness.HistoryFailures==0),"Every station retains continuous final-mix measurement and confirmed measurement history under the complete codec roster.");
+                result.Details["journalBeforeStop"]=new{journal.CommittedTransactions,journal.CommittedEvents,journal.PendingEvents};
                 Check(result,snapshots.All(s=>s.AuditRejectedEvents==0)&&journal.Error is null,"Concurrent eight-station attempt journals remain writable without rejected events.");
             }
+            catch(Exception ex){runFailure=ex;}
             finally
             {
-                foreach(var probe in probes)await probe.DisposeAsync();
-                foreach(var engine in engines)await engine.DisposeAsync();
+                foreach(var probe in probes)try{await probe.DisposeAsync();}catch(Exception ex){cleanupFailures.Add(ex);}
+                foreach(var engine in engines)try{await engine.DisposeAsync();}catch(Exception ex){cleanupFailures.Add(ex);}
             }
+            if(runFailure is not null)cleanupFailures.Insert(0,runFailure);
+            if(cleanupFailures.Count>0)throw new AggregateException("Full roster validation or owned cleanup failed.",cleanupFailures);
+            result.Details["journalAfterStop"]=new{journal.CommittedTransactions,journal.CommittedEvents,journal.PendingEvents,Stations=engines.Select(e=>e.Snapshot()).ToArray()};
+            Check(result,engines.All(e=>e.Snapshot().PendingAuditCommits==0)&&journal.PendingEvents==0,"Stopping all eight stations acknowledges every queued audit commit within the unchanged bounded drain.");
         }
         Check(result,EventJournal.Verify(database),"The full 18-branch test preserves the immutable attempt hash chain.");
         result.Details["profileCounts"]=new{AacLc192=8,HeAacV2_64=8,OggFlac24=2};
