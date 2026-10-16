@@ -25,7 +25,7 @@ internal static class SetupPreparation
         using var identity=WindowsIdentity.GetCurrent();var sid=identity.User?.Value??throw new InvalidOperationException("The operator account is unavailable.");
         return new(Guid.NewGuid().ToString("N"),sid,bundleRoot,digest,runtime,files,request.StartService);
     }
-    private static async Task<string> CaptureAsync(string executable,string[] args,CancellationToken token)
+    internal static async Task<string> CaptureAsync(string executable,string[] args,CancellationToken token)
     {
         var start=new ProcessStartInfo(executable){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};foreach(var arg in args)start.ArgumentList.Add(arg);
         using var process=new Process{StartInfo=start};if(!process.Start())throw new IOException("The selected runtime did not start.");

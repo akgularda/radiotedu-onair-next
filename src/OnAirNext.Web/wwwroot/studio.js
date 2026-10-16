@@ -43,7 +43,7 @@
     $('stations').replaceChildren(...stations.map(station=>{const button=element('button','station-tab');button.role='tab';button.setAttribute('aria-selected',String(station.id===state.station));button.setAttribute('aria-label',station.name+' channel');button.append(element('span','dot'),document.createTextNode(station.name));button.addEventListener('click',()=>selectStation(station.id));return button;}));
   }
   function selectStation(id){state.station=id;state.library=null;state.offset=0;stationTabs();renderStatus();resetLibrary();if(state.page==='library')void loadLibrary();}
-  function navigate(page){if(!names[page])return;state.page=page;document.querySelectorAll('[data-view]').forEach(section=>section.hidden=section.dataset.view!==page);document.querySelectorAll('.nav-item[data-page]').forEach(button=>{button.classList.toggle('selected',button.dataset.page===page);button.setAttribute('aria-current',button.dataset.page===page?'page':'false');});text('breadcrumb',names[page]);if(page==='library')void loadLibrary();if(page==='system'){void loadSetup();void loadAppUpdates();}if(page==='reports')void loadReports();}
+  function navigate(page){if(!names[page])return;state.page=page;document.querySelectorAll('[data-view]').forEach(section=>section.hidden=section.dataset.view!==page);document.querySelectorAll('.nav-item[data-page]').forEach(button=>{button.classList.toggle('selected',button.dataset.page===page);button.setAttribute('aria-current',button.dataset.page===page?'page':'false');});text('breadcrumb',names[page]);if(page==='library')void loadLibrary();if(page==='system'){void loadSetup();void loadAppUpdates();void loadAudioTools();}if(page==='reports')void loadReports();}
   document.querySelectorAll('[data-page]:not(:disabled)').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();navigate(button.dataset.page);}));
   document.addEventListener('keydown',event=>{if(event.altKey && (event.key==='1'||event.key==='2')){event.preventDefault();navigate(event.key==='1'?'air':'library');}});
   function renderStatus(){
@@ -415,6 +415,55 @@
   $('app-update-refresh').addEventListener('click',()=>void loadAppUpdates());
   $('app-update-dialog').addEventListener('close',()=>{appUpdateTarget=null;});
 
+  let audioToolsState=null,audioToolsLoading=false,audioToolsBusy=false,audioToolsDirty=false;
+  function audioToolsControls(){
+    const enabled=!!state.session&&!state.session.preview&&!state.consoleClosed;
+    const busy=audioToolsLoading||audioToolsBusy||audioToolsState?.busy;
+    const available=enabled&&audioToolsState?.supported&&audioToolsState.packageAvailable&&audioToolsState.installed;
+    $('audio-tools-root').disabled=!available||busy||!!audioToolsState?.receipt;
+    $('audio-tools-browse').disabled=$('audio-tools-root').disabled;
+    $('audio-tools-check').disabled=!available||busy||!audioToolsState?.canReview||!$('audio-tools-root').value.trim();
+    $('audio-tools-apply').disabled=!available||busy||audioToolsDirty||!audioToolsState?.canApply;
+    $('audio-tools-refresh').disabled=!enabled||audioToolsLoading;
+    $('audio-tools-apply').textContent=audioToolsState?.receipt?.phase==='Pending'?'Resume reviewed addition…':'Add reviewed files…';
+  }
+  async function loadAudioTools(){
+    if(audioToolsLoading||state.consoleClosed)return;
+    if(state.session?.preview){text('audio-tools-phase','Preview');text('audio-tools-detail','Audio tools completion is available in the connected Windows installation package.');audioToolsControls();return;}
+    audioToolsLoading=true;audioToolsControls();
+    try{
+      audioToolsState=await api('/api/audio-tools');const review=audioToolsState.review,receipt=audioToolsState.receipt;
+      text('audio-tools-phase',audioToolsState.phase);text('audio-tools-detail',audioToolsState.detail);
+      const root=review?.root??audioToolsState.candidateRoot??'';
+      if(!audioToolsDirty&&!audioToolsState.busy&&$('audio-tools-root').value!==root)$('audio-tools-root').value=root;
+      $('audio-tools-review').hidden=!review;
+      const values=review?[['Original codec files retained',review.preserved??'Read initial inventory'],['Provider folder',review.root],['Reviewed package',review.package],['Provider checksum',review.reference],['Operation',review.id]]:[];
+      $('audio-tools-review').replaceChildren(...values.map(([name,value])=>{const row=element('div');row.append(element('dt','',name),element('dd','',String(value)));return row;}));
+      const files=review?.files??[];$('audio-tools-files-section').hidden=!files.length;
+      text('audio-tools-count',files.length+' approved addition(s) · existing verified copies are reused on retry');
+      $('audio-tools-files').replaceChildren(...files.map(file=>{const row=element('div');row.append(element('dt','asset-path',file.path),element('dd','',file.bytes.toLocaleString('en-GB')+' bytes'));return row;}));
+      text('audio-tools-error',audioToolsState.readError??(!audioToolsState.installed?'Install the separate service first.':''));
+      text('audio-tools-receipt',receipt?receipt.phase+' · '+new Date(receipt.at).toLocaleString('en-GB')+' · '+receipt.detail:'No machine changes have been recorded for this tools review.');
+    }catch(error){audioToolsState=null;text('audio-tools-phase','Unavailable');text('audio-tools-error',error.message);}
+    finally{audioToolsLoading=false;audioToolsControls();}
+  }
+  $('audio-tools-root').addEventListener('input',()=>{audioToolsDirty=true;audioToolsControls();});
+  $('audio-tools-browse').addEventListener('click',async()=>{setupFolderTarget='audio-tools-root';text('setup-folder-heading','Choose the original complete audio tools package');$('setup-folder-dialog').showModal();if(!await setupFolders($('audio-tools-root').value||null))await setupFolders(null);});
+  $('audio-tools-check').addEventListener('click',async()=>{
+    if(audioToolsBusy)return;audioToolsBusy=true;audioToolsControls();text('audio-tools-error','');
+    try{await api('/api/audio-tools/review',{method:'POST',body:{RuntimeFolder:$('audio-tools-root').value.trim()}});audioToolsDirty=false;await loadAudioTools();}
+    catch(error){text('audio-tools-error',error.message);}
+    finally{audioToolsBusy=false;audioToolsControls();}
+  });
+  $('audio-tools-apply').addEventListener('click',async()=>{
+    const review=audioToolsState?.review;if(audioToolsBusy||!review||audioToolsDirty||!audioToolsState.canApply)return;
+    audioToolsBusy=true;audioToolsControls();text('audio-tools-error','');
+    try{await api('/api/audio-tools/complete',{method:'POST',body:{Id:review.id}});await loadAudioTools();}
+    catch(error){text('audio-tools-error','Read the saved operation before retrying: '+error.message);}
+    finally{audioToolsBusy=false;audioToolsControls();}
+  });
+  $('audio-tools-refresh').addEventListener('click',()=>void loadAudioTools());
+
   let setupState=null,setupPath=null,setupParent=null,setupLoading=false,setupInputDirty=false;
   function setupControls(){
     const available=!state.session?.preview&&setupState?.supported&&setupState.packageAvailable;
@@ -441,15 +490,15 @@
   }
   async function setupFolders(path=null){
     try{const result=await api('/api/folders'+(path?'?path='+encodeURIComponent(path):''));setupPath=result.path;setupParent=result.parent;text('setup-folder-path',setupPath??'Locations');text('setup-folder-error','');$('setup-folder-select').disabled=!setupPath;
-      $('setup-folder-list').replaceChildren(...(result.folders??[]).map(folder=>{const button=element('button','folder-choice',folder.Name??folder.name);button.type='button';button.addEventListener('click',()=>void setupFolders(folder.Path??folder.path));return button;}));}
-    catch(error){text('setup-folder-error',error.message);}
+      $('setup-folder-list').replaceChildren(...(result.folders??[]).map(folder=>{const button=element('button','folder-choice',folder.Name??folder.name);button.type='button';button.addEventListener('click',()=>void setupFolders(folder.Path??folder.path));return button;}));return true;}
+    catch(error){text('setup-folder-error',error.message);return false;}
   }
   $('setup-runtime').addEventListener('input',()=>{setupInputDirty=true;setupControls();});
   $('setup-start').addEventListener('change',()=>{setupInputDirty=true;setupControls();});
   $('migration-root').addEventListener('input',()=>migrationControls());
   $('setup-browse').addEventListener('click',async()=>{setupFolderTarget='setup-runtime';text('setup-folder-heading','Choose the complete audio tools package');$('setup-folder-dialog').showModal();await setupFolders($('setup-runtime').value||null);});
   $('setup-folder-up').addEventListener('click',()=>void setupFolders(setupParent));
-  $('setup-folder-select').addEventListener('click',()=>{if(!setupPath)return;$(setupFolderTarget).value=setupPath;if(setupFolderTarget==='setup-runtime')setupInputDirty=true;$('setup-folder-dialog').close();setupControls();migrationControls();});
+  $('setup-folder-select').addEventListener('click',()=>{if(!setupPath)return;$(setupFolderTarget).value=setupPath;if(setupFolderTarget==='setup-runtime')setupInputDirty=true;if(setupFolderTarget==='audio-tools-root')audioToolsDirty=true;$('setup-folder-dialog').close();setupControls();migrationControls();audioToolsControls();});
   $('setup-check').addEventListener('click',async()=>{try{await api('/api/setup/prepare',{method:'POST',body:{RuntimeFolder:$('setup-runtime').value.trim(),StartService:$('setup-start').checked}});setupInputDirty=false;await loadSetup();}catch(error){text('setup-detail',error.message);}});
   $('setup-install').addEventListener('click',async()=>{if(!setupState?.plan)return;try{await api('/api/setup/install',{method:'POST',body:{Id:setupState.plan.id}});await loadSetup();}catch(error){text('setup-detail',error.message);}});
   $('setup-shortcuts').addEventListener('click',async()=>{try{await api('/api/setup/shortcuts',{method:'POST'});text('setup-detail','Desktop and Start menu shortcuts are available. They open the local console without Codex; the service runs independently.');}catch(error){text('setup-detail',error.message);}});
@@ -537,7 +586,7 @@
   });
 
   async function initialize(){stationTabs();renderStatus();try{state.session=await api('/api/session');text('build-label',state.session.preview?'UI PREVIEW':'DEVELOPMENT');}catch(error){message('Console connection unavailable: '+error.message);}await discover();}
-  let ticks=0;setInterval(()=>{if(document.hidden||state.consoleClosed)return;text('clock',clock.format(new Date()));renderStatus();if(++ticks%2===0){void poll();void pollFolderCheck();}if(ticks%4===0&&state.page==='library')void loadLibrary();if(ticks%4===0&&state.page==='system'){void loadSetup();void loadMigration();void loadAppUpdates();}},1000);text('clock',clock.format(new Date()));document.addEventListener('visibilitychange',()=>{if(!document.hidden){text('clock',clock.format(new Date()));void poll();}});void initialize();
+  let ticks=0;setInterval(()=>{if(document.hidden||state.consoleClosed)return;text('clock',clock.format(new Date()));renderStatus();if(++ticks%2===0){void poll();void pollFolderCheck();}if(ticks%4===0&&state.page==='library')void loadLibrary();if(ticks%4===0&&state.page==='system'){void loadSetup();void loadMigration();void loadAppUpdates();void loadAudioTools();}},1000);text('clock',clock.format(new Date()));document.addEventListener('visibilitychange',()=>{if(!document.hidden){text('clock',clock.format(new Date()));void poll();}});void initialize();
 
   const reports={items:[],engine:null,loadedAt:0,offset:0,polling:false,busy:false,rows:new Map(),pending:[]};
   try{const saved=JSON.parse(localStorage.getItem('studio-report-requests')??'[]');if(Array.isArray(saved))reports.pending=saved.filter(p=>typeof p.engine==='string'&&/^[0-9a-f]{32}$/.test(p.id??'')&&['day','year'].includes(p.period)&&typeof p.selection==='string').slice(0,16);}catch{}

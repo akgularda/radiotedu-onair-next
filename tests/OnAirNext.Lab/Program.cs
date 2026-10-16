@@ -16,6 +16,11 @@ if (args.Length == 1 && args[0] == "--service-maintenance-probe")
     return await ServiceProbe.MaintenanceAsync();
 }
 if (args.Length == 1 && args[0] == "--service-migration-probe") return await ServiceProbe.MigrationAsync();
+if (args.Length == 1 && args[0] == "--service-runtime-legacy-fixture")
+{
+    if(!OperatingSystem.IsWindows())throw new PlatformNotSupportedException("Disposable Windows setup fixture only.");
+    return await ServiceProbe.RuntimeLegacyFixtureAsync();
+}
 if (args.Length == 1 && args[0] == "--service-report-probe") return await ServiceProbe.ReportAsync();
 if (args.Length == 1 && args[0] == "--service-upload-probe") return await UploadProbe.RunAsync();
 if (args.Length == 2 && args[0] == "--service-source-probe") return await ServiceProbe.SourceAsync(args[1]);
@@ -23,6 +28,8 @@ if (args.Length == 2 && args[0] == "--service-probe") return await ServiceProbe.
 if (args.Length == 2 && args[0] == "--service-child" && args[1] == "leaf") return await ServiceProbe.OwnedChildFixtureAsync(true);
 if (Environment.GetEnvironmentVariable("ONAIR_SETUP_TEST_RUNTIME")=="1" && args.SequenceEqual(new[]{"-hide_banner","-encoders"}) && Path.GetFileName(Environment.ProcessPath)=="ffmpeg.exe")
 { Console.WriteLine("Engineering fixture only; no audio codec implementation.\n A..... libfdk_aac test-listing\n A..... flac test-listing"); return 0; }
+if (Environment.GetEnvironmentVariable("ONAIR_SETUP_TEST_RUNTIME")=="1" && args.SequenceEqual(new[]{"-version"}) && Path.GetFileName(Environment.ProcessPath)=="ffprobe.exe")
+{ Console.WriteLine("ffprobe version listing-only engineering fixture; no media analysis implementation."); return 0; }
 if (args.SequenceEqual(new[] { "-hide_banner", "-encoders" }) && Path.GetFileName(Environment.ProcessPath)=="ffmpeg.exe")
     return await ServiceProbe.OwnedChildFixtureAsync(false);
 

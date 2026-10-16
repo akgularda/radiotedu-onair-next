@@ -8,6 +8,7 @@ $fixture=[IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA ('RadioTEDU/OnAirNe
 $expectedFixture=$fixture
 $summary=Join-Path $PSScriptRoot '../artifacts/setup-smoke/summary.json'
 $checks=[Collections.Generic.List[string]]::new();$completed=$false;$failure=$null;$owned=$false;$plan=$null;$webProcess=$null;$shortcutPaths=@();$maintenance=$null;$review=$null;$updateFailures=@();$updateIntent=$null
+$audioToolsReview=$null;$audioToolsReceipt=$null
 function Check([string]$name,[bool]$value){if(-not $value){throw ('Setup check failed: '+$name)};$checks.Add($name)}
 function Run([string]$exe,[string[]]$arguments){
  $start=[Diagnostics.ProcessStartInfo]::new($exe);$start.UseShellExecute=$false;$start.CreateNoWindow=$true;$start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
@@ -115,6 +116,10 @@ try{
  $health=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/health' -TimeoutSec 3
  Check 'Console health exposes the exact compiled build identity' ($health.product -eq 'RadioTEDU-OnAirNext' -and $health.version.EndsWith($env:GITHUB_SHA))
  $headers=@{'X-Studio-Token'=$session.token;Origin='http://127.0.0.1:18121'}
+ $toolsAnonymousRejected=$false;try{$null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/audio-tools' -TimeoutSec 3}catch{$toolsAnonymousRejected=([int]$_.Exception.Response.StatusCode -eq 403)}
+ Check 'Audio tools inventory rejects anonymous callers' $toolsAnonymousRejected
+ $toolsStatus=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/audio-tools' -WebSession $setupWebSession -Headers $headers -TimeoutSec 5
+ Check 'Fresh complete installation exposes no unnecessary audio tools addition' ($toolsStatus.complete -and -not $toolsStatus.canReview -and -not $toolsStatus.canApply)
  $updateStatus=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update' -WebSession $setupWebSession -Headers $headers -TimeoutSec 5
  Check 'Installed console exposes update status without enabling in-place maintenance' (-not $updateStatus.packageAvailable -and -not $updateStatus.canApply -and -not $updateStatus.canRollback)
  $inPlaceRejected=$false;try{$null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update/review' -Method Post -WebSession $setupWebSession -Headers $headers -TimeoutSec 5}catch{$inPlaceRejected=([int]$_.Exception.Response.StatusCode -eq 400)}
@@ -132,6 +137,37 @@ try{
  # Read-only package review must not reuse the currently installed manifest.
  $samePackageRejected=$false;try{$null=Run $setup @('--prepare-update')}catch{$samePackageRejected=$true}
  Check 'Read-only maintenance review rejects the already installed package' $samePackageRejected
+ # Simulate the legacy flat8 layout only on this disposable, unarmed CI installation.
+ # The Lab command is not in the product and rejects a real broadcasting-PC data root.
+ $plan=(Run $lab @('--service-runtime-legacy-fixture'))|ConvertFrom-Json
+ $legacyPlanHash=(Get-FileHash -LiteralPath (Join-Path $data 'setup-plan.json') -Algorithm SHA256).Hash
+ $legacyOwnerHash=(Get-FileHash -LiteralPath (Join-Path $data 'setup-ownership.json') -Algorithm SHA256).Hash
+ Check 'Legacy fixture retains eight original tools and removes only its twelve known additions' ($plan.RuntimeFiles.Count -eq 8 -and -not (Test-Path -LiteralPath (Join-Path $install 'tools/ffprobe.exe')))
+ Open-ExternalFixtureConsole
+ $null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/audio-tools/review' -Method Post -WebSession $setupWebSession -Headers $headers -ContentType 'application/json' -Body (@{RuntimeFolder=$runtimePackage}|ConvertTo-Json) -TimeoutSec 5
+ $until=[DateTime]::UtcNow.AddSeconds(90)
+ do{$toolsStatus=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/audio-tools' -WebSession $setupWebSession -Headers $headers -TimeoutSec 5;if(-not $toolsStatus.busy){break};Start-Sleep -Milliseconds 200}while([DateTime]::UtcNow -lt $until)
+ Check ('Audio tools HTTP review prepares the twelve additions: '+$toolsStatus.detail) ($toolsStatus.phase -eq 'Review' -and $toolsStatus.canApply -and $toolsStatus.review.files.Count -eq 12 -and $toolsStatus.review.preserved -eq 8)
+ $audioToolsPath=Join-Path $env:LOCALAPPDATA ('RadioTEDU/OnAirNext-Dev/browser-console/audio-tools/'+$toolsStatus.review.id+'.json')
+ $audioToolsHash=(Get-FileHash -LiteralPath $audioToolsPath -Algorithm SHA256).Hash
+ $audioToolsReview=Get-Content -LiteralPath $audioToolsPath -Raw|ConvertFrom-Json
+ $savedToolsProbe=Join-Path $runtime 'ffprobe.exe.saved-for-supplement';Copy-Item -LiteralPath (Join-Path $runtime 'ffprobe.exe') -Destination $savedToolsProbe
+ try{
+  'changed after tools review'|Set-Content -LiteralPath (Join-Path $runtime 'ffprobe.exe') -Encoding utf8NoBOM
+  $toolsTamperRejected=$false;try{$null=Run $setup @('--complete-audio-tools',$audioToolsPath,$audioToolsHash)}catch{$toolsTamperRejected=$true}
+  Check 'Audio tools approval rejects changed provider bytes before any destination addition' ($toolsTamperRejected -and -not (Test-Path -LiteralPath (Join-Path $install 'tools/ffprobe.exe')) -and -not (Test-Path -LiteralPath (Join-Path $data 'audio-tools-supplement.json')))
+ }finally{Copy-Item -LiteralPath $savedToolsProbe -Destination (Join-Path $runtime 'ffprobe.exe') -Force}
+ $null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/audio-tools/complete' -Method Post -WebSession $setupWebSession -Headers $headers -ContentType 'application/json' -Body (@{Id=$audioToolsReview.Id}|ConvertTo-Json) -TimeoutSec 5
+ $until=[DateTime]::UtcNow.AddSeconds(90)
+ do{$toolsStatus=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/audio-tools' -WebSession $setupWebSession -Headers $headers -TimeoutSec 5;if(-not $toolsStatus.busy){break};Start-Sleep -Milliseconds 200}while([DateTime]::UtcNow -lt $until)
+ Check ('Audio tools HTTP completion reads back its protected receipt: '+$toolsStatus.detail) ($toolsStatus.complete -and $toolsStatus.receipt.phase -eq 'Complete' -and $toolsStatus.receipt.id -eq $audioToolsReview.Id)
+ $audioToolsReceipt=Get-Content -LiteralPath (Join-Path $data 'audio-tools-supplement.json') -Raw|ConvertFrom-Json
+ Check 'Audio tools completion preserves the canonical original plan and ownership bytes' ((Get-FileHash -LiteralPath (Join-Path $data 'setup-plan.json') -Algorithm SHA256).Hash -eq $legacyPlanHash -and (Get-FileHash -LiteralPath (Join-Path $data 'setup-ownership.json') -Algorithm SHA256).Hash -eq $legacyOwnerHash)
+ Check 'Audio tools completion preserves original codec bytes configuration and service process' ((Get-FileHash -LiteralPath (Join-Path $install 'tools/ffmpeg.exe') -Algorithm SHA256).Hash -eq $runtimeHash -and (Get-FileHash -LiteralPath (Join-Path $data 'host.json') -Algorithm SHA256).Hash -eq $before -and (Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")).ProcessId -eq $service.ProcessId)
+ Check 'Added analyzer bytes and original-provider source archive are installed exactly' ((Get-FileHash -LiteralPath (Join-Path $install 'tools/ffprobe.exe') -Algorithm SHA256).Hash -eq (Get-FileHash -LiteralPath (Join-Path $runtime 'ffprobe.exe') -Algorithm SHA256).Hash -and (Get-FileHash -LiteralPath (Join-Path $install 'tools/Sources/ffmpeg-n9.0.2.tar.gz') -Algorithm SHA256).Hash -eq (Get-FileHash -LiteralPath (Join-Path $runtimePackage 'Sources/ffmpeg-n9.0.2.tar.gz') -Algorithm SHA256).Hash)
+ $null=Run $setup @('--complete-audio-tools',$audioToolsPath,$audioToolsHash)
+ Check 'Repeating the exact approved audio tools operation preserves original files and live service identity' ((Get-FileHash -LiteralPath (Join-Path $data 'setup-plan.json') -Algorithm SHA256).Hash -eq $legacyPlanHash -and (Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")).ProcessId -eq $service.ProcessId)
+ Close-ExternalFixtureConsole
  # Synthetic replacement identity only: all executable bytes remain this CI build.
  $replacementManifest=Get-Content -LiteralPath (Join-Path $fixture 'bundle.json') -Raw|ConvertFrom-Json
  $replacementManifest.Source=('a'*40)
@@ -143,6 +179,7 @@ try{
  Check 'External console prepares a read-back update review through its authenticated route' ($uiReview.phase -eq 'Review' -and $uiReview.canApply -and $uiReview.review.id -match '^[a-f0-9]{32}$')
  $savedReview=Join-Path $env:LOCALAPPDATA ('RadioTEDU/OnAirNext-Dev/browser-console/app-updates/'+$uiReview.review.id+'.json')
  $review=Get-Content -LiteralPath $savedReview -Raw|ConvertFrom-Json
+ Check 'Application update retains the completed twenty-file inventory over an immutable legacy eight-file plan' ($review.Files.Original.RuntimeFiles.Count -eq 20 -and $review.Files.Replacement.RuntimeFiles.Count -eq 20 -and $plan.RuntimeFiles.Count -eq 8)
  # Exercise the approved read-only helper using the already elevated disposable runner.
  # Actual filtered-token UAC/mouse acceptance remains a target-PC requirement.
  $approvalFolder=Join-Path $env:LOCALAPPDATA 'RadioTEDU/OnAirNext-Dev/browser-console/access/update-reviews'
@@ -235,5 +272,5 @@ finally{
   if($completed -and -not $failure){foreach($target in @(@{Path=$install;Expected=(Join-Path $env:ProgramFiles 'RadioTEDU-OnAirNext-Development')},@{Path=$data;Expected=(Join-Path $env:ProgramData 'RadioTEDU-OnAirNext-Development')})){$full=[IO.Path]::GetFullPath($target.Path);if($full -ne [IO.Path]::GetFullPath($target.Expected) -or (Get-Item -LiteralPath $full).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Setup cleanup target validation failed'};Remove-Item -LiteralPath $full -Recurse -Force}}
  }
  $null=New-Item -ItemType Directory -Path (Split-Path -Parent $summary) -Force
- @{Source=$env:GITHUB_SHA;Scope='Disposable Windows installer software fixture; runtime encoder listing is an explicit test double, no real audio or broadcasting-PC commissioning';Completed=$completed;Passed=($completed -and -not $failure);Checks=$checks.ToArray();Maintenance=$maintenance;UpdateReview=$review;UpdateFailures=$updateFailures;UpdateIntent=$updateIntent;Error=$failure;ProductionChanged=$false}|ConvertTo-Json -Depth 8|Set-Content -LiteralPath $summary -Encoding utf8NoBOM
+ @{Source=$env:GITHUB_SHA;Scope='Disposable Windows installer and synthetic legacy flat8 completion fixture; encoder/analyzer listings are explicit test doubles, no real audio, mouse or broadcasting-PC commissioning';Completed=$completed;Passed=($completed -and -not $failure);Checks=$checks.ToArray();Maintenance=$maintenance;UpdateReview=$review;AudioToolsReview=$audioToolsReview;AudioToolsReceipt=$audioToolsReceipt;UpdateFailures=$updateFailures;UpdateIntent=$updateIntent;Error=$failure;ProductionChanged=$false}|ConvertTo-Json -Depth 8|Set-Content -LiteralPath $summary -Encoding utf8NoBOM
 }

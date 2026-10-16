@@ -9,6 +9,15 @@ using OnAirNext.ServiceControl;
 if(!OperatingSystem.IsWindows())return 2;
 try
 {
+    if(args.Length==3&&args[0]=="--prepare-audio-tools")
+    {
+        WindowsOwnedJob.AttachCurrentProcess();
+        using var deadline=new CancellationTokenSource(TimeSpan.FromMinutes(3));
+        var request=await SetupPaths.ReadVerifiedAsync<RuntimeSupplementRequest>(args[1],args[2],deadline.Token);
+        Console.WriteLine(JsonSerializer.Serialize(await WindowsRuntimeSupplement.PrepareAsync(request,deadline.Token)));return 0;
+    }
+    if(args.Length==3&&args[0]=="--complete-audio-tools")
+    {WindowsOwnedJob.AttachCurrentProcess();return await WindowsRuntimeSupplement.ApplyAsync(args[1],args[2]);}
     if(args.Length==3&&args[0] is "--apply-update" or "--rollback-update")
     {
         WindowsOwnedJob.AttachCurrentProcess();
@@ -89,7 +98,7 @@ try
 catch(Exception error)
 {
     var message=args.Length>0&&args[0] is "--prepare-update" or "--prepare-update-approved" ? WindowsReviewElevation.FailureMessage(error) : error is ArgumentException or InvalidOperationException ? error.Message : "Setup could not complete. Check the reviewed package, runtime files, permissions and free disk space. Existing broadcasts were not taken over.";
-    if(args.Length>0&&args[0] is "--prepare" or "--prepare-update" or "--prepare-update-approved")Console.WriteLine(JsonSerializer.Serialize(new{error=message}));
+    if(args.Length>0&&args[0] is "--prepare" or "--prepare-update" or "--prepare-update-approved" or "--prepare-audio-tools")Console.WriteLine(JsonSerializer.Serialize(new{error=message}));
     else if(args.Length==0||args[0]=="--open-console")SetupMessage.Show(message);
     return 1;
 }

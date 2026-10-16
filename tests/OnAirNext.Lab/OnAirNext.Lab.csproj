@@ -8,6 +8,8 @@
     <Compile Include="../../src/OnAirNext.Host/ServicePipeClient.cs" Link="ServiceControl/ServicePipeClient.cs" />
     <Compile Include="../../src/OnAirNext.Setup/SetupService.cs" Link="Installation/SetupService.cs" />
     <Compile Include="../../src/OnAirNext.Setup/SetupModels.cs" Link="Installation/SetupModels.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/CodecRuntimePackage.cs" Link="Installation/CodecRuntimePackage.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/RuntimeSupplement.cs" Link="Installation/RuntimeSupplement.cs" />
     <Compile Include="../../src/OnAirNext.Setup/UpdateAdmission.cs" Link="Installation/UpdateAdmission.cs" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 1,
+  "target": "win-x64",
+  "dependencyLockSha256": "c9fec5fd0a0b677e1901cd263c72e57634f3502d9122c03dcbb45e69127b2b46",
+  "buildScriptSha256": "ca9d27c4d31e912d29cf8df9d9a5fdbcd8c49a2769265cb422ee0d7c9d734de4",
+  "upstreams": {
+    "schemaVersion": 1,
+    "target": "win-x64",
+    "cpuBaseline": "x86-64/SSE2; generic tuning",
+    "licenseConfiguration": "LGPL version 2.1 or later; libfdk-aac under its bundled NOTICE",
+    "ffmpeg": {
+      "repository": "https://github.com/FFmpeg/FFmpeg.git",
+      "tag": "n9.0.2",
+      "tagObject": "ce8f11b9fac4cd7ccfb41ca7c01bc17f5cda8cc3",
+      "commit": "946fcce07b6dcd0331c8cc609192aeff5e1924f8"
+    },
+    "fdk": {
+      "repository": "https://github.com/mstorsjo/fdk-aac.git",
+      "tag": "v2.0.3",
+      "tagObject": "cac04476081a23c870fed05c36228cd02c5e7c3d",
+      "commit": "716f4394641d53f0d79c9ddac3fa93b03a49f278"
+    }
+  },
+  "imports": {
+    "avcodec-63.dll": [
+      "KERNEL32.dll",
+      "avutil-61.dll",
+      "libfdk-aac-2.dll",
+      "msvcrt.dll",
+      "swresample-7.dll"
+    ],
+    "avfilter-12.dll": [
+      "KERNEL32.dll",
+      "avcodec-63.dll",
+      "avformat-63.dll",
+      "avutil-61.dll",
+      "msvcrt.dll",
+      "swresample-7.dll",
+      "swscale-10.dll"
+    ],
+    "avformat-63.dll": [
+      "CRYPT32.dll",
+      "KERNEL32.dll",
+      "Secur32.dll",
+      "WS2_32.dll",
+      "avcodec-63.dll",
+      "avutil-61.dll",
+      "msvcrt.dll",
+      "ncrypt.dll"
+    ],
+    "avutil-61.dll": [
+      "KERNEL32.dll",
+      "bcrypt.dll",
+      "msvcrt.dll"
+    ],
+    "ffmpeg.exe": [
+      "KERNEL32.dll",
+      "SHELL32.dll",
+      "avcodec-63.dll",
+      "avfilter-12.dll",
+      "avformat-63.dll",
+      "avutil-61.dll",
+      "msvcrt.dll",
+      "swresample-7.dll",
+      "swscale-10.dll"
+    ],
+    "ffprobe.exe": [
+      "KERNEL32.dll",
+      "SHELL32.dll",
+      "avcodec-63.dll",
+      "avfilter-12.dll",
+      "avformat-63.dll",
+      "avutil-61.dll",
+      "msvcrt.dll",
+      "swresample-7.dll",
+      "swscale-10.dll"
+    ],
+    "libfdk-aac-2.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "swresample-7.dll": [
+      "KERNEL32.dll",
+      "avutil-61.dll",
+      "msvcrt.dll"
+    ],
+    "swscale-10.dll": [
+      "KERNEL32.dll",
+      "avutil-61.dll",
+      "msvcrt.dll"
+    ]
+  },
+  "files": [
+    {
+      "path": "Licenses/COPYING.LGPLv2.1",
+      "bytes": 26517,
+      "sha256": "246041b6ecf9bc32d718a62c57877c78b5eb397b6467e74ed7ae2626ab189c30"
+    },
+    {
+      "path": "Licenses/FDK-AAC-NOTICE.txt",
+      "bytes": 4447,
+      "sha256": "95ec80da40b4af12ad4c4f3158c9cfb80f2479f3246e4260cb600827cc8c7836"
+    },
+    {
+      "path": "Licenses/LICENSE.md",
+      "bytes": 4346,
+      "sha256": "2e1d16c72fd74e12063776371da757322f8b77589386532f4fd8634bde7de1af"
+    },
+    {
+      "path": "Sources/build-configurations.json",
+      "bytes": 1347,
+      "sha256": "bb600182b8d1b28d8e87e146d5c0b1ab1e13669be2d114bed0aa6ff004a2e394"
+    },
+    {
+      "path": "Sources/build-windows-codecs.py",
+      "bytes": 7225,
+      "sha256": "ca9d27c4d31e912d29cf8df9d9a5fdbcd8c49a2769265cb422ee0d7c9d734de4"
+    },
+    {
+      "path": "Sources/fdk-v2.0.3.tar.gz",
+      "bytes": 2516681,
+      "sha256": "5e547bb7778c01cc9d95ce996d50d3da4aba65c1f5528586daf8c618c9500ad3"
+    },
+    {
+      "path": "Sources/ffmpeg-config.mak",
+      "bytes": 88573,
+      "sha256": "b6481471d9fd4a95ac03774bcc220257d5a92cbe9ac4daf13db200951933b014"
+    },
+    {
+      "path": "Sources/ffmpeg-n9.0.2.tar.gz",
+      "bytes": 17300296,
+      "sha256": "6288380760a798eea781cc5c572767c1b10b392fed34d50613937a14e63f918d"
+    },
+    {
+      "path": "Sources/toolchain.txt",
+      "bytes": 528,
+      "sha256": "4e1615571675d64f3ced94ca4becd91dbabc7f9ed317fe374ed926f417838f4c"
+    },
+    {
+      "path": "bin/avcodec-63.dll",
+      "bytes": 17891328,
+      "sha256": "e81085a1823a1e3370200d6d22cdea3eeb87b941ebc61d48b9b39553182397bc"
+    },
+    {
+      "path": "bin/avfilter-12.dll",
+      "bytes": 4994560,
+      "sha256": "cb3ca87dec7bfd35fde5b96fde68d564e28b9d06771f89ca576157d785954bfc"
+    },
+    {
+      "path": "bin/avformat-63.dll",
+      "bytes": 2803712,
+      "sha256": "4e9b9b4601b5d20d1c1f4d096b81e0fa10e09e4ad0711374d6599028d1ebe28c"
+    },
+    {
+      "path": "bin/avutil-61.dll",
+      "bytes": 1029120,
+      "sha256": "2f7fe7fd63786229bbba2c407194788155973ac1968adfe548cab03844e1b2a1"
+    },
+    {
+      "path": "bin/ffmpeg.exe",
+      "bytes": 456192,
+      "sha256": "32ccd762700f441336280dd7ef4edbaafc5e1ef7bb4a6532d327c0715debacf3"
+    },
+    {
+      "path": "bin/ffprobe.exe",
+      "bytes": 210944,
+      "sha256": "b8689a5de67c941a566edae6c51760aabb764d4339cf7dabe5d2c6c922458049"
+    },
+    {
+      "path": "bin/libfdk-aac-2.dll",
+      "bytes": 1734827,
+      "sha256": "a611a668b79ca701baaa0f301013d77424f2878aa58ee77f7f1fc4797cb8482d"
+    },
+    {
+      "path": "bin/swresample-7.dll",
+      "bytes": 139264,
+      "sha256": "99f9c02661e8bc11aab3bf186c6223fadb4548184eae62a5f624e074154fccfb"
+    },
+    {
+      "path": "bin/swscale-10.dll",
+      "bytes": 2139648,
+      "sha256": "7fd8d7581671f53de15a44a6c7c9d73adeb0e1dbd6d47992b2e095034148685f"
+    },
+    {
+      "path": "windows-codec.lock.json",
+      "bytes": 620,
+      "sha256": "c9fec5fd0a0b677e1901cd263c72e57634f3502d9122c03dcbb45e69127b2b46"
+    }
+  ]
+}

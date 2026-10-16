@@ -122,7 +122,7 @@ internal static class WindowsAppUpdater
         var owner=await SetupPaths.ReadVerifiedAsync<JsonElement>(Path.Combine(ServiceEndpoint.DataRoot,"setup-ownership.json"),review.OwnershipSha256,CancellationToken.None);
         var claim=Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(initial)));
         if(initial.OperatorSid!=review.OperatorSid||owner.GetProperty("PlanId").GetString()!=initial.Id||!string.Equals(owner.GetProperty("PlanSha256").GetString(),claim,StringComparison.OrdinalIgnoreCase))throw new IOException("The initial installation ownership no longer matches this update.");
-        var retainedRuntime=SetupPaths.InstalledRuntimeFiles(initial.RuntimeFiles);
+        var retainedRuntime=await RuntimeSupplementInventory.EffectiveAsync(initial,review.InitialPlanSha256,Path.Combine(ServiceEndpoint.DataRoot,RuntimeSupplementInventory.ReceiptName),ServiceEndpoint.InstallRoot,WindowsInstaller.AssertProtected);
         if(retainedRuntime.Length!=review.Files.Original.RuntimeFiles.Length||retainedRuntime.Any(f=>!review.Files.Original.RuntimeFiles.Any(r=>r.Path.Equals(f.Path,StringComparison.OrdinalIgnoreCase)&&r.Bytes==f.Bytes&&r.Sha256.Equals(f.Sha256,StringComparison.OrdinalIgnoreCase))))throw new IOException("The reviewed codec runtime differs from the original installation.");
         var config=await SetupPaths.ReadVerifiedAsync<JsonElement>(ServiceEndpoint.ConfigPath,review.ConfigurationSha256,CancellationToken.None);
         UpdateAdmission.RequireUnarmedConfiguration(config,review.OperatorSid);
@@ -169,6 +169,8 @@ internal static class WindowsAppUpdater
         WindowsInstaller.CreateProtected(snapshot,account,false);
         var sources=new List<(string Source,string Relative)>();
         foreach(var name in new[]{"host.json","setup-plan.json","setup-ownership.json"})sources.Add((Path.Combine(ServiceEndpoint.DataRoot,name),name));
+        var supplement=Path.Combine(ServiceEndpoint.DataRoot,RuntimeSupplementInventory.ReceiptName);
+        if(File.Exists(supplement))sources.Add((supplement,RuntimeSupplementInventory.ReceiptName));
         foreach(var name in new[]{"playback.db","playback.db-wal"})
         {var source=Path.Combine(ServiceEndpoint.EngineData,name);if(File.Exists(source)&&(name=="playback.db"||new FileInfo(source).Length>0))sources.Add((source,"data/journal/"+name));}
         var previews=Path.Combine(ServiceEndpoint.EngineData,"migration-previews");SetupPaths.RequireNoLinks(previews);

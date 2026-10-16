@@ -17,8 +17,11 @@
     <Compile Include="../OnAirNext.Setup/UpdateSwap.cs" Link="Installation/UpdateSwap.cs" />
     <Compile Include="../OnAirNext.Setup/UpdateOperationStore.cs" Link="Installation/UpdateOperationStore.cs" />
     <Compile Include="../OnAirNext.Setup/SetupModels.cs" Link="Installation/SetupModels.cs" />
+    <Compile Include="../OnAirNext.Setup/CodecRuntimePackage.cs" Link="Installation/CodecRuntimePackage.cs" />
+    <Compile Include="../OnAirNext.Setup/RuntimeSupplement.cs" Link="Installation/RuntimeSupplement.cs" />
     <Compile Include="../OnAirNext.Setup/SetupService.cs" Link="Installation/SetupService.cs" />
     <Compile Include="../OnAirNext.Host/ServiceEndpoint.cs" Link="ServiceControl/ServiceEndpoint.cs" />
+    <Compile Include="../OnAirNext.Host/ServiceFileProtection.cs" Link="ServiceControl/ServiceFileProtection.cs" />
     <Compile Include="../OnAirNext.Host/ServicePipeClient.cs" Link="ServiceControl/ServicePipeClient.cs" />
   </ItemGroup>
 </Project>

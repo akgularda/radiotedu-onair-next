@@ -3,6 +3,7 @@
   <PropertyGroup><RuntimeIdentifiers>win-x64</RuntimeIdentifiers></PropertyGroup>
   <ItemGroup>
     <None Update="maintenance-contract.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="RuntimeReferences/*.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="../OnAirNext.Host/ServicePipeClient.cs" Link="ServiceControl/ServicePipeClient.cs" />
     <Compile Include="../OnAirNext.Engine/PipeFrames.cs" Link="Protocol/PipeFrames.cs" />
     <Compile Include="../OnAirNext.Host/ServiceEndpoint.cs" Link="ServiceControl/ServiceEndpoint.cs" />

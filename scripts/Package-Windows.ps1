@@ -38,6 +38,9 @@ folder containing runtime-manifest.json, bin, Licenses and Sources. Setup checks
 file against the matching reference, preserving ffprobe, license notices and source archives.
 Review the separate service installation, then approve the Windows administrator prompt.
 All eight channels are initially stopped with zero outputs. The former service is not changed.
+For an earlier flat installation, System > Audio tools reviews additions from its ORIGINAL
+matching complete provider. Original codec binaries are retained; keep both folders until the
+protected completion receipt is recorded. Application update and rollback retain that inventory.
 
 .NET is included. FFmpeg and music are not included. Preserve the runtime provider's license files.
 This is a development package, not a commissioned radio release. Complete actual-PC UI,

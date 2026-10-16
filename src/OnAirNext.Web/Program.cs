@@ -17,6 +17,7 @@ builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 
 builder.Services.Configure<FormOptions>(options => { options.MultipartBodyLengthLimit = 256L * 1024 * 1024; options.MemoryBufferThreshold = 65536; });
 builder.Services.AddSingleton(_ => new SetupCoordinator(dataRoot));
 builder.Services.AddSingleton(_ => new AppUpdateCoordinator(dataRoot));
+builder.Services.AddSingleton(_ => new RuntimeSupplementCoordinator(dataRoot));
 using var access = new ConsoleAccess();
 var app = builder.Build();
 var reportDownloads = new ReportDownloadGrants();
@@ -68,6 +69,9 @@ app.MapGet("/api/app-update", async (AppUpdateCoordinator updates,CancellationTo
 app.MapPost("/api/app-update/review", (AppUpdateCoordinator updates) => {updates.Prepare();return Results.Json(new{accepted=true});});
 app.MapPost("/api/app-update/apply", (SetupInstall request,AppUpdateCoordinator updates) => {updates.Execute(request.Id,UpdateDirection.Apply);return Results.Json(new{accepted=true});});
 app.MapPost("/api/app-update/rollback", (SetupInstall request,AppUpdateCoordinator updates) => {updates.Execute(request.Id,UpdateDirection.Rollback);return Results.Json(new{accepted=true});});
+app.MapGet("/api/audio-tools", async (RuntimeSupplementCoordinator tools,CancellationToken token) => Results.Json(await tools.StatusAsync(token)));
+app.MapPost("/api/audio-tools/review", (RuntimeSupplementRequest request,RuntimeSupplementCoordinator tools) => {tools.Prepare(request);return Results.Json(new{accepted=true});});
+app.MapPost("/api/audio-tools/complete", (SetupInstall request,RuntimeSupplementCoordinator tools) => {tools.Execute(request.Id);return Results.Json(new{accepted=true});});
 app.MapGet("/api/setup", (SetupCoordinator setup) => Results.Json(setup.Status()));
 app.MapPost("/api/setup/prepare", (SetupRequest request, SetupCoordinator setup) => { setup.Prepare(request); return Results.Json(new { accepted=true }); });
 app.MapPost("/api/setup/install", (SetupInstall request, SetupCoordinator setup) => { setup.Install(request.Id); return Results.Json(new { accepted=true }); });
