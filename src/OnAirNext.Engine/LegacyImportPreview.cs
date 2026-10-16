@@ -19,6 +19,7 @@ public sealed record LegacyImportPreview(string Id, string LegacyRoot, string St
     public static void ValidateMappings(LegacyImportPreview preview, LegacyStationMapping[] mappings, IReadOnlySet<string> targets)
     {
         var sourceIds = (preview.Stations ?? []).Select(station => station.Id).ToHashSet();
+        if (mappings.Any(mapping => mapping is null)) throw new ArgumentException("Every mapping row must identify a legacy station.");
         if (mappings.Length != sourceIds.Count || mappings.Select(mapping => mapping.LegacyStationId).Distinct().Count() != mappings.Length ||
             mappings.Any(mapping => !sourceIds.Contains(mapping.LegacyStationId) || mapping.TargetStationId is not null && !targets.Contains(mapping.TargetStationId)))
             throw new ArgumentException("Map every legacy station once to a known channel or Leave with former program.");

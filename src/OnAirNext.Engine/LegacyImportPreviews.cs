@@ -19,6 +19,8 @@ public sealed class LegacyImportPreviews : IAsyncDisposable
     { _folder = Path.Combine(dataRoot, "migration-previews"); _targets = targets.ToHashSet(StringComparer.Ordinal); _isUnarmed = isUnarmed; }
     public void Initialize()
     {
+        try
+        {
         RequireNoLinks(_folder); Directory.CreateDirectory(_folder); RequireNoLinks(_folder);
         var latest = Path.Combine(_folder, "latest"); RequireNoLinks(latest);
         if (!File.Exists(latest)) return;
@@ -27,6 +29,13 @@ public sealed class LegacyImportPreviews : IAsyncDisposable
         _current = Read(id);
         if (_current.State is "Inspecting" or "Verifying backup")
             Save(_current with { State = "Interrupted", Error = "Preview interrupted. Create a fresh preview; the former program was not changed." });
+            }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or ArgumentException or InvalidOperationException)
+        {
+            // An optional preparation screen must never stop existing station sessions.
+            _current = new(Guid.Empty.ToString("N"), "", "Unavailable", DateTimeOffset.UtcNow,
+                Error: "The previous preview could not be read. It was retained. Prepare a fresh preview to continue; broadcasting is independent.");
+        }
     }
     public LegacyImportPreview? Snapshot(string? id = null)
     { lock (_gate) return id is null ? _current : Read(id); }
@@ -58,6 +67,7 @@ public sealed class LegacyImportPreviews : IAsyncDisposable
         lock (_gate)
         {
             var saved = Read(id);
+            if (!_isUnarmed()) throw new InvalidOperationException("Stop and disarm the new channels before saving an import mapping.");
             if (saved.State is not ("Ready for mapping" or "Mapping saved") || saved.Backup is null)
                 throw new InvalidOperationException("Wait for a verified backup before saving the mapping.");
             LegacyImportPreview.ValidateMappings(saved, mappings, _targets);
@@ -134,10 +144,11 @@ public sealed class LegacyImportPreviews : IAsyncDisposable
                 _stop.Token.ThrowIfCancellationRequested(); hash.AppendData(buffer.AsSpan(0, count)); checkedBytes += count;
                 while (checkedBytes / 2097152d > clock.Elapsed.TotalSeconds)
                     if (_stop.Token.WaitHandle.WaitOne(25)) _stop.Token.ThrowIfCancellationRequested();
-                if (checkedBytes >= nextProgress) { Publish(preview with { CheckedBytes = checkedBytes }); nextProgress += 2097152; }
+                if (checkedBytes >= nextProgress) { if (!_isUnarmed()) throw new InvalidOperationException("Preview stopped because a new channel began running or gained an output."); Publish(preview with { CheckedBytes = checkedBytes }); nextProgress += 2097152; }
             }
             if (Convert.ToHexStringLower(hash.GetHashAndReset()) != proof.Sha256 || checkedBytes != proof.Bytes)
                 throw new InvalidDataException("The recovery file failed its independent SHA-256 check. No import is allowed.");
+            if (!_isUnarmed()) throw new InvalidOperationException("Preview stopped because the new engine is no longer unarmed.");
             Publish(preview with { State = "Ready for mapping", Backup = proof, CheckedBytes = checkedBytes });
         }
         catch (Exception ex)
@@ -162,6 +173,12 @@ public sealed class LegacyImportPreviews : IAsyncDisposable
         if (new FileInfo(path).Length > 1048576) throw new InvalidDataException("The saved preview exceeds its size limit.");
         var preview = JsonSerializer.Deserialize<LegacyImportPreview>(File.ReadAllBytes(path)) ?? throw new InvalidDataException("The saved preview is invalid.");
         if (preview.Id != id || preview.ProductionChanged) throw new InvalidDataException("The saved preview identity is invalid.");
+        if (preview.State is "Ready for mapping" or "Mapping saved")
+        {
+            if (preview.Backup is null || preview.Stations is not { Length: > 0 and <= 16 } stations || stations.Any(station => station is null) ||
+                preview.SettingsFingerprint != Convert.ToHexStringLower(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(stations))))
+                throw new InvalidDataException("The retained source mapping is incomplete or changed; prepare a fresh preview.");
+        }
         return preview;
     }
     private string PlanPath(string id) { LegacyImportPreview.ValidateId(id); return Path.Combine(_folder, id + ".json"); }

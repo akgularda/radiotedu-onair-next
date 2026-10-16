@@ -175,7 +175,7 @@ internal static class EngineHost
                                 result = "{\"accepted\":false,\"error\":\"Unknown command or station.\"}"; break;
                         }
                     }
-                    catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or IOException or Microsoft.Data.Sqlite.SqliteException)
+                    catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
                     {
                         result = JsonSerializer.Serialize(new { accepted = false, error = ex.Message });
                     }

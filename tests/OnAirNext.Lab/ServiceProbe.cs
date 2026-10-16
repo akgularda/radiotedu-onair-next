@@ -127,7 +127,7 @@ internal static class ServiceProbe
         await File.WriteAllBytesAsync(recovery, fixtureBytes);
         var digest = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(fixtureBytes));
         var database = Path.Combine(root, "cleanroom.db");
-        using (var connection = new Microsoft.Data.Sqlite.SqliteConnection(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder { DataSource = database }.ToString()))
+        using (var connection = new Microsoft.Data.Sqlite.SqliteConnection(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder { DataSource = database, Pooling = false }.ToString()))
         {
             connection.Open(); using var command = connection.CreateCommand();
             command.CommandText = """

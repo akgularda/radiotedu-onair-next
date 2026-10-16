@@ -16,7 +16,7 @@ public sealed class LegacyImportTests
         Directory.CreateDirectory(Path.Combine(source, "recovery-points", "daily")); Directory.CreateDirectory(target);
         var recovery = Path.Combine(source, "recovery-points", "daily", "synthetic.db.dpapi");
         var bytes = Encoding.UTF8.GetBytes("ONAIR-DPAPI-1\nSYNTHETIC UNIT FIXTURE; NOT RESTORE DATA"); File.WriteAllBytes(recovery, bytes);
-        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = Path.Combine(source, "cleanroom.db") }.ToString()); connection.Open();
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = Path.Combine(source, "cleanroom.db"), Pooling = false }.ToString()); connection.Open();
         using var command = connection.CreateCommand();
         command.CommandText = """
             CREATE TABLE stations(id INTEGER PRIMARY KEY,name TEXT NOT NULL);
@@ -79,6 +79,17 @@ public sealed class LegacyImportTests
         Assert.Collection(plan.Mappings!, mapping => { Assert.Equal(4, mapping.LegacyStationId); Assert.Equal("4", mapping.TargetStationId); }, mapping => { Assert.Equal(9, mapping.LegacyStationId); Assert.Equal("9", mapping.TargetStationId); });
     }
     [Fact]
+    public async Task ChangedRetainedFolderDataCannotBeUsedAsTheOriginalVerifiedPreview()
+    {
+        var fixture = Fixture(); var id = Guid.NewGuid().ToString("N");
+        await using var previews = new LegacyImportPreviews(fixture.Target, ["4", "9"], () => true); previews.Initialize(); previews.Start(id, fixture.Source);
+        var ready = await Finished(previews); var stations = ready.Stations!;
+        stations[0] = stations[0] with { MusicFolder = "changed-after-verification" };
+        File.WriteAllText(Path.Combine(fixture.Target, "migration-previews", id + ".json"), JsonSerializer.Serialize(ready with { Stations = stations }));
+        Assert.Throws<InvalidDataException>(() => previews.SaveMappings(id, 0, [new(4, "4"), new(9, "9")]));
+    }
+
+    [Fact]
     public async Task FailedBackupDigestCannotBecomeASavedMapping()
     {
         var fixture = Fixture(true); var id = Guid.NewGuid().ToString("N");
@@ -103,6 +114,18 @@ public sealed class LegacyImportTests
         await using var previews = new LegacyImportPreviews(fixture.Target, ["4", "9"], () => true); previews.Initialize();
         Assert.Equal("Interrupted", previews.Snapshot()!.State); Assert.Null(previews.Snapshot()!.Backup);
     }
+    [Fact]
+    public async Task CorruptOptionalPreviewDoesNotPreventInitializationOrAFreshUiRequest()
+    {
+        var fixture = Fixture(); var folder = Path.Combine(fixture.Target, "migration-previews"); Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "latest"), "corrupt-preview-pointer");
+        await using var previews = new LegacyImportPreviews(fixture.Target, ["4", "9"], () => true); previews.Initialize();
+        Assert.Equal("Unavailable", previews.Snapshot()!.State);
+        var id = Guid.NewGuid().ToString("N"); previews.Start(id, fixture.Source);
+        Assert.Equal("Ready for mapping", (await Finished(previews)).State);
+        Assert.Equal(id, File.ReadAllText(Path.Combine(folder, "latest")));
+    }
+
     [Fact]
     public void DuplicateDestinationsAndExternallyOwnedMountsCannotBeMapped()
     {
