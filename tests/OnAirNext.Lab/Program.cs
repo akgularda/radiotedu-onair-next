@@ -229,9 +229,22 @@ async Task RecoveryAsync(CaseResult result)
         await WaitAsync(() => station.Snapshot().Outputs[0].Connections >= 2 && station.Snapshot().Outputs.All(x => x.State == "SourceConnected"),
             "Both outputs reconnect after restarting the owned Icecast origin.", 18);
         await using var recovered = new Probe(ffmpeg, origin.Port, "/next-recovery-main");
-        await Task.Delay(4000);
-        Check(result, recovered.Snapshot().DecodedSeconds >= 1.5 && recovered.Snapshot().Error is null, "Recovered source delivers newly decoded listener audio.");
-        var final = station.Snapshot(); result.Details["station"] = final;
+        var recoveryObservation = new List<object>();
+        var recoveryObservationClock = Stopwatch.StartNew();
+        result.Details["recoveryListenerSamples"] = recoveryObservation;
+        for (var second = 1; second <= 4; second++)
+        {
+            await Task.Delay(1000);
+            var observedStation = station.Snapshot();
+            recoveryObservation.Add(new { ElapsedSeconds = recoveryObservationClock.Elapsed.TotalSeconds,
+                Listener = recovered.Snapshot(), ProgramSamples = observedStation.Samples, Outputs = observedStation.Outputs });
+        }
+        var recoveredListener = recovered.Snapshot();
+        var final = station.Snapshot();
+        result.Details["recoveredListener"] = recoveredListener;
+        result.Details["station"] = final;
+        result.Details["programSamplesBeforeOutage"] = beforeOutage;
+        Check(result, recoveredListener.DecodedSeconds >= 1.5 && recoveredListener.Error is null, "Recovered source delivers newly decoded listener audio.");
         Check(result, final.State == "Running" && final.Samples > beforeOutage + 48000, "Origin outage never restarts or rewinds the program timeline.");
     }
     ValidateHistory(result, database);

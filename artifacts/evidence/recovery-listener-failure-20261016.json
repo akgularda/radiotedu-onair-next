@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "source": "e2274c45402317c00dfde9755840e0766522f5d5",
+  "run": 38883615833,
+  "job": 116916150881,
+  "artifact": {
+    "id": 12039625050,
+    "bytes": 46163,
+    "sha256": "e2e5dc7587d80a237c80e31426ec376d34b06d5e1f34f01d936de6346d635654"
+  },
+  "results": {
+    "unit": 222,
+    "browserModel": 9,
+    "full18Checks": 193,
+    "full18Passed": true,
+    "recoveryFailed": "Recovered source delivers newly decoded listener audio.",
+    "healthyPeerIsolationChecksPassed": true
+  },
+  "limits": "The failed recovered listener snapshot was not retained before the assertion. Its cause is unknown. A successful PR run with the same engine does not erase this failure.",
+  "followup": "Preserve the existing four-second observation and 1.5-second decoded-audio threshold. Capture per-second listener/output samples plus the final failed observation before asserting.",
+  "productionChanged": false
+}
