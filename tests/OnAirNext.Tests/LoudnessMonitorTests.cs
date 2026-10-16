@@ -76,6 +76,29 @@ public sealed class LoudnessMonitorTests
     }
 
     [Fact]
+    public async Task DelayedHistoryCanRecoverInOrderWithoutRestartingMeasurement()
+    {
+        var release=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var history=new ConcurrentQueue<ProgrammeLoudnessWindow>();var calls=0;
+        await using var monitor=new ProgrammeLoudnessMonitor("9","session",Anchor,maximumWindow:TimeSpan.FromSeconds(3),queueBlocks:500,history:w=>
+        {history.Enqueue(w);return Interlocked.Increment(ref calls)==1?release.Task:Task.CompletedTask;});
+        try
+        {
+            for(var i=0;i<151;i++)Assert.True(Send(monitor,i*960));
+            await Until(()=>monitor.Snapshot().HistoryFailures>=1);
+            Assert.Equal(1,calls);Assert.True(monitor.Snapshot().Continuous);
+            release.TrySetResult();
+            await Until(()=>monitor.Snapshot().PendingHistoryWrites==0);
+            Assert.True(calls>=3);
+            monitor.Complete();await monitor.Completion.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(new[]{"Started","Finished","Started","Finished"},history.Select(w=>w.Phase).ToArray());
+            Assert.Equal(144960,history.Where(w=>w.Phase=="Finished").Sum(w=>w.Reading!.SampleFrames));
+            Assert.True(monitor.Snapshot().Continuous);Assert.Equal(0,monitor.Snapshot().PendingHistoryWrites);
+        }
+        finally{release.TrySetResult();}
+    }
+
+    [Fact]
     public async Task MissingSourcePositionsStillCreateAnExplicitSeparateMeasurementSegment()
     {
         var history=new ConcurrentQueue<ProgrammeLoudnessWindow>();

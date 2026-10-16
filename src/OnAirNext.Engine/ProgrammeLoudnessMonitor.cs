@@ -234,7 +234,14 @@ public sealed class ProgrammeLoudnessMonitor : IAsyncDisposable
                 try
                 {
                     write = _history!(window);
-                    await write.WaitAsync(TimeSpan.FromSeconds(2), _abort.Token);
+                    try { await write.WaitAsync(TimeSpan.FromSeconds(2), _abort.Token); }
+                    catch (TimeoutException)
+                    {
+                        HistoryFailed();
+                        // A slow disk can recover without restarting measurement. Keep exactly
+                        // this one write in flight; later immutable records stay in the bounded queue.
+                        await write.WaitAsync(_abort.Token);
+                    }
                 }
                 catch (Exception)
                 {

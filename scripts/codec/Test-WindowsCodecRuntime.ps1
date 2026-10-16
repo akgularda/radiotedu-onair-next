@@ -21,8 +21,11 @@ try {
     $codecManifest = Get-Content -LiteralPath (Join-Path $codecRoot 'runtime-manifest.json') -Raw | ConvertFrom-Json
     if ($codecManifest.schemaVersion -ne 1 -or $codecManifest.target -ne 'win-x64') { throw 'Unexpected codec dependency manifest.' }
     $codecLockPath = Join-Path $PSScriptRoot 'windows-codec.lock.json'
-    if ($codecManifest.dependencyLockSha256 -ne (Get-FileHash -LiteralPath $codecLockPath -Algorithm SHA256).Hash.ToLowerInvariant() -or
-        $codecManifest.buildScriptSha256 -ne (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'build-windows-codecs.py') -Algorithm SHA256).Hash.ToLowerInvariant()) { throw 'Codec runtime was built from different pinned inputs.' }
+    $codecActualLockHash=(Get-FileHash -LiteralPath $codecLockPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $codecActualBuildHash=(Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'build-windows-codecs.py') -Algorithm SHA256).Hash.ToLowerInvariant()
+    $codecSummary.Inputs=@{LockExpected=$codecManifest.dependencyLockSha256;LockActual=$codecActualLockHash;BuildScriptExpected=$codecManifest.buildScriptSha256;BuildScriptActual=$codecActualBuildHash}
+    if ($codecManifest.dependencyLockSha256 -ne $codecActualLockHash) { throw 'Codec dependency lock bytes differ from the pinned build.' }
+    if ($codecManifest.buildScriptSha256 -ne $codecActualBuildHash) { throw 'Codec build-script bytes differ from the pinned build; verify canonical LF checkout.' }
     $codecKnown = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($codecFile in $codecManifest.files) {
         $codecPath = [IO.Path]::GetFullPath((Join-Path $codecRoot $codecFile.path))

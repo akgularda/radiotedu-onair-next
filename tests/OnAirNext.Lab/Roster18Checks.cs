@@ -33,7 +33,7 @@ internal static class Roster18Checks
         await using var origin=new Sandbox(icecastRoot,Path.Combine(root,"origin")); await origin.StartAsync();
         await using var resources=new Resources();
         var database=Path.Combine(root,"playback.db");
-        var probes=new List<Probe>(); var engines=new List<StationEngine>(); var outputs=new List<OutputSettings>();
+        var probes=new List<Probe>(); var probeStarts=new Dictionary<Probe,long>(); var engines=new List<StationEngine>(); var outputs=new List<OutputSettings>();
         var readings=new List<object>(); result.Details["encodedListeners"]=readings;
         result.Details["scope"]="Eight synthetic station programs: eight AAC-LC 192, eight libfdk HE-AACv2 64 and two 24-bit Ogg FLAC branches, all 48 kHz stereo. Low-crest sources only. This is not an imported production rate/name map, worst-case encoded headroom, actual-PC resource, 24/72h or UI acceptance.";
         await using (var journal=new EventJournal(database))
@@ -51,18 +51,24 @@ internal static class Roster18Checks
                 using(var ready=new CancellationTokenSource(TimeSpan.FromSeconds(40)))
                     while(engines.Any(e=>e.Snapshot().Outputs.Any(o=>o.State!="SourceConnected")))await Task.Delay(100,ready.Token);
                 Check(result,outputs.Count==18&&outputs.Count(o=>o.Profile==CodecProfile.HeAacV2_64)==8,"All 18 actual codec branches are concurrently source-connected.");
-                foreach(var output in outputs)probes.Add(new Probe(ffmpeg,origin.Port,output.Mount));
+                foreach(var output in outputs)
+                {
+                    var started=Stopwatch.GetTimestamp();var listener=new Probe(ffmpeg,origin.Port,output.Mount);
+                    probes.Add(listener);probeStarts.Add(listener,started);
+                }
                 await Task.Delay(6000);
                 foreach(var output in outputs)await MeasureOutputAsync(ffmpeg,origin.Port,root,output,readings,result);
                 var snapshots=engines.Select(e=>e.Snapshot()).ToArray();
-                result.Details["stations"]=snapshots; result.Details["listeners"]=probes.Select(p=>p.Snapshot()).ToArray();
+                result.Details["stations"]=snapshots; result.Details["listeners"]=probes.Select(p=>new{Audio=p.Snapshot(),ElapsedSeconds=Stopwatch.GetElapsedTime(probeStarts[p]).TotalSeconds}).ToArray();
                 result.Details["resources"]=resources.Snapshot();
                 Check(result,snapshots.All(s=>s.State=="Running"&&s.CompletedItems>=8),"Every station has crossed at least eight real source EOF boundaries while all branches remained active.");
                 Check(result,snapshots.SelectMany(s=>s.Outputs).All(o=>o.EncoderStarts==1&&o.Connections==1&&o.DroppedBlocks==0&&o.State=="SourceConnected"),"All eighteen branches retain one encoder/session with zero dropped PCM blocks.");
                 foreach(var probe in probes)
                 {
-                    var reading=probe.Snapshot();
-                    Check(result,reading.Error is null&&reading.DecodedSeconds>=30&&reading.LongestSilentRun<=2&&reading.ToneTransitions>=4&&reading.UnexpectedToneTransitions==0,
+                    var reading=probe.Snapshot();var elapsed=Stopwatch.GetElapsedTime(probeStarts[probe]).TotalSeconds;
+                    Check(result,elapsed>=30&&reading.DecodedSeconds>=elapsed-3&&reading.DecodedSeconds<=elapsed+2,
+                        reading.Mount+": continuous decoded duration follows elapsed wall time within startup/burst allowance (decoded "+reading.DecodedSeconds.ToString("F2",CultureInfo.InvariantCulture)+", elapsed "+elapsed.ToString("F2",CultureInfo.InvariantCulture)+" seconds).");
+                    Check(result,reading.Error is null&&reading.DecodedSeconds>=30&&reading.LongestSilentRun<=2&&reading.ToneTransitions>=Math.Max(4,Math.Floor(reading.DecodedSeconds/3)-2)&&reading.ToneTransitions<=Math.Ceiling(reading.DecodedSeconds/3)+1&&reading.UnexpectedToneTransitions==0,
                         reading.Mount+": continuous native decoding observes successive expected items without unexplained silence or repeats.");
                 }
                 Check(result,snapshots.All(s=>s.AuditRejectedEvents==0)&&journal.Error is null,"Concurrent eight-station attempt journals remain writable without rejected events.");
