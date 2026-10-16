@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "source": "73b3af65cb0e8d284ef6a2da3bd8d6d3786585b5",
+  "runId": "38854945518",
+  "runUrl": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38854945518",
+  "conclusion": "failure",
+  "productionChanged": false,
+  "verifiedResultArchives": [
+    {
+      "name": "loudness-reference-qualification",
+      "digest": "sha256:d29e9f284db724f310a4a874c86de2d2a0d73f8b5c1ba9c24b88e88703cf0b0d",
+      "bytes": 2656
+    },
+    {
+      "name": "windows-codec-qualification",
+      "digest": "sha256:8b05ca0a53f833cf038a2801694c170b3e7a7a1ea195447f4ec5e51f1270c23c",
+      "bytes": 10324
+    }
+  ],
+  "codec": {
+    "Source": "73b3af65cb0e8d284ef6a2da3bd8d6d3786585b5",
+    "Completed": false,
+    "Passed": false,
+    "ProductionChanged": false,
+    "Scope": "Disposable Windows runtime dependency integrity and real AAC-LC/HE-AACv2/24-bit Ogg FLAC smoke encodes/decodes only. Not the 18-output engine, worst-case encoded headroom, actual-PC, long-run or mouse qualification.",
+    "Profiles": [
+      {
+        "ActualStream": {
+          "index": 0,
+          "codec_name": "aac",
+          "codec_long_name": "AAC (Advanced Audio Coding)",
+          "profile": "LC",
+          "codec_type": "audio",
+          "codec_tag_string": "[0][0][0][0]",
+          "codec_tag": "0x0000",
+          "mime_codec_string": "mp4a.40.2",
+          "sample_fmt": "fltp",
+          "sample_rate": "48000",
+          "channels": 2,
+          "channel_layout": "stereo",
+          "bits_per_sample": 0,
+          "initial_padding": 0,
+          "r_frame_rate": "0/0",
+          "avg_frame_rate": "0/0",
+          "time_base": "1/28224000",
+          "duration_ts": 117685616,
+          "duration": "4.169700",
+          "bit_rate": "184113",
+          "disposition": {
+            "default": 0,
+            "dub": 0,
+            "original": 0,
+            "comment": 0,
+            "lyrics": 0,
+            "karaoke": 0,
+            "forced": 0,
+            "hearing_impaired": 0,
+            "visual_impaired": 0,
+            "clean_effects": 0,
+            "attached_pic": 0,
+            "timed_thumbnails": 0,
+            "non_diegetic": 0,
+            "captions": 0,
+            "descriptions": 0,
+            "metadata": 0,
+            "dependent": 0,
+            "still_image": 0,
+            "multilayer": 0
+          }
+        },
+        "FileSha256": "d4d5da391c5d4894e1ae0b2182b8957261c7164e4a9c014399bd4633b5d90329",
+        "DecodedFrames": 193536,
+        "Encoder": "aac",
+        "Name": "aac-lc"
+      }
+    ],
+    "Mode": "Real profile encode/decode smoke",
+    "Error": "Codec decode frame count is invalid.",
+    "Inputs": {
+      "BuildScriptExpected": "ca9d27c4d31e912d29cf8df9d9a5fdbcd8c49a2769265cb422ee0d7c9d734de4",
+      "LockExpected": "c9fec5fd0a0b677e1901cd263c72e57634f3502d9122c03dcbb45e69127b2b46",
+      "BuildScriptActual": "ca9d27c4d31e912d29cf8df9d9a5fdbcd8c49a2769265cb422ee0d7c9d734de4",
+      "LockActual": "c9fec5fd0a0b677e1901cd263c72e57634f3502d9122c03dcbb45e69127b2b46"
+    }
+  },
+  "cause": "The finite-file smoke guard assumed at most 8192 extra decoded frames for every AAC profile. Its actual native-decoded HE-AACv2 output has 200704 frames, including 8704 frames of codec priming/flush; the archived encoder/probe confirm libfdk HE-AACv2, stereo, 48000 Hz, 64 kb/s.",
+  "correction": "Independently sum ffprobe decoded-frame nb_samples and require exact agreement with the native PCM file. Retain a bounded per-profile finite-file overhead budget: LC at most 2048 frames, HE-AACv2 at most 12000 (250 ms), FLAC exactly zero. Record actual overhead and preserve the separate full-18 continuous wall-time/cadence checks. This does not assert gapless finite ADTS files or excuse publication gaps.",
+  "references": [
+    "https://raw.githubusercontent.com/mstorsjo/fdk-aac/v2.0.3/libAACenc/include/aacenc_lib.h",
+    "https://raw.githubusercontent.com/FFmpeg/FFmpeg/n9.0.2/libavcodec/libfdk-aacenc.c"
+  ]
+}

@@ -69,6 +69,7 @@ try {
         @{ Name='ogg-flac-24'; Encoder='flac'; Extension='ogg'; Mux='ogg' }
     )
     foreach ($codecCase in $codecCases) {
+        $codecSummary.CurrentProfile=$codecCase.Name
         $codecEncoded = Join-Path $codecEvidence ($codecCase.Name + '.' + $codecCase.Extension)
         $codecArgs = @('-nostdin','-hide_banner','-y','-f','f32le','-ar','48000','-ac','2','-i',$codecPcm,'-c:a',$codecCase.Encoder)
         if ($codecCase.Profile) { $codecArgs += @('-profile:a',$codecCase.Profile,'-b:a',$codecCase.Rate) }
@@ -86,9 +87,14 @@ try {
         $codecDecodeArgs += @('-i',$codecEncoded,'-ar','48000','-ac','2','-c:a','pcm_f32le','-f','f32le',$codecDecoded)
         $null = Run-CodecTool $codecFfmpeg $codecDecodeArgs ($codecCase.Name + '-decode.txt')
         $codecFrames = (Get-Item -LiteralPath $codecDecoded).Length / 8
-        if ($codecFrames -lt 192000 -or $codecFrames -gt 200192 -or $codecFrames -ne [Math]::Floor($codecFrames)) { throw 'Codec decode frame count is invalid.' }
+        $codecPaddingBudget=if($codecCase.Name -eq 'he-aac-v2'){12000}elseif($codecCase.Name -eq 'aac-lc'){2048}else{0}
+        $codecFrameJson=(Run-CodecTool $codecProbe @('-v','error','-select_streams','a:0','-show_frames','-show_entries','frame=nb_samples','-of','json',$codecEncoded) ($codecCase.Name + '-frames-probe.json')) -join [Environment]::NewLine
+        $codecProbedFrames=0L
+        foreach($codecFrameInfo in (ConvertFrom-Json $codecFrameJson).frames){$codecProbedFrames += [long]$codecFrameInfo.nb_samples}
+        $codecSummary.LastDecode=@{Profile=$codecCase.Name;InputFrames=192000;DecodedFrames=$codecFrames;IndependentProbedFrameSamples=$codecProbedFrames;PrimingAndFlushFrames=$codecFrames-192000;MaximumPrimingAndFlushFrames=$codecPaddingBudget}
+        if ($codecFrames -ne $codecProbedFrames -or $codecFrames -lt 192000 -or $codecFrames -gt 192000+$codecPaddingBudget -or $codecFrames -ne [Math]::Floor($codecFrames)) { throw 'Native decoded frame count differs from the independent frame sum or exceeds the explicit codec priming/flush budget.' }
         $null = Run-CodecTool $codecFfmpeg @('-nostdin','-hide_banner','-f','f32le','-ar','48000','-ac','2','-i',$codecDecoded,'-af','ebur128=peak=true','-f','null','-') ($codecCase.Name + '-ebur128.txt')
-        $codecSummary.Profiles += @{ Name=$codecCase.Name; ActualStream=$codecStream[0]; DecodedFrames=$codecFrames; Encoder=$codecCase.Encoder; FileSha256=(Get-FileHash -LiteralPath $codecEncoded -Algorithm SHA256).Hash.ToLowerInvariant() }
+        $codecSummary.Profiles += @{ Name=$codecCase.Name; ActualStream=$codecStream[0]; DecodedFrames=$codecFrames;ProbedFrameSamples=$codecProbedFrames;PrimingAndFlushFrames=$codecFrames-192000;MaximumPrimingAndFlushFrames=$codecPaddingBudget; Encoder=$codecCase.Encoder; FileSha256=(Get-FileHash -LiteralPath $codecEncoded -Algorithm SHA256).Hash.ToLowerInvariant() }
     }
     $codecSummary.Version=$codecVersion[0]
     $codecSummary.DependencyManifestSha256=(Get-FileHash -LiteralPath (Join-Path $codecRoot 'runtime-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()
