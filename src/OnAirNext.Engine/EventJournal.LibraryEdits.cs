@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace OnAirNext.Engine;
 
-public enum LibraryEditKind { Metadata, ResetMetadata, Retire, Restore }
+public enum LibraryEditKind { Metadata, ResetMetadata, Retire, Restore, AnalyzeLoudness }
 
 public sealed partial class EventJournal
 {
@@ -52,6 +52,11 @@ public sealed partial class EventJournal
             if (version != expectedVersion) throw new InvalidOperationException("This item was edited in another window. Reload it before saving.");
             switch (kind)
             {
+                case LibraryEditKind.AnalyzeLoudness:
+                    if (retired) throw new InvalidOperationException("Restore this item before requesting loudness analysis.");
+                    using (var request = LibraryCommand(c, t, "INSERT OR IGNORE INTO library_loudness_requests VALUES($station,$revision,$id,1)",
+                        ("$station", station), ("$revision", revision), ("$id", assetId))) request.ExecuteNonQuery();
+                    break;
                 case LibraryEditKind.Metadata: manualArtist = artist; manualTitle = title; break;
                 case LibraryEditKind.ResetMetadata: manualArtist = null; manualTitle = null; break;
                 case LibraryEditKind.Retire:

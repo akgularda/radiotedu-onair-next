@@ -20,11 +20,18 @@
     if(snapshot&&snapshot.Continuous===false)notes.push('Measurement gaps: this session has incomplete coverage.');
     if(snapshot?.HistoryFailures>0)notes.push('Measurement history is incomplete.');
     if(usable&&finite(reading.TruePeakDbtp)&&reading.TruePeakDbtp>-1)notes.push('Above the −1 dBTP linear ceiling.');
-    if(!notes.length)notes.push(usable?'Loudness processing and encoded-output verification are pending.':active?'Waiting for programme samples.':'Start a station to measure its final programme mix.');
+    if(!notes.length)notes.push(usable?'Final-mix limiting and encoded-output verification are pending.':active?'Waiting for programme samples.':'Start a station to measure its final programme mix.');
     return {state,usable,stale:active&&!fresh&&scope,levels,
       range:statisticsUsable&&reading.RangeSettled?metric(reading.LoudnessRangeLu).text:'—',
       elapsedSeconds:usable&&finite(reading.SampleFrames)?reading.SampleFrames/48000:null,
       note:notes.join(' '),warning:snapshot?.State==='Faulted'||notes.some(n=>/gaps|incomplete|Above|unavailable|fresh/.test(n))};
   }
-  return Object.freeze({view,metric});
+  function sourceGain(gain){
+    if(!gain||!['Target gain','Peak constrained','Boost constrained','No gated programme'].includes(gain.State)||
+      !finite(gain.AppliedDb)||!finite(gain.TargetLufs)||gain.TargetLufs!==-23||!finite(gain.SourceCeilingDbtp)||gain.SourceCeilingDbtp!==-1.4||
+      gain.AppliedDb>12||gain.AppliedDb<-200)return {text:'Source gain unmeasured · analyze the item in Library.',warning:true};
+    return {text:gain.State+' · '+(gain.AppliedDb>=0?'+':'')+gain.AppliedDb.toFixed(1)+' dB'+
+      (finite(gain.PredictedLufs)?' · predicted '+gain.PredictedLufs.toFixed(1)+' LUFS':''),warning:gain.State!=='Target gain'};
+  }
+  return Object.freeze({view,metric,sourceGain});
 });

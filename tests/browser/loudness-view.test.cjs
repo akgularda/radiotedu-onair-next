@@ -35,3 +35,14 @@ test('invalid metrics and unsettled range are absent rather than zero',()=>{
   const data=snapshot();Object.assign(data.Current.Reading,{MomentaryLufs:NaN,TruePeakDbtp:Infinity,RangeSettled:false});const result=view(data,now,true);
   assert.equal(result.levels.momentary.text,'—');assert.equal(result.levels.peak.text,'—');assert.equal(result.range,'—');
 });
+
+ test('source gain predictions stay separate from measured final mix',()=>{
+ const meter=require('../../src/OnAirNext.Web/wwwroot/programme-meter.js');
+ assert.equal(meter.sourceGain(null).warning,true);
+ const gain={State:'Target gain',TargetLufs:-23,SourceCeilingDbtp:-1.4,AppliedDb:-5,PredictedLufs:-23};
+ assert.match(meter.sourceGain(gain).text,/predicted -23.0 LUFS/);
+ assert.equal(meter.sourceGain(gain).warning,false);
+ assert.equal(meter.sourceGain({...gain,State:'Peak constrained'}).warning,true);
+ assert.equal(meter.sourceGain({...gain,AppliedDb:NaN}).warning,true);
+ assert.equal(meter.sourceGain({...gain,TargetLufs:-16}).warning,true);
+ });

@@ -51,6 +51,9 @@
     text('elapsed',connected?duration((station?.CurrentItemSamples??0)/48000):'--:--');
     text('programme-time',connected?duration((station?.Samples??0)/48000):'--:--:--');
     text('inspector-engine',connected?'Connected':'Not connected');
+    const gain=RadioTeduMeter.sourceGain(connected&&station?.CurrentTitle?station.SourceGain:null);
+    text('source-processing',connected&&station?.CurrentTitle?gain.text:'Source gain appears during playback.');
+    $('source-processing').classList.toggle('warning',connected&&!!station?.CurrentTitle&&gain.warning);
     $('start-station').disabled=!connected||state.busy||!!pending()||!station||running||!station.Enabled||!station.Outputs?.length;
     $('stop-station').disabled=!connected||state.busy||!!pending()||!station||!running;
     const seconds=station?.CurrentDurationSeconds, elapsed=(station?.CurrentItemSamples??0)/48000;
@@ -89,8 +92,8 @@
     for(const [name,level] of Object.entries(model.levels)){
       text('meter-'+name,level.text);const bar=$('bar-'+name);if(!bar)continue;
       bar.firstElementChild.style.transform=`scaleX(${level.ratio})`;
-      if(level.value===null){bar.removeAttribute('aria-valuenow');bar.setAttribute('aria-valuetext','No fresh measurement');}
-      else{const min=Number(bar.getAttribute('aria-valuemin')),max=Number(bar.getAttribute('aria-valuemax'));bar.setAttribute('aria-valuenow',String(Math.max(min,Math.min(max,level.value))));bar.setAttribute('aria-valuetext',level.text+(name==='peak'?' dBTP':' LUFS'));}
+      if(level.value===null){bar.setAttribute('role','img');bar.removeAttribute('aria-valuenow');bar.setAttribute('aria-label',(name==='momentary'?'Momentary loudness':'Short-term loudness')+': no fresh measurement');bar.setAttribute('aria-valuetext','No fresh measurement');}
+      else{bar.setAttribute('role','meter');bar.setAttribute('aria-label',name==='momentary'?'Momentary loudness':'Short-term loudness');const min=Number(bar.getAttribute('aria-valuemin')),max=Number(bar.getAttribute('aria-valuemax'));bar.setAttribute('aria-valuenow',String(Math.max(min,Math.min(max,level.value))));bar.setAttribute('aria-valuetext',level.text+(name==='peak'?' dBTP':' LUFS'));}
       bar.classList.toggle('over',name==='peak'&&level.value!==null&&level.value>-1);
     }
     text('meter-window',model.elapsedSeconds===null?'1-hour continuous windows':duration(model.elapsedSeconds)+' / 1 hour');
@@ -161,6 +164,7 @@
       if(target&&!context)text(prefix+'-feedback','Channel or live folder changed. Close this window and reopen the item.');
     }
     $('asset-reset-metadata').disabled=!assetContext(state.editTarget)||!fresh()||state.busy||!!pending()||!state.editTarget?.asset.HasMetadataOverride;
+    $('asset-analyze-loudness').disabled=!assetContext(state.editTarget)||!fresh()||state.busy||!!pending()||state.editTarget?.asset.State==='Retired'||!!state.editTarget?.asset.AnalysisRequested;
     $('asset-title-input').disabled=state.busy;$('asset-artist-input').disabled=state.busy;
   }
   function captureAsset(asset){return {engine:state.engine,station:state.station,revision:state.library?.page?.Root?.Revision,asset};}
@@ -169,6 +173,11 @@
     state.editTarget=captureAsset(asset);text('asset-editor-channel',stationName());text('asset-editor-path',asset.RelativePath);
     $('asset-title-input').value=asset.Title;$('asset-artist-input').value=asset.Artist;
     text('asset-editor-feedback',asset.HasMetadataOverride?'Manual metadata is saved. Use file tags to return to the scanned tags.':'File tags are in use.');
+    const analysis=asset.Loudness, gain=RadioTeduMeter.sourceGain(asset.Normalization);
+    text('asset-source-gain',(asset.AnalysisRequested?'Reanalysis queued. ':'')+gain.text);
+    text('asset-source-measurement',analysis?
+      'Full-file source: '+RadioTeduMeter.metric(analysis.IntegratedLufs).text+' LUFS · '+RadioTeduMeter.metric(analysis.TruePeakDbtp).text+' dBTP · LRA '+RadioTeduMeter.metric(analysis.LoudnessRangeLu).text+' LU. Original file unchanged. Predicted values exclude transitions, the microphone and encoding.':
+      'No full-file source measurement saved. Analyze loudness to prepare fixed playback gain.');
     $('asset-editor').showModal();assetDialogControls();
   }
   function openAssetState(asset){
@@ -184,10 +193,11 @@
     if(!assetContext(target)){text(feedback,'Channel or live folder changed. Close this window and reopen the item.');return;}
     text(feedback,'Saving and reading back committed state…');
     const result=await command(action,{Revision:target.revision,AssetId:target.asset.Id,ExpectedVersion:target.asset.EditVersion??0,...metadata},retry);
-    if(result?.asset){message('Saved state for '+stationName(target.station)+': '+result.asset.Title+' · '+result.asset.State);$(dialog).close();}
+    if(result?.asset){message('Saved state for '+stationName(target.station)+': '+result.asset.Title+' · '+result.asset.State+(result.asset.AnalysisRequested?' · loudness analysis queued; current validated gain stays available':''));$(dialog).close();}
     else text(feedback,$('action-status').textContent||'The change has not been confirmed.');
   }
   $('asset-editor-form').addEventListener('submit',event=>{event.preventDefault();if(!$('asset-editor-form').reportValidity())return;void submitAsset('library-metadata',state.editTarget,'asset-editor','asset-editor-feedback',{Artist:$('asset-artist-input').value,Title:$('asset-title-input').value});});
+  $('asset-analyze-loudness').addEventListener('click',()=>void submitAsset('library-analyze-loudness',state.editTarget,'asset-editor','asset-editor-feedback'));
   $('asset-reset-metadata').addEventListener('click',()=>void submitAsset('library-reset-metadata',state.editTarget,'asset-editor','asset-editor-feedback'));
   for(const id of ['asset-editor-close','asset-editor-cancel'])$(id).addEventListener('click',()=>$('asset-editor').close());
   $('asset-editor').addEventListener('close',()=>{state.editTarget=null;});
@@ -201,7 +211,7 @@
   async function loadLibrary(){
     if(!fresh())return;const engine=state.engine,station=state.station,query=state.query,offset=state.offset;
     try{const result=await api('/api/library?'+new URLSearchParams({engine,station,query,offset:String(offset)}));if(engine!==state.engine||station!==state.station||query!==state.query||offset!==state.offset)return;state.library=result;const page=result.page,root=page.Root;text('folder-name',root?'Live music folder':'No folder assigned');text('folder-path',root?.Path??'Add files to create a managed folder, or choose an existing live folder.');$('folder-path').title=root?.Path??'';text('folder-state',result.worker?.State??'Unknown');text('library-count',`${page.Ready??0} validated · ${page.Retired??0} removed · ${page.Total??0} indexed`);text('library-page',page.Items?.length?`${offset+1}–${offset+page.Items.length}`:'0');$('managed-folder').hidden=result.canImportFiles||!root;
-      const rows=(page.Items??[]).map(asset=>{const row=element('tr');row.title=asset.Error??'';const item=element('td');item.append(icon('music'));const title=element('td');title.append(element('span','asset-title',asset.Title),element('span','asset-artist',asset.Artist||'Unknown artist'));const file=element('td','quiet',asset.RelativePath);file.title=asset.RelativePath;const status=element('td');status.append(element('span','asset-state '+asset.State.toLowerCase(),asset.State));const actions=element('td');const group=element('div','asset-actions');const edit=element('button','button asset-action','Edit');edit.setAttribute('aria-label','Edit metadata for '+asset.Title);edit.addEventListener('click',()=>openAssetEditor(asset));const toggle=element('button','button asset-action',asset.State==='Retired'?'Restore':'Remove');toggle.setAttribute('aria-label',(asset.State==='Retired'?'Restore ':'Remove from rotation: ')+asset.Title);toggle.addEventListener('click',()=>openAssetState(asset));group.append(edit,toggle);actions.append(group);row.append(item,title,file,status,element('td','align-right mono',duration(asset.Seconds)),actions);return row;});$('library-rows').replaceChildren(...(rows.length?rows:[emptyLibrary()]));text('library-progress',[result.worker?.State,result.worker?.Error,page.Import?`Latest import: ${page.Import.State}`:null,page.Import?.Error].filter(Boolean).join(' · '));renderUploads();libraryControls();
+      const rows=(page.Items??[]).map(asset=>{const row=element('tr');row.title=asset.Error??'';const item=element('td');item.append(icon('music'));const title=element('td');title.append(element('span','asset-title',asset.Title),element('span','asset-artist',asset.Artist||'Unknown artist'));const file=element('td','quiet',asset.RelativePath);file.title=asset.RelativePath;const status=element('td');status.append(element('span','asset-state '+asset.State.toLowerCase(),asset.State));if(asset.AnalysisRequested)status.append(element('small','asset-analysis','Analysis queued'));else if(asset.State==='Ready')status.append(element('small','asset-analysis',RadioTeduMeter.sourceGain(asset.Normalization).text));const actions=element('td');const group=element('div','asset-actions');const edit=element('button','button asset-action','Edit');edit.setAttribute('aria-label','Edit metadata for '+asset.Title);edit.addEventListener('click',()=>openAssetEditor(asset));const toggle=element('button','button asset-action',asset.State==='Retired'?'Restore':'Remove');toggle.setAttribute('aria-label',(asset.State==='Retired'?'Restore ':'Remove from rotation: ')+asset.Title);toggle.addEventListener('click',()=>openAssetState(asset));group.append(edit,toggle);actions.append(group);row.append(item,title,file,status,element('td','align-right mono',duration(asset.Seconds)),actions);return row;});$('library-rows').replaceChildren(...(rows.length?rows:[emptyLibrary()]));text('library-progress',[result.worker?.State,result.worker?.Error,page.Import?`Latest import: ${page.Import.State}`:null,page.Import?.Error].filter(Boolean).join(' · '));renderUploads();libraryControls();
     }catch(error){text('library-progress','Library unavailable: '+error.message);}
   }
   let searchTimer; $('library-search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{state.query=$('library-search').value.trim();state.offset=0;void loadLibrary();},250);});

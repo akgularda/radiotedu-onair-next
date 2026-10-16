@@ -41,7 +41,7 @@ public sealed class PcmBlock : IDisposable
 [JsonConverter(typeof(JsonStringEnumConverter<ContentKind>))]
 public enum ContentKind { Music, Advertisement, Sweeper, Program, Jingle }
 
-public sealed record MediaItem(string Id, string Path, string Artist, string Title, ContentKind Kind = ContentKind.Music, double? DurationSeconds = null);
+public sealed record MediaItem(string Id, string Path, string Artist, string Title, ContentKind Kind = ContentKind.Music, double? DurationSeconds = null, SourceLoudness? Loudness = null);
 
 [JsonConverter(typeof(JsonStringEnumConverter<CodecProfile>))]
 public enum CodecProfile { AacLc192, OggFlac, HeAacV2_64 }
@@ -67,7 +67,8 @@ public sealed record OutputSettings(string Id, string Host, int Port, string Mou
 public sealed record StationSettings(string Id, IReadOnlyList<MediaItem> Playlist, IReadOnlyList<OutputSettings> Outputs, bool Repeat = true,
     bool Enabled = true, bool AutoStart = true);
 public sealed record PlaybackEvent(string EventId, string OccurrenceId, string StationId, string Type, string ItemId,
-    string Artist, string Title, ContentKind Kind, DateTimeOffset AtUtc, long SamplePosition, string Detail = "", string? QueueEntryId = null, string? PreviousOccurrenceId = null, string TimingQuality = "sample_clock");
+    string Artist, string Title, ContentKind Kind, DateTimeOffset AtUtc, long SamplePosition, string Detail = "", string? QueueEntryId = null, string? PreviousOccurrenceId = null, string TimingQuality = "sample_clock",
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] SourceGain? SourceGain = null);
 public sealed record PlayoutSelection(MediaItem Item, string? QueueEntryId = null);
 public interface IPlayoutPlanner
 {
@@ -85,7 +86,7 @@ public sealed record StationSnapshot(string Id, string State, long Samples, long
     string? CurrentAssetId = null, long CurrentItemSamples = 0, bool Recovered = false,
     bool Enabled = true, bool RequestedRunning = true, string? LastError = null, DateTimeOffset? RetryAtUtc = null,
     string? CurrentArtist = null, double? CurrentDurationSeconds = null, PlayoutItemSnapshot? NextItem = null,
-    ProgrammeLoudnessSnapshot? Loudness = null);
+    ProgrammeLoudnessSnapshot? Loudness = null, SourceGain? SourceGain = null);
 
 public interface IStationSession : IAsyncDisposable
 {

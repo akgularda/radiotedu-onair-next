@@ -139,12 +139,12 @@ internal static class EngineHost
                             case "library-rescan" when request.StationId is { } rescanStation:
                                 await library.RescanAsync(rescanStation, request.Id);
                                 result = "{\"accepted\":true}"; break;
-                            case "library-metadata" or "library-reset-metadata" or "library-retire" or "library-restore"
+                            case "library-metadata" or "library-reset-metadata" or "library-retire" or "library-restore" or "library-analyze-loudness"
                                 when request.StationId is { } editStation && request.AssetId is { } assetId:
                                 var kind = request.Action switch
                                 {
                                     "library-metadata" => LibraryEditKind.Metadata, "library-reset-metadata" => LibraryEditKind.ResetMetadata,
-                                    "library-retire" => LibraryEditKind.Retire, _ => LibraryEditKind.Restore
+                                    "library-retire" => LibraryEditKind.Retire, "library-analyze-loudness" => LibraryEditKind.AnalyzeLoudness, _ => LibraryEditKind.Restore
                                 };
                                 var edited = await library.EditAssetAsync(editStation, request.Revision, assetId, request.ExpectedVersion, kind,
                                     request.Id, request.Artist, request.Title);

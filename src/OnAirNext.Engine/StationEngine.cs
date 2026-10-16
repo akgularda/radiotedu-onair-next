@@ -73,7 +73,7 @@ public sealed class StationEngine : IStationSession
             current?.Id, Interlocked.Read(ref _itemSamples), _recovered,
             CurrentArtist: current?.Artist, CurrentDurationSeconds: current?.DurationSeconds,
             NextItem: next is null ? null : new(next.Id, next.Artist, next.Title, next.Kind, next.DurationSeconds),
-            Loudness: _loudness?.Snapshot());
+            Loudness: _loudness?.Snapshot(), SourceGain: SourceNormalization.Decide(current?.Loudness));
     }
 
     private async Task RunAsync()
@@ -251,7 +251,8 @@ public sealed class StationEngine : IStationSession
         var item = _selection!.Item;
         var entry = new PlaybackEvent(Guid.NewGuid().ToString("N"), _occurrence, _settings.Id, type,
             item.Id, item.Artist, item.Title, item.Kind,
-            _anchor.AddSeconds((double)position / AudioFormat.SampleRate), position, detail, _selection.QueueEntryId, _previousOccurrence);
+            _anchor.AddSeconds((double)position / AudioFormat.SampleRate), position, detail, _selection.QueueEntryId, _previousOccurrence,
+            SourceGain: SourceNormalization.Decide(item.Loudness));
         var state = type is "ended" or "skipped" or "failed" or "decode_failed" ? "BetweenItems" : type == "interrupted" ? "Stopped" : "Playing";
         try { _journal.AppendAsync(entry, Checkpoint(state, position)).GetAwaiter().GetResult(); }
         catch { Interlocked.Increment(ref _auditRejected); throw; }

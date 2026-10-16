@@ -22,7 +22,7 @@ var csrf = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 var cookie = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 var uploads = new SemaphoreSlim(1, 1);
 var meterRequests = new SemaphoreSlim(1, 1);
-var allowedActions = new HashSet<string>(StringComparer.Ordinal) { "start-station", "stop-station", "skip", "library-root", "library-source-check", "library-managed", "library-rescan", "library-metadata", "library-reset-metadata", "library-retire", "library-restore" };
+var allowedActions = new HashSet<string>(StringComparer.Ordinal) { "start-station", "stop-station", "skip", "library-root", "library-source-check", "library-managed", "library-rescan", "library-metadata", "library-reset-metadata", "library-retire", "library-restore", "library-analyze-loudness" };
 var extensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg", ".opus", ".aif", ".aiff", ".wma", ".mp4" };
 app.Use(async (context, next) =>
 {

@@ -22,12 +22,12 @@ var icecastRoot = arguments.GetValueOrDefault("--icecast-root") ?? Path.Combine(
 var scenario = arguments.GetValueOrDefault("--scenario") ?? "all";
 var duration = int.Parse(arguments.GetValueOrDefault("--duration-seconds") ?? "12", System.Globalization.CultureInfo.InvariantCulture);
 if (duration is < 6 or > 259200) throw new ArgumentException("Choose 6 seconds through 72 hours.");
-if (scenario is not ("all" or "baseline" or "recovery" or "durable" or "lifecycle" or "finite" or "offline" or "fleet" or "live" or "soak" or "backpressure" or "corrupt" or "host" or "precision")) throw new ArgumentException("Unknown lab scenario.");
+if (scenario is not ("all" or "baseline" or "recovery" or "durable" or "lifecycle" or "finite" or "offline" or "fleet" or "live" or "soak" or "backpressure" or "corrupt" or "host" or "precision" or "normalization")) throw new ArgumentException("Unknown lab scenario.");
 var runRoot = Path.Combine(localRoot, "runs", DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N")[..8]);
 Directory.CreateDirectory(runRoot);
 var fixtures = Sandbox.Fixtures(Path.Combine(runRoot, "fixtures"));
 var results = new List<CaseResult>();
-foreach (var name in scenario == "all" ? new[] { "baseline", "precision", "recovery", "durable", "lifecycle", "finite", "offline", "fleet", "live", "backpressure", "corrupt", "host" } : new[] { scenario })
+foreach (var name in scenario == "all" ? new[] { "baseline", "precision", "normalization", "recovery", "durable", "lifecycle", "finite", "offline", "fleet", "live", "backpressure", "corrupt", "host" } : new[] { scenario })
 {
     var result = new CaseResult(name);
     Console.WriteLine($"Starting {name}; all origins and mounts are loopback test resources.");
@@ -48,6 +48,7 @@ foreach (var name in scenario == "all" ? new[] { "baseline", "precision", "recov
             case "corrupt": await CorruptAsync(result); break;
             case "host": await HostAsync(result); break;
             case "precision": await PrecisionAsync(result); break;
+            case "normalization": await NormalizationChecks.RunAsync(ffmpeg,Path.Combine(runRoot,result.Name),result); break;
         }
         result.Passed = true;
     }

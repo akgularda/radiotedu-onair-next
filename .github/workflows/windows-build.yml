@@ -62,6 +62,7 @@ jobs:
       - name: Verify meter display states and script syntax
         run: |
           node --check src/OnAirNext.Web/wwwroot/studio.js
+          if ($LASTEXITCODE -ne 0) { throw "Browser script syntax failed." }
           node --test tests/browser/loudness-view.test.cjs
       - name: Retain unit test results
         if: always()

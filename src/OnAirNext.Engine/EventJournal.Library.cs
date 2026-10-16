@@ -8,7 +8,10 @@ namespace OnAirNext.Engine;
 
 public sealed record LibraryRoot(string StationId, string Path, long Revision);
 public sealed record LibraryAsset(string Id, string RelativePath, string Artist, string Title, double Seconds,
-    long Bytes, long ModifiedTicks, string State, string? Error = null, long EditVersion = 0, bool HasMetadataOverride = false, string? ValidationState = null);
+    long Bytes, long ModifiedTicks, string State, string? Error = null, long EditVersion = 0, bool HasMetadataOverride = false, string? ValidationState = null, SourceLoudness? Loudness = null, bool AnalysisRequested = false)
+{
+    public SourceGain? Normalization => State == "Ready" ? SourceNormalization.Decide(Loudness) : null;
+}
 public sealed record LibraryImport(string Id, string StationId, long Revision, string[] Paths, string State, string? Error);
 public sealed record LibraryPage(LibraryRoot? Root, long Total, long Ready, long Missing,
     IReadOnlyList<LibraryAsset> Items, int Offset, LibraryImport? Import, long Retired = 0);
@@ -24,6 +27,10 @@ public sealed partial class EventJournal
               relative_path TEXT NOT NULL,artist TEXT NOT NULL,title TEXT NOT NULL,seconds REAL NOT NULL,
               bytes INTEGER NOT NULL,modified_ticks INTEGER NOT NULL,state TEXT NOT NULL,error TEXT,
               PRIMARY KEY(station_id,revision,id));
+            CREATE TABLE IF NOT EXISTS library_loudness_requests(station_id TEXT NOT NULL,revision INTEGER NOT NULL,id TEXT NOT NULL,
+              requested INTEGER NOT NULL DEFAULT 1,PRIMARY KEY(station_id,revision,id));
+            CREATE TABLE IF NOT EXISTS library_loudness(station_id TEXT NOT NULL,revision INTEGER NOT NULL,id TEXT NOT NULL,
+              payload TEXT NOT NULL,payload_hash TEXT NOT NULL,PRIMARY KEY(station_id,revision,id));
             CREATE INDEX IF NOT EXISTS library_asset_page ON library_assets(station_id,revision,title,id);
             CREATE TABLE IF NOT EXISTS library_asset_edits(station_id TEXT NOT NULL,revision INTEGER NOT NULL,id TEXT NOT NULL,
               artist TEXT,title TEXT,retired INTEGER NOT NULL DEFAULT 0,version INTEGER NOT NULL,PRIMARY KEY(station_id,revision,id));
@@ -132,6 +139,12 @@ public sealed partial class EventJournal
                 string.IsNullOrWhiteSpace(asset.RelativePath) || asset.State is not ("Ready" or "Invalid") ||
                 !double.IsFinite(asset.Seconds) || asset.Seconds < 0 || asset.State == "Ready" && asset.Seconds == 0)
                 throw new ArgumentException("Invalid indexed music asset.");
+            if (asset.Loudness is { } measurement)
+            {
+                measurement.Validate();
+                if (measurement.Bytes != asset.Bytes || measurement.ModifiedTicks != asset.ModifiedTicks || measurement.Seconds != asset.Seconds)
+                    throw new ArgumentException("Loudness measurement does not belong to this source revision.");
+            }
             using var cmd = LibraryCommand(c, t, """
                 INSERT INTO library_assets VALUES($station,$revision,$id,$path,$artist,$title,$seconds,$bytes,$modified,$state,$error)
                 ON CONFLICT(station_id,revision,id) DO UPDATE SET relative_path=excluded.relative_path,artist=excluded.artist,
@@ -141,6 +154,20 @@ public sealed partial class EventJournal
                 ("$artist", asset.Artist), ("$title", asset.Title), ("$seconds", asset.Seconds), ("$bytes", asset.Bytes),
                 ("$modified", asset.ModifiedTicks), ("$state", asset.State), ("$error", asset.Error));
             cmd.ExecuteNonQuery();
+            using var finishAnalysis = LibraryCommand(c, t, "DELETE FROM library_loudness_requests WHERE station_id=$station AND revision=$revision AND id=$id",
+                ("$station", root.StationId), ("$revision", root.Revision), ("$id", asset.Id));
+            finishAnalysis.ExecuteNonQuery();
+            using var clearMeasurement = LibraryCommand(c, t, "DELETE FROM library_loudness WHERE station_id=$station AND revision=$revision AND id=$id",
+                ("$station", root.StationId), ("$revision", root.Revision), ("$id", asset.Id));
+            clearMeasurement.ExecuteNonQuery();
+            if (asset.Loudness is not null)
+            {
+                var payload = JsonSerializer.Serialize(asset.Loudness);
+                using var measured = LibraryCommand(c, t, "INSERT INTO library_loudness VALUES($station,$revision,$id,$payload,$hash)",
+                    ("$station", root.StationId), ("$revision", root.Revision), ("$id", asset.Id), ("$payload", payload),
+                    ("$hash", Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)))));
+                measured.ExecuteNonQuery();
+            }
         }
         foreach (var id in missing)
         {
@@ -177,7 +204,7 @@ public sealed partial class EventJournal
     {
         using var c = OpenReader(DatabasePath); using var cmd = c.CreateCommand();
         cmd.CommandText = raw
-            ? "SELECT id,relative_path,artist,title,seconds,bytes,modified_ticks,state,error FROM library_assets WHERE station_id=$station AND revision=$revision"
+            ? "SELECT a.id,a.relative_path,a.artist,a.title,a.seconds,a.bytes,a.modified_ticks,a.state,a.error,0,0,a.state,l.payload,l.payload_hash,COALESCE(q.requested,0) FROM library_assets a " + LoudnessJoin + " WHERE a.station_id=$station AND a.revision=$revision"
             : AssetSelect + AssetJoin + " WHERE a.station_id=$station AND a.revision=$revision";
         cmd.Parameters.AddWithValue("$station", root.StationId); cmd.Parameters.AddWithValue("$revision", root.Revision);
         using var r = cmd.ExecuteReader(); var assets = new List<LibraryAsset>();
@@ -187,14 +214,27 @@ public sealed partial class EventJournal
     private const string AssetSelect = """
         SELECT a.id,a.relative_path,COALESCE(e.artist,a.artist),COALESCE(e.title,a.title),a.seconds,a.bytes,a.modified_ticks,
           CASE WHEN e.retired=1 THEN 'Retired' ELSE a.state END,a.error,COALESCE(e.version,0),
-          (e.artist IS NOT NULL OR e.title IS NOT NULL),a.state
+          (e.artist IS NOT NULL OR e.title IS NOT NULL),a.state,l.payload,l.payload_hash,COALESCE(q.requested,0)
         """;
-    private const string AssetJoin = " FROM library_assets a LEFT JOIN library_asset_edits e ON e.station_id=a.station_id AND e.revision=a.revision AND e.id=a.id ";
+    private const string LoudnessJoin = " LEFT JOIN library_loudness l ON l.station_id=a.station_id AND l.revision=a.revision AND l.id=a.id LEFT JOIN library_loudness_requests q ON q.station_id=a.station_id AND q.revision=a.revision AND q.id=a.id ";
+    private const string AssetJoin = " FROM library_assets a LEFT JOIN library_asset_edits e ON e.station_id=a.station_id AND e.revision=a.revision AND e.id=a.id " + LoudnessJoin;
 
     public static string LibraryAssetId(string relativePath) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(relativePath.ToUpperInvariant())));
     private static LibraryAsset ReadAsset(SqliteDataReader r) => new(r.GetString(0), r.GetString(1), r.GetString(2), r.GetString(3),
         r.GetDouble(4), r.GetInt64(5), r.GetInt64(6), r.GetString(7), r.IsDBNull(8) ? null : r.GetString(8),
-        r.FieldCount > 9 ? r.GetInt64(9) : 0, r.FieldCount > 10 && r.GetBoolean(10), r.FieldCount > 11 ? r.GetString(11) : r.GetString(7));
+        r.FieldCount > 9 ? r.GetInt64(9) : 0, r.FieldCount > 10 && r.GetBoolean(10), r.FieldCount > 11 ? r.GetString(11) : r.GetString(7), ReadLoudness(r), r.FieldCount > 14 && r.GetBoolean(14));
+    private static SourceLoudness? ReadLoudness(SqliteDataReader r)
+    {
+        if (r.FieldCount < 14 || r.IsDBNull(12) || r.GetString(11) != "Ready") return null;
+        var payload = r.GetString(12);
+        if (r.IsDBNull(13) || Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload))) != r.GetString(13))
+            throw new InvalidDataException("Stored source measurement integrity check failed; revalidate the affected source.");
+        var result = JsonSerializer.Deserialize<SourceLoudness>(payload) ?? throw new InvalidDataException("Stored source measurement is missing.");
+        result.Validate();
+        if (result.Bytes != r.GetInt64(5) || result.ModifiedTicks != r.GetInt64(6) || result.Seconds != r.GetDouble(4))
+            throw new InvalidDataException("Stored source measurement does not match this file revision.");
+        return result;
+    }
     private static LibraryImport ReadImport(SqliteDataReader r) => new(r.GetString(0), r.GetString(1), r.GetInt64(2),
         JsonSerializer.Deserialize<string[]>(r.GetString(3))!, r.GetString(4), r.IsDBNull(5) ? null : r.GetString(5));
     private static LibraryRoot? ReadLibraryRoot(SqliteConnection c, SqliteTransaction t, string station)

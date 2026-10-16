@@ -11,7 +11,8 @@ public sealed class MediaDecoder : IAsyncDisposable
         { SingleWriter = true, SingleReader = true, FullMode = BoundedChannelFullMode.Wait });
     private readonly CancellationTokenSource _stop = new();
     private readonly Process _process;
-    private readonly CodecPipe _pcm = new(System.IO.Pipes.PipeDirection.In);
+    private readonly FileStream? _sourceGuard;
+    private readonly CodecPipe _pcm;
     private readonly Task _pump;
     private readonly Task<string> _stderr;
     public Task Ready { get; }
@@ -19,11 +20,29 @@ public sealed class MediaDecoder : IAsyncDisposable
 
     public MediaDecoder(string ffmpeg, MediaItem item, long startSample = 0)
     {
-        _process = ChildProcess.Start(ffmpeg, ["-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", item.Path,
-            "-vn", "-sn", "-dn", "-threads", "1", "-af", "aresample=48000,atrim=start_sample=" + startSample.ToString(System.Globalization.CultureInfo.InvariantCulture), "-f", "f32le", "-acodec", "pcm_f32le", "-ar", "48000", "-ac", "2", _pcm.Path]);
+        FileStream? guard = null;
+        try
+        {
+        var gain = SourceNormalization.Decide(item.Loudness);
+        if (item.Loudness is { } measured)
+        {
+            guard = new FileStream(item.Path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var file = new FileInfo(item.Path);
+            if (file.Length != measured.Bytes || file.LastWriteTimeUtc.Ticks != measured.ModifiedTicks)
+                throw new InvalidDataException("The measured source changed; revalidate it in Library before playback.");
+        }
+        var filters = SourceNormalization.DecodeFormat + ",atrim=start_sample=" + startSample.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (gain.AppliedDb != 0) filters += ",volume=" + gain.Linear.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ":precision=double";
+        _pcm = new(System.IO.Pipes.PipeDirection.In);
+        try { _process = ChildProcess.Start(ffmpeg, ["-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", item.Path,
+            "-vn", "-sn", "-dn", "-threads", "1", "-af", filters, "-f", "f32le", "-acodec", "pcm_f32le", "-ar", "48000", "-ac", "2", _pcm.Path]); }
+        catch { _pcm.Dispose(); throw; }
         _stderr = ChildProcess.DrainErrorAsync(_process);
         Ready = _ready.Task;
+        _sourceGuard = guard;
         _pump = PumpAsync();
+        }
+        catch { guard?.Dispose(); throw; }
     }
 
     private async Task PumpAsync()
@@ -92,6 +111,7 @@ public sealed class MediaDecoder : IAsyncDisposable
         try { await _pump; } catch (OperationCanceledException) { }
         while (_blocks.Reader.TryRead(out var block)) block.Dispose();
         _pcm.Dispose();
+        _sourceGuard?.Dispose();
         _stop.Dispose();
     }
 }

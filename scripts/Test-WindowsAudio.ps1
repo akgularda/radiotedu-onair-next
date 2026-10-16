@@ -37,7 +37,7 @@ try {
     $audioDotnet = (Get-Command dotnet.exe -ErrorAction Stop).Source
     $audioLab = Join-Path $BuildRoot 'OnAirNext.Lab\release\OnAirNext.Lab.dll'
     if (-not (Test-Path -LiteralPath $audioLab)) { throw 'The compiled audio lab is missing.' }
-    foreach ($audioScenario in @('baseline','precision','live','recovery','finite','backpressure','corrupt')) {
+    foreach ($audioScenario in @('baseline','precision','normalization','live','recovery','finite','backpressure','corrupt')) {
         $audioLog = Join-Path $audioEvidence ($audioScenario + '.log')
         $audioOutput = @(& (Join-Path $PSScriptRoot 'Test-Engine.ps1') -PreparedCiBuild -Scenario $audioScenario -DurationSeconds 12 -FfmpegRuntime $audioFfmpeg -IcecastRuntime $audioIcecast 2>&1)
         $audioExitCode = $LASTEXITCODE

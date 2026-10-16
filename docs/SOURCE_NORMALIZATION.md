@@ -1,0 +1,15 @@
+# Non-destructive source gain
+
+This development slice measures each newly validated source through one complete FFmpeg decode, in the same stereo float 48 kHz format as playback. It hashes the read-locked original and saves the completed ebur128 I/oversampled true-peak result with file size, modification time and a versioned analysis identity. Sub-minute LRA is withheld. Original media is never rewritten.
+
+Playback applies one constant gain per source: the lower of the -23 LUFS target gain, a +12 dB boost bound and the measured source true-peak headroom to -1.4 dBTP. The 0.4 dB reserve accommodates finite measurement/summary precision; it is **not measured codec headroom**. Peak/boost constrained sources are explicitly below target. Silence or material without a gated programme has no invented target loudness; a finite source peak can still cause attenuation. No time-varying loudness AGC or dynamic-range compressor is introduced.
+
+A changed measured file revision is rejected before decoding. Measured files stay read-locked while their decoder is owned; this protects an open/prepared source on Windows. The source hash is established by import analysis, not recomputed on the programme clock. Fixed gain adds no lookahead, programme delay or sample padding. Attempt start/terminal records retain the actual source gain. Older engineering playlists without measurements continue as visibly Unmeasured: they do not establish the required broadcast workflow. Normal library validation measures old unmeasured catalog entries before eligibility.
+
+The Library metadata editor displays source measurements, predicted post-gain loudness and the applied gain. Analyze loudness queues a durable request with persisted read-back, command deduplication and optimistic edit version checks. Reanalysis of an unchanged Ready source keeps its previous validated gain and eligibility available while the background lane runs. Rescanning never changes original files or manual tags. Restored/changed/invalid files cannot reuse stale analysis. Measurement payload hashes and revision checks fail closed on inconsistent stored evidence.
+
+## Scope and remaining work
+
+The final-mix meter remains after microphone ducking/mixing. Source peak headroom cannot constrain the sum of microphones, crossfades or overlay branding. **A genuine final-mix true-peak limiter, operating loudness controls, all 18 independently decoded outputs/codec-specific headroom and full commissioning remain unfinished.** No source prediction is labelled output compliance.
+
+A disposable Windows CI scenario uses five generated signals (ordinary/loud/quiet/transient/silence), complete actual FFmpeg validation and actual decoder PCM, an independent native meter, finite engine publication/event boundaries, unchanged original hashes and owned-worker cleanup. The existing bit-precision fixture remains an explicitly unmeasured transport test. Source-gain tests and evidence must be assessed for their exact Git source; the earlier 171-unit/95-audio evidence predates this slice. No production media, listener recordings, legacy database or live service is used by these tests.

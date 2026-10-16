@@ -4,6 +4,8 @@ Independent radio broadcasting engine and local browser console under developmen
 
 The user rejected the WPF prototype and requested a browser app. [The browser interface decision](docs/BROWSER_UI_DECISION.md) supersedes earlier native-only UI clauses. The rejected prototype remains historical source and is no longer part of the active solution.
 
+The current development branch also adds [non-destructive source gain](docs/SOURCE_NORMALIZATION.md): complete-file loudness analysis, bounded fixed gain, revision-bound persistence and Library reanalysis controls. Its exact-source Windows qualification is pending; final-mix limiting and encoded-output acceptance remain unfinished.
+
 ## Current interface
 
 The new dark browser console has a channel strip, broadcast desk, searchable/paged Library, folder picker, file-upload controls and System connection screen. It uses local HTML/CSS/JavaScript, without a frontend framework, CDN, external fonts or AI calls. Browser navigation and channel selection have been exercised with actual mouse input in the separate unconnected visual preview.

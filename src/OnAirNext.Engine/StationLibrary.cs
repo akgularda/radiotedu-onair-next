@@ -246,8 +246,8 @@ public sealed class StationLibrary : IAsyncDisposable
         var missing = existing.Values.Where(x => x.State is not ("Missing" or "Retired") && !present.Contains(x.Id)).Select(x => x.Id).ToArray();
         foreach (var batch in missing.Chunk(100)) await _journal.ApplyLibraryChangesAsync(root, [], batch);
         var changed = all.Select(file => (File: file, Asset: existing.GetValueOrDefault(EventJournal.LibraryAssetId(file.Relative))))
-            .Where(x => x.Asset is { State: "Ready" } && (x.Asset.Bytes != x.File.Bytes || x.Asset.ModifiedTicks != x.File.Modified))
-            .Select(x => x.Asset! with { State = "Invalid", Error = "File changed; validation pending." }).ToArray();
+            .Where(x => x.Asset is { State: "Ready" } && (x.Asset.Bytes != x.File.Bytes || x.Asset.ModifiedTicks != x.File.Modified || _audioProbe is not null && x.Asset.Loudness is null))
+            .Select(x => x.Asset! with { State = "Invalid", ModifiedTicks = -1, Loudness = null, Error = "File changed or loudness analysis required; validation pending." }).ToArray();
         foreach (var batch in changed.Chunk(100)) await _journal.ApplyLibraryChangesAsync(root, batch, []);
         Publish(root);
         var lastPublish = Stopwatch.StartNew();
@@ -255,7 +255,7 @@ public sealed class StationLibrary : IAsyncDisposable
         {
             token.ThrowIfCancellationRequested();
             var id = EventJournal.LibraryAssetId(file.Relative);
-            if (existing.TryGetValue(id, out var prior) && prior.State is "Ready" or "Invalid" or "Retired" && prior.Bytes == file.Bytes && prior.ModifiedTicks == file.Modified) continue;
+            if (existing.TryGetValue(id, out var prior) && prior.State is "Ready" or "Invalid" or "Retired" && prior.Bytes == file.Bytes && prior.ModifiedTicks == file.Modified && !prior.AnalysisRequested && (_audioProbe is null || prior.Loudness is not null || prior.State != "Ready")) continue;
             if (!_observed.TryGetValue(file.Path, out var observed) || observed.Bytes != file.Bytes || observed.Modified != file.Modified)
             {
                 _observed[file.Path] = new(file.Bytes, file.Modified, Stopwatch.GetTimestamp());
@@ -269,7 +269,7 @@ public sealed class StationLibrary : IAsyncDisposable
                 var metadata = await _probe(file.Path, token);
                 var after = new FileInfo(file.Path);
                 if (after.Length != file.Bytes || after.LastWriteTimeUtc.Ticks != file.Modified) { _observed.Remove(file.Path); continue; }
-                asset = new(id, file.Relative, metadata.Artist, metadata.Title, metadata.Seconds, file.Bytes, file.Modified, "Ready");
+                asset = new(id, file.Relative, metadata.Artist, metadata.Title, metadata.Seconds, file.Bytes, file.Modified, "Ready", Loudness: metadata.Loudness);
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
             catch (LibraryValidationUnavailableException) { throw; }
@@ -294,7 +294,7 @@ public sealed class StationLibrary : IAsyncDisposable
             // Edits may update/remove already eligible items; only a successful scan can add them.
             var eligible = allowNew ? null : prior?.Items.Select(x => x.Id).ToHashSet(StringComparer.Ordinal) ?? [];
             var items = _journal.LibraryAssets(root).Where(x => x.State == "Ready" && (eligible is null || eligible.Contains(x.Id)))
-                .Select(x => new MediaItem(x.Id, Path.Combine(root.Path, x.RelativePath), x.Artist, x.Title, DurationSeconds: x.Seconds))
+                .Select(x => new MediaItem(x.Id, Path.Combine(root.Path, x.RelativePath), x.Artist, x.Title, DurationSeconds: x.Seconds, Loudness: x.Loudness))
                 .OrderBy(x => x.Id, StringComparer.Ordinal).ToArray();
             if (prior is not null && prior.Configured && prior.Items.SequenceEqual(items)) return;
             _playback[root.StationId] = new(true, items, Interlocked.Increment(ref _version));
