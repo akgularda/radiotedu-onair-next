@@ -49,9 +49,14 @@ internal static class EngineHost
         await using var journal = serviceMode ? EventJournal.OpenIsolatedWindowsService()
             : new EventJournal(Path.Combine(config.DataRoot, "playback.db"));
         if (serviceMode) WindowsServiceDiagnostics.Stage("library and coordinator construction");
-        await using var library = new StationLibrary(journal, config.Ffmpeg, config.DataRoot, config.Stations.Where(x => x.Repeat).Select(x => x.Id));
+        var brandingStations=config.Stations.Where(x=>x.Repeat).Select(x=>x.Id).ToArray();
+        var brandingKinds=StationBranding.InventoryKinds(brandingStations);
+        var libraryInventories=brandingStations.Concat(brandingKinds.Keys).ToArray();
+        await using var library = new StationLibrary(journal, config.Ffmpeg, config.DataRoot, libraryInventories,contentKinds:brandingKinds);
+        using var branding = new StationBranding(journal,library,brandingStations);
         await using var coordinator = new StationCoordinator(config.Ffmpeg, config.Stations, journal,
-            settings => new StationEngine(config.Ffmpeg, settings, journal, planner: library.Planner(settings)));
+            settings => new StationEngine(config.Ffmpeg, settings, journal, planner: library.Planner(settings),
+                branding:settings.Repeat?branding.Source(settings.Id):null));
         await using var sourceChecks = new SourceAccessChecks(async path =>
         {
             if (ChildProcess.ActiveProcesses.Values.Any(role => role.Contains("cleanup pending", StringComparison.Ordinal)))
@@ -70,6 +75,7 @@ internal static class EngineHost
         try
         {
             if (serviceMode) WindowsServiceDiagnostics.Stage("library initialization");
+            await branding.InitializeAsync();
             await library.InitializeAsync();
             if (serviceMode) WindowsServiceDiagnostics.Stage("coordinator initialization");
             await coordinator.InitializeAsync();
@@ -115,8 +121,12 @@ internal static class EngineHost
                                 await journal.RequireRecoveryReaderAsync(request.JournalFeatures);
                                 result = JsonSerializer.Serialize(new { stations = coordinator.Snapshot(),
                                     audit = new { journal.PendingEvents, journal.RejectedEvents, journal.Error },
-                                    children = ChildProcess.ActiveProcesses, controller = new { mode = serviceMode ? "windows-service" : "developer", service = serviceMode ? ServiceEndpoint.Name : null, capabilities = new[] { "legacy-music-assignment-v1", RecoveryCompatibility.HeldRotationFeature } } });
+                                    children = ChildProcess.ActiveProcesses, controller = new { mode = serviceMode ? "windows-service" : "developer", service = serviceMode ? ServiceEndpoint.Name : null, capabilities = new[] { "legacy-music-assignment-v1", RecoveryCompatibility.HeldRotationFeature, "branding-library-v1" } } });
                                 break;
+                            case "branding-status" when request.StationId is { } brandingStation:
+                                result=JsonSerializer.Serialize(new{branding=await branding.SnapshotAsync(brandingStation)});break;
+                            case "branding-save" when request.StationId is { } saveBrandingStation && request.BrandingRules is { } brandingRules:
+                                result=JsonSerializer.Serialize(new{accepted=true,configuration=await branding.SaveAsync(saveBrandingStation,request.Revision,brandingRules,request.Id)});break;
                             case "start-station" or "stop-station" when request.StationId is { } targetStation:
                                 await coordinator.RequestRunningAsync(targetStation, request.Action == "start-station", request.Id);
                                 result = "{\"accepted\":true}"; break;
@@ -150,7 +160,7 @@ internal static class EngineHost
                                 await library.UseManagedRootAsync(managedStation, request.Id);
                                 result = "{\"accepted\":true}"; break;
                             case "library-source-check" when request.StationId is { } sourceStation && request.Path is { } sourcePath:
-                                if (!config.Stations.Any(station => station.Id == sourceStation)) throw new ArgumentException("Unknown station.");
+                                if (!libraryInventories.Contains(sourceStation,StringComparer.Ordinal)) throw new ArgumentException("Unknown library inventory.");
                                 result = JsonSerializer.Serialize(new { accepted = true, check = sourceChecks.Start(sourceStation, sourcePath, request.Id) }); break;
                             case "library-source-status" when request.StationId is { } checkedStation && request.SourceCheckId is { } sourceId:
                                 result = JsonSerializer.Serialize(new { check = sourceChecks.Get(checkedStation, sourceId) }); break;
@@ -248,4 +258,4 @@ internal static class EngineHost
 internal sealed record HostSettings(string Ffmpeg, string DataRoot, string PipeName, List<StationSettings> Stations, string? OperatorSid = null);
 internal sealed record EngineCommand(string Id, string Action, string? StationId, string? Path = null,
     string[]? Paths = null, string? Query = null, int Offset = 0, string? AssetId = null,
-    long Revision = 0, long ExpectedVersion = 0, string? Artist = null, string? Title = null, string? SourceCheckId = null, string? ReportPeriod = null, string? ReportSelection = null, string? ReportId = null, string? PreviewId = null, LegacyStationMapping[]? Mappings = null, int? MappingRevision = null, string[]? JournalFeatures = null);
+    long Revision = 0, long ExpectedVersion = 0, string? Artist = null, string? Title = null, string? SourceCheckId = null, string? ReportPeriod = null, string? ReportSelection = null, string? ReportId = null, string? PreviewId = null, LegacyStationMapping[]? Mappings = null, int? MappingRevision = null, string[]? JournalFeatures = null, BrandingRules? BrandingRules = null);

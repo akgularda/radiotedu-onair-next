@@ -18,6 +18,48 @@ public sealed class StationLibraryTests
     }
 
     [Fact]
+    public async Task RoleInventoriesShareOneValidationLaneWithoutMixingTheMusicPlanner()
+    {
+        var root=Root();var music=Path.Combine(root,"songs");var jingles=Path.Combine(root,"identifiers");var sweepers=Path.Combine(root,"sweepers");
+        foreach(var folder in new[]{music,jingles,sweepers})Directory.CreateDirectory(folder);
+        await File.WriteAllTextAsync(Path.Combine(music,"song.wav"),"fixture");
+        await File.WriteAllTextAsync(Path.Combine(jingles,"one.wav"),"fixture");
+        await File.WriteAllTextAsync(Path.Combine(jingles,"two.wav"),"fixture");
+        await File.WriteAllTextAsync(Path.Combine(sweepers,"sweeper.wav"),"fixture");
+        await using var journal=new EventJournal(Path.Combine(root,"catalog.db"));var active=0;var maximum=0;
+        async Task<AudioMetadata> Probe(string path,CancellationToken token)
+        {
+            var current=Interlocked.Increment(ref active);maximum=Math.Max(maximum,current);
+            try{await Task.Delay(30,token);return new("Fixture",Path.GetFileNameWithoutExtension(path),.2);}
+            finally{Interlocked.Decrement(ref active);}
+        }
+        await using var library=new StationLibrary(journal,"unused",root,["a","j-a","s-a"],Probe,
+            new Dictionary<string,ContentKind>{{"j-a",ContentKind.Jingle},{"s-a",ContentKind.Sweeper}});
+        await library.InitializeAsync();
+        await library.SetRootAsync("a",music,"music");await library.SetRootAsync("j-a",jingles,"jingles");await library.SetRootAsync("s-a",sweepers,"sweepers");
+        await WaitAsync(library,()=>library.ReadyInventory("a").ReadyCount==1&&library.ReadyInventory("j-a").ReadyCount==2&&library.ReadyInventory("s-a").ReadyCount==1);
+        var frozen=library.ReadyInventory("j-a",1);
+        Assert.Equal(2,frozen.ReadyCount);Assert.Equal(ContentKind.Jingle,Assert.Single(frozen.Items).Kind);
+        Assert.Equal(ContentKind.Sweeper,Assert.Single(library.ReadyInventory("s-a").Items).Kind);
+        var planner=library.Planner(Settings)!;Assert.Equal(1,planner.AvailableItems);Assert.Equal(ContentKind.Music,planner.Select(0).Item.Kind);
+        Assert.Equal(1,maximum);
+        var empty=Path.Combine(root,"empty");Directory.CreateDirectory(empty);await library.SetRootAsync("j-a",empty,"replace");
+        Assert.Empty(library.ReadyInventory("j-a").Items);Assert.Single(frozen.Items);
+        Assert.Throws<ArgumentException>(()=>library.ReadyInventory("unknown"));
+        Assert.Throws<ArgumentOutOfRangeException>(()=>library.ReadyInventory("a",0));
+    }
+
+    [Fact]
+    public async Task UnsupportedOrUnconfiguredInventoryRolesAreRejected()
+    {
+        var root=Root();await using var journal=new EventJournal(Path.Combine(root,"catalog.db"));
+        Assert.Throws<ArgumentException>(()=>new StationLibrary(journal,"unused",root,["a"],contentKinds:
+            new Dictionary<string,ContentKind>{{"missing",ContentKind.Jingle}}));
+        Assert.Throws<ArgumentException>(()=>new StationLibrary(journal,"unused",root,["a"],contentKinds:
+            new Dictionary<string,ContentKind>{{"a",ContentKind.Advertisement}}));
+    }
+
+    [Fact]
     public async Task ShuffledCyclesConsumeEverySongOnceAndAvoidABoundaryRepeat()
     {
         var root = Root(); var music = Path.Combine(root, "music"); Directory.CreateDirectory(music);

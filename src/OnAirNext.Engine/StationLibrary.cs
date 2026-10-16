@@ -6,6 +6,7 @@ using System.Text;
 namespace OnAirNext.Engine;
 
 public sealed record LibraryWorkerStatus(string State, string? Error, DateTimeOffset? ScannedAtUtc);
+public sealed record LibraryPlaybackInventory(bool Configured, int ReadyCount, IReadOnlyList<MediaItem> Items, long Version);
 
 // One bounded import/validation lane across stations. No file operation or SQLite query runs in Select().
 public sealed class StationLibrary : IAsyncDisposable
@@ -20,6 +21,7 @@ public sealed class StationLibrary : IAsyncDisposable
     private readonly Func<string, CancellationToken, Task<AudioMetadata>> _probe;
     private readonly LibraryAudioProbe? _audioProbe;
     private readonly HashSet<string> _stations;
+    private readonly IReadOnlyDictionary<string, ContentKind> _contentKinds;
     private readonly ConcurrentDictionary<string, PlaybackSet> _playback = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, LibraryWorkerStatus> _status = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Stable> _observed = new(StringComparer.OrdinalIgnoreCase);
@@ -34,9 +36,15 @@ public sealed class StationLibrary : IAsyncDisposable
     public event Action<string, bool>? Changed;
 
     public StationLibrary(EventJournal journal, string ffmpeg, string dataRoot, IEnumerable<string> stations,
-        Func<string, CancellationToken, Task<AudioMetadata>>? probe = null)
+        Func<string, CancellationToken, Task<AudioMetadata>>? probe = null,
+        IReadOnlyDictionary<string, ContentKind>? contentKinds = null)
     {
         _journal = journal; _dataRoot = dataRoot; _stations = stations.ToHashSet(StringComparer.Ordinal);
+        var kinds = contentKinds is null ? new Dictionary<string, ContentKind>(StringComparer.Ordinal)
+            : contentKinds.ToDictionary(x=>x.Key,x=>x.Value,StringComparer.Ordinal);
+        if(kinds.Any(x=>!_stations.Contains(x.Key)||x.Value is not (ContentKind.Music or ContentKind.Jingle or ContentKind.Sweeper)))
+            throw new ArgumentException("Library roles must name configured music, jingle or sweeper inventories.");
+        _contentKinds = kinds;
         _audioProbe = probe is null ? new LibraryAudioProbe(ffmpeg) : null;
         _probe = probe ?? _audioProbe!.VerifyAsync;
     }
@@ -51,6 +59,16 @@ public sealed class StationLibrary : IAsyncDisposable
     }
 
     public LibraryWorkerStatus Status(string station) => _status.GetValueOrDefault(station) ?? new("Not configured", null, null);
+    // The host builds immutable role pools outside the programme clock. Limit
+    // copies without hiding the total, so an oversized pool can be rejected.
+    public LibraryPlaybackInventory ReadyInventory(string station, int maximumItems = BrandingRotation.MaximumAssets)
+    {
+        RequireStation(station);
+        if(maximumItems is <1 or >BrandingRotation.MaximumAssets)throw new ArgumentOutOfRangeException(nameof(maximumItems));
+        return _playback.TryGetValue(station,out var set)
+            ?new(set.Configured,set.Items.Length,Array.AsReadOnly(set.Items.Take(maximumItems).ToArray()),set.Version)
+            :new(false,0,Array.Empty<MediaItem>(),0);
+    }
     public LibraryPage Page(string station, string query, int offset) { RequireStation(station); return _journal.LibraryPage(station, query, offset); }
     public async Task SetRootAsync(string station, string root, string command, Action? authorizeNewAssignment = null)
     {
@@ -302,7 +320,8 @@ public sealed class StationLibrary : IAsyncDisposable
             // Edits may update/remove already eligible items; only a successful scan can add them.
             var eligible = allowNew ? null : prior?.Items.Select(x => x.Id).ToHashSet(StringComparer.Ordinal) ?? [];
             var items = _journal.LibraryAssets(root).Where(x => x.State == "Ready" && (eligible is null || eligible.Contains(x.Id)))
-                .Select(x => new MediaItem(x.Id, Path.Combine(root.Path, x.RelativePath), x.Artist, x.Title, DurationSeconds: x.Seconds, Loudness: x.Loudness))
+                .Select(x => new MediaItem(x.Id, Path.Combine(root.Path, x.RelativePath), x.Artist, x.Title,
+                    Kind: _contentKinds.GetValueOrDefault(root.StationId, ContentKind.Music), DurationSeconds: x.Seconds, Loudness: x.Loudness))
                 .OrderBy(x => x.Id, StringComparer.Ordinal).ToArray();
             if (prior is not null && prior.Configured && prior.Items.SequenceEqual(items)) return;
             _playback[root.StationId] = new(true, items, Interlocked.Increment(ref _version));

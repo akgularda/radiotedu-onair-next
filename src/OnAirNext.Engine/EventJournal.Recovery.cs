@@ -9,8 +9,9 @@ public sealed partial class EventJournal
         // New consoles declare their recovery semantics. Original maintenance
         // clients cannot declare this capability, so their existing status
         // admission fails before they can stop a service with a held checkpoint.
-        if (!RecoveryCompatibility.SupportsHeldRotation(features) && await RequiresHeldRotationRecoveryAsync())
-            throw new InvalidOperationException("This journal contains unfinished automatic branding. Use the compatible console to complete or resolve it before application maintenance; the service was not changed.");
+        if (!RecoveryCompatibility.SupportsHeldRotation(features) &&
+            (await RequiresHeldRotationRecoveryAsync() || await RequiresBrandingConfigurationSupportAsync()))
+            throw new InvalidOperationException("This journal contains enabled or unfinished automatic branding. Use the compatible console to disable automation and complete or resolve unfinished items before application maintenance; the service was not changed.");
     }
 
     public Task<bool> RequiresHeldRotationRecoveryAsync() => TransactionAsync((connection, transaction) =>

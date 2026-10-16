@@ -4,7 +4,7 @@ The completion journal already keeps independent songs-since-jingle and songs-si
 
 `BrandingRotation` now supplies a bounded, immutable selection policy for validated branding assets. The default rules are disabled, with intervals of two and three completed songs. Both intervals allow 1–100. Stable ordinal asset IDs and **completed branding play** ordinals determine rotation; preparation attempts do not consume an asset. The policy reports due, deferred and unavailable categories separately. A missing pool preserves its debt and returns no insertion when neither category is available, allowing normal music selection to continue. Collision order is explicit; the initial policy is jingle first, then the still-due sweeper after that jingle actually completes.
 
-The engine now accepts an explicit `IBrandingSource` and inserts approved automatic clips without advancing ordinary music rotation. **The installed host and operator controls are not yet connected to that source.** This change does not validate/import branding files, persist rules, assign legacy assets, implement scheduling, or authorize migration. Engine qualification must not be described as operator acceptance or listener-audio acceptance.
+The engine accepts an explicit `IBrandingSource` and inserts approved automatic clips without advancing ordinary music rotation. The source host now supplies per-station sources backed by separate live jingle/sweeper inventories and persisted, disabled-by-default rules. **Operator controls and legacy branding assignment are unfinished; this source has not been installed on the broadcasting PC.** Engine qualification must not be described as operator acceptance or listener-audio acceptance.
 
 ## Required programme integration
 
@@ -20,7 +20,11 @@ Completed branding-play ordinals and completed-music epochs are stored with the 
 
 An unfinished held-rotation checkpoint requires `held-rotation-v1` recovery semantics. The matching browser console declares that feature. Status requests from old maintenance clients fail while such a checkpoint exists, before their service-stop admission; the stopped-journal inspector also rejects maintenance with that checkpoint. The deliberately narrow unarmed update workflow does not offer a downgrade preserving unfinished automatic clips. The original setup plan remains unchanged.
 
-Host integration must supply validated role-specific inventories and an operator-visible warning for empty or failed pools. Importing a clip must not enable automation.
+`StationBranding` shares `StationLibrary`'s single validation/import lane across music and both roles. Dedicated inventory keys never become programme stations or enter ordinary music rotation. Bounded immutable snapshots retain their ready count, and a combined pool over 4,096 assets disables insertion with a warning rather than silently truncating the rotation. Inventory publication versions prevent a delayed callback from restoring an older withdrawn pool. Asset removal immediately republishes the role pool.
+
+Per-station rule edits use reviewed versions and durable command receipts. A retry returns its original result without overwriting newer settings or publishing a new pool. Raw cadence counters are preserved; enabling automation honors existing debt rather than pretending a clip completed. Rules do not become enabled when files are imported. The host exposes saved rule/pool/cadence status and edits; the matching operator UI must still provide these workflows and warnings before commissioning.
+
+Enabled branding rules also block old maintenance status admission and the read-only stopped-journal inspector. Disable automation and resolve unfinished held clips through the compatible console before this narrow unarmed maintenance workflow. This prevents an older image from silently dropping enabled rules.
 
 ## Operator and legacy integration still required
 

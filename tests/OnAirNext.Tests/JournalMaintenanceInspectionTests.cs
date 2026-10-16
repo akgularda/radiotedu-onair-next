@@ -75,6 +75,19 @@ public sealed class JournalMaintenanceInspectionTests
         Assert.Equal(before,await File.ReadAllBytesAsync(path));
     }
     [Fact]
+    public async Task EnabledBrandingSettingsCannotBeSilentlyLostByAnOlderApplicationImage()
+    {
+        var path=await CreateAsync();
+        await using(var journal=new EventJournal(path))
+        {
+            await journal.InitializeBrandingAsync();
+            await journal.SaveBrandingConfigurationAsync("1",0,new(new(true,2),new(false,3)),"enable");
+        }
+        var before=await File.ReadAllBytesAsync(path);
+        Assert.Throws<InvalidOperationException>(()=>JournalMaintenanceInspection.Read(path,Ids));
+        Assert.Equal(before,await File.ReadAllBytesAsync(path));
+    }
+    [Fact]
     public async Task ArbitraryOrRepeatedRosterIsRejectedBeforeOpeningTheJournal()
     {
         var path=await CreateAsync();Assert.Throws<ArgumentException>(()=>JournalMaintenanceInspection.Read(path,["1"]));

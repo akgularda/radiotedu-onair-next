@@ -35,6 +35,8 @@ public static class JournalMaintenanceInspection
         }
         if(stations.Count!=8||stations.Select(s=>s.StationId).Distinct(StringComparer.Ordinal).Count()!=8)
             throw new InvalidDataException("The maintenance journal must retain all eight explicitly stopped channels.");
+        if(EventJournal.HasEnabledBrandingConfiguration(connection,null))
+            throw new InvalidOperationException("Disable automatic branding in the compatible console before application maintenance. Current data was not changed.");
         using var checkpoints=connection.CreateCommand();checkpoints.CommandText="SELECT payload FROM playout_checkpoints";
         using(var reader=checkpoints.ExecuteReader())
             while(reader.Read())

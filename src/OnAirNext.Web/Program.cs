@@ -25,7 +25,7 @@ var csrf = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 var cookie = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 var uploads = new SemaphoreSlim(1, 1);
 var meterRequests = new SemaphoreSlim(1, 1);
-var allowedActions = new HashSet<string>(StringComparer.Ordinal) { "start-station", "stop-station", "skip", "library-root", "library-legacy-root", "library-source-check", "library-managed", "library-rescan", "library-metadata", "library-reset-metadata", "library-retire", "library-restore", "library-analyze-loudness" };
+var allowedActions = new HashSet<string>(StringComparer.Ordinal) { "start-station", "stop-station", "skip", "library-root", "library-legacy-root", "library-source-check", "library-managed", "library-rescan", "library-metadata", "library-reset-metadata", "library-retire", "library-restore", "library-analyze-loudness", "branding-save" };
 var extensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg", ".opus", ".aif", ".aiff", ".wma", ".mp4" };
 app.Use(async (context, next) =>
 {
@@ -85,6 +85,8 @@ app.MapGet("/api/status", async (string engine, CancellationToken token) =>
     Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "status", JournalFeatures = new[] { "held-rotation-v1" } }, token)));
 app.MapGet("/api/library", async (string engine, string station, string? query, int? offset, CancellationToken token) =>
     Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "library-status", StationId = station, Query = query ?? "", Offset = offset ?? 0 }, token)));
+app.MapGet("/api/branding", async (string engine, string station, CancellationToken token) =>
+    Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "branding-status", StationId = station }, token)));
 app.MapGet("/api/migration-preview", async (string engine, string? id, CancellationToken token) =>
     Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "legacy-preview", PreviewId = id }, token)));
 app.MapPost("/api/migration-preview", async (MigrationPreviewRequest request, CancellationToken token) =>
