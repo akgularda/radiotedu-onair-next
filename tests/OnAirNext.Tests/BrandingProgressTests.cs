@@ -96,7 +96,7 @@ public sealed class BrandingProgressTests
         await Assert.ThrowsAsync<InvalidOperationException>(()=>journal.RequireRecoveryReaderAsync(null));
         await Assert.ThrowsAsync<InvalidOperationException>(()=>journal.RequireRecoveryReaderAsync(["unknown-reader"]));
         await journal.RequireRecoveryReaderAsync([RecoveryCompatibility.HeldRotationFeature]);
-        Assert.True(await journal.RequestObservedSkipAsync("station","skip-command","held"));
+        Assert.True(await journal.RequestSkipAsync("station","skip-command","held"));
         var recovered=await journal.PrepareRecoveryAsync("station");
         Assert.NotNull(recovered);Assert.Null(recovered.Item);Assert.Equal(2,recovered.RotationIndex);Assert.False(recovered.HoldsRotation);
         var progress=await journal.BrandingProgressAsync("station");

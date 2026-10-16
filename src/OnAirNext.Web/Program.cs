@@ -82,7 +82,7 @@ app.MapGet("/api/session", (HttpResponse response) =>
 });
 app.MapGet("/api/engines", () => Results.Json(new { engines = EngineRpc.Discover(), preview = false }));
 app.MapGet("/api/status", async (string engine, CancellationToken token) =>
-    Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "status", JournalFeatures = new[] { OnAirNext.Engine.RecoveryCompatibility.HeldRotationFeature } }, token)));
+    Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "status", JournalFeatures = new[] { "held-rotation-v1" } }, token)));
 app.MapGet("/api/library", async (string engine, string station, string? query, int? offset, CancellationToken token) =>
     Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "library-status", StationId = station, Query = query ?? "", Offset = offset ?? 0 }, token)));
 app.MapGet("/api/migration-preview", async (string engine, string? id, CancellationToken token) =>
