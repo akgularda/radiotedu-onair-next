@@ -46,7 +46,7 @@ internal sealed class RuntimeSupplementCoordinator:IAsyncDisposable
     }
     public async Task<object> StatusAsync(CancellationToken token)
     {
-        SetupPlan? initial=null;RuntimeSupplementReceipt? receipt=null;SetupFile[]? additions=null;string? candidate=null,readError=null;var complete=false,maintenanceBusy=false;
+        SetupPlan? initial=null;RuntimeSupplementReceipt? receipt=null;SetupFile[]? additions=null;string? candidate=null,readError=null;bool complete=false,maintenanceBusy=false;
         if(OperatingSystem.IsWindows())
         {
             try
@@ -76,8 +76,8 @@ internal sealed class RuntimeSupplementCoordinator:IAsyncDisposable
         {
             var busy=!_operation.IsCompleted||maintenanceBusy;var match=_plan is not null&&_plan.PackageSha256.Equals(_packageHash,StringComparison.OrdinalIgnoreCase)&&_plan.PackageRoot.Equals(_package,StringComparison.OrdinalIgnoreCase);
             return new{supported=OperatingSystem.IsWindows(),packageAvailable=Available,installed=initial is not null,busy,
-                phase=maintenanceBusy?"Installation operation in progress":receipt?.Phase=="Complete"&&complete?"Complete":_phase,
-                detail=maintenanceBusy?"Wait for the operation holding the installation lock.":!_operation.IsCompleted?_detail:receipt?.Detail??_detail,readError,complete,candidateRoot=candidate,
+                phase=maintenanceBusy?"Installation operation in progress":!_operation.IsCompleted?_phase:complete?"Complete":_phase,
+                detail=maintenanceBusy?"Wait for the operation holding the installation lock.":!_operation.IsCompleted?_detail:receipt?.Detail??(complete?"The initial installer recorded a complete tools inventory. No additions are required.":_detail),readError,complete,candidateRoot=candidate,
                 review=_plan is null?null:new{id=_plan.Id,root=_plan.RuntimeRoot,package=_plan.PackageRoot,reference=_plan.ReferenceSha256,operatorSid=_plan.OperatorSid,
                     preserved=initial?.RuntimeFiles.Length,files=additions?.Select(f=>new{path=SetupPaths.RuntimeDestination(f.Path),bytes=f.Bytes}).ToArray()},
                 receipt=receipt is null?null:new{phase=receipt.Phase,at=receipt.AtUtc,detail=receipt.Detail,id=receipt.Plan.Id},
