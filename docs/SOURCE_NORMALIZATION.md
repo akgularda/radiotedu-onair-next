@@ -1,5 +1,7 @@
 # Non-destructive source gain
 
+Exact source `cf39fd9c` passed 179 unit cases, 8 browser-model cases, 148 real audio checks across eight scenarios, 35 SCM checks, 20 setup checks and nine independent synthetic instrument signals in [run 38842202973](https://github.com/akgularda/radiotedu-onair-next/actions/runs/38842202973). All six retained archive digests and execution source identities were verified. See [scoped evidence](../artifacts/evidence/source-normalization-179-20261016.json). This is not commissioning or all-stream compliance.
+
 This development slice measures each newly validated source through one complete FFmpeg decode, in the same stereo float 48 kHz format as playback. It hashes the read-locked original and saves the completed ebur128 I/oversampled true-peak result with file size, modification time and a versioned analysis identity. Sub-minute LRA is withheld. Original media is never rewritten.
 
 Playback applies one constant gain per source: the lower of the -23 LUFS target gain, a +12 dB boost bound and the measured source true-peak headroom to -1.4 dBTP. The 0.4 dB reserve is a provisional engineering choice for finite measurement/summary precision; it is **not measured codec headroom or a universal true-peak guarantee**. Peak/boost constrained sources are explicitly below target. Silence or material without a gated programme has no invented target loudness; a finite source peak can still cause attenuation. No time-varying loudness AGC or dynamic-range compressor is introduced.

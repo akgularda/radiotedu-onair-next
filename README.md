@@ -4,7 +4,7 @@ Independent radio broadcasting engine and local browser console under developmen
 
 The user rejected the WPF prototype and requested a browser app. [The browser interface decision](docs/BROWSER_UI_DECISION.md) supersedes earlier native-only UI clauses. The rejected prototype remains historical source and is no longer part of the active solution.
 
-The current development branch also adds [non-destructive source gain](docs/SOURCE_NORMALIZATION.md): complete-file loudness analysis, bounded fixed gain, revision-bound persistence and Library reanalysis controls. Its exact-source Windows qualification is pending; final-mix limiting and encoded-output acceptance remain unfinished.
+The current development branch also adds [non-destructive source gain](docs/SOURCE_NORMALIZATION.md): complete-file loudness analysis, bounded fixed gain, revision-bound persistence and Library reanalysis controls. Exact source cf39fd9c passed 179 unit cases and 148 real audio checks, including two independently decoded normalized synthetic AAC-LC/FLAC branches in run 38842202973. See [qualified source scope](artifacts/evidence/source-normalization-179-20261016.json). Final-mix limiting, full codec headroom and all-stream acceptance remain unfinished.
 
 ## Current interface
 
