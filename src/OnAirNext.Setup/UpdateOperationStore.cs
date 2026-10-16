@@ -50,12 +50,26 @@ public sealed class UpdateOperationStore
         // Readers retain one committed file identity while allowing the atomic replacement.
         // No writer shares write access to this stream, so partially written JSON is never read.
         SetupPaths.RequireNoLinks(path);
-        await using var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read|FileShare.Delete,32768,true);
+        await using var stream=await OpenSnapshotAsync(path,token);
         if(stream.Length is <1 or >32768)throw new IOException("The saved update direction exceeds its size limit.");
         var intent=await JsonSerializer.DeserializeAsync<UpdateIntent>(stream,cancellationToken:token)??throw new IOException("The saved update direction is unreadable.");
         if(intent.ReviewSha256 is null||!intent.ReviewSha256.Equals(expectedReview,StringComparison.OrdinalIgnoreCase)||!Enum.IsDefined(intent.Direction)||intent.Revision<1||intent.UpdatedAtUtc==default||intent.UpdatedAtUtc.Offset!=TimeSpan.Zero||string.IsNullOrWhiteSpace(intent.Phase)||intent.Phase.Length>128)
             throw new IOException("The saved update direction does not match the reviewed operation.");
         return intent;
+    }
+    private static async Task<FileStream> OpenSnapshotAsync(string path,CancellationToken token)
+    {
+        var clock=System.Diagnostics.Stopwatch.StartNew();
+        while(true)
+        {
+            token.ThrowIfCancellationRequested();SetupPaths.RequireNoLinks(path);
+            try{return new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read|FileShare.Delete,32768,true);}
+            // ReplaceFile can briefly hold its own incompatible handle even though an
+            // already-open snapshot permits deletion. Retry only Windows sharing/lock
+            // collisions, never parse failures, wrong review hashes or ACL denials.
+            catch(IOException error)when((error.HResult&0xffff) is 32 or 33&&clock.Elapsed<TimeSpan.FromSeconds(1))
+            {await Task.Delay(10,token);}
+        }
     }
     public async Task<UpdateIntent> RunAsync(string id,string expectedReview,UpdateDirection requested,
         Func<Task> requireStopped,Func<string,Task>? progress=null,CancellationToken token=default)
