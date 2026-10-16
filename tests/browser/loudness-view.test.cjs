@@ -11,7 +11,7 @@ test('unknown or wrong-scope audio never invents levels',()=>{
 });
 test('fresh final-mix levels retain the unverified-output distinction',()=>{
   const result=view(snapshot(),now,true);assert.equal(result.state,'Measuring');assert.equal(result.levels.integrated.text,'-23.0');assert.equal(result.range,'8.0');
-  assert.match(result.note,/encoded-output verification are pending/);assert.equal(result.elapsedSeconds,100);
+  assert.match(result.note,/do not establish encoded-output compliance/);assert.equal(result.elapsedSeconds,100);
 });
 test('stale or future timestamps clear live numbers and meter bars',()=>{
   for(const offset of [-2000,2000]){const data=snapshot();data.UpdatedAtUtc=new Date(now+offset).toISOString();const result=view(data,now,true);

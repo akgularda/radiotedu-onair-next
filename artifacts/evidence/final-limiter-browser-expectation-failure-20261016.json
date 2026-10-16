@@ -1,0 +1,79 @@
+{
+  "source": "cae0ebf013026ff84eb21147123f6a22a46e52d2",
+  "runId": "38846964405",
+  "conclusion": "failure",
+  "unit": {
+    "total": 194,
+    "executed": 194,
+    "passed": 194,
+    "failed": 0,
+    "error": 0,
+    "timeout": 0,
+    "aborted": 0,
+    "inconclusive": 0,
+    "passedButRunAborted": 0,
+    "notRunnable": 0,
+    "notExecuted": 0,
+    "disconnected": 0,
+    "warning": 0,
+    "completed": 0,
+    "inProgress": 0,
+    "pending": 0
+  },
+  "referenceSignals": [
+    {
+      "name": "limiter-phase12k",
+      "passed": true,
+      "nativeTruePeakDbtp": -2.4761172292702236,
+      "independentTruePeakDbtp": -2,
+      "independentFrames": 192000,
+      "maximumReductionDb": 8.57936488606138
+    },
+    {
+      "name": "limiter-phase20k",
+      "passed": true,
+      "nativeTruePeakDbtp": -2.1130618262879337,
+      "independentTruePeakDbtp": -2.3,
+      "independentFrames": 192000,
+      "maximumReductionDb": 8.710603135668407
+    },
+    {
+      "name": "limiter-near-nyquist",
+      "passed": true,
+      "nativeTruePeakDbtp": -1.901087219881405,
+      "independentTruePeakDbtp": -1.9,
+      "independentFrames": 192000,
+      "maximumReductionDb": 8.635611751155466
+    },
+    {
+      "name": "limiter-impulse",
+      "passed": true,
+      "nativeTruePeakDbtp": -1.9202622171783614,
+      "independentTruePeakDbtp": -1.9,
+      "independentFrames": 192000,
+      "maximumReductionDb": 38.04386201760758
+    },
+    {
+      "name": "limiter-noise",
+      "passed": true,
+      "nativeTruePeakDbtp": -2.1653766669570667,
+      "independentTruePeakDbtp": -2.2,
+      "independentFrames": 192000,
+      "maximumReductionDb": 19.61929924776541
+    },
+    {
+      "name": "limiter-alternating",
+      "passed": true,
+      "nativeTruePeakDbtp": -1.9205457341948373,
+      "independentTruePeakDbtp": -1.9,
+      "independentFrames": 192000,
+      "maximumReductionDb": 26.004561291005054
+    }
+  ],
+  "referenceCaseCount": 15,
+  "referencePassed": true,
+  "realAudioRan": false,
+  "qualificationAccepted": false,
+  "reason": "All194 units and15 independent signals passed. The browser test retained the old pending-verification sentence; the new note explicitly states that pre-encoder measurements do not establish encoded compliance. The obsolete text assertion stopped CI before real audio/service/setup cases. Correct the assertion and complete those gates.",
+  "productionChanged": false
+}
