@@ -91,6 +91,8 @@ public sealed class UpdateOperationStore
         {await stream.WriteAsync(bytes,token);await stream.FlushAsync(token);stream.Flush(true);}
         // Incomplete records are retained for diagnosis; an orphan partial never becomes
         // authoritative simply because its timestamp is newer than the committed record.
-        SetupPaths.RequireNoLinks(path);File.Move(temporary,path,replace);
+        SetupPaths.RequireNoLinks(path);
+        if(replace&&File.Exists(path))File.Replace(temporary,path,null);
+        else File.Move(temporary,path,false);
     }
 }
