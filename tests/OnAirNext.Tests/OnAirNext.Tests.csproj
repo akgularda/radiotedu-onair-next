@@ -11,6 +11,7 @@
     <Compile Include="../../src/OnAirNext.Setup/SetupModels.cs" Link="Installation/SetupModels.cs" />
     <Compile Include="../../src/OnAirNext.Setup/UpdateSwap.cs" Link="Installation/UpdateSwap.cs" />
     <Compile Include="../../src/OnAirNext.Setup/UpdateOperationStore.cs" Link="Installation/UpdateOperationStore.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/UpdateAdmission.cs" Link="Installation/UpdateAdmission.cs" />
     <Compile Include="../../src/OnAirNext.Host/ServiceEndpoint.cs" Link="ServiceControl/ServiceEndpoint.cs" />
     <Compile Include="../../src/OnAirNext.Host/ServicePipeClient.cs" Link="ServiceControl/ServicePipeClient.cs" />
     <Compile Include="../../src/OnAirNext.Host/ServicePipePolicy.cs" Link="ServiceControl/ServicePipePolicy.cs" />

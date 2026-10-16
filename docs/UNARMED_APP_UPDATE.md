@@ -12,6 +12,8 @@ The candidate and retained original are siblings of the trusted installation roo
 
 Unit scenarios interrupt both rename boundaries in each direction, deny the second service fence, cancel after retaining the original, tamper with either image, introduce conflicting files/layouts, and verify that current data and the encoder remain unchanged. These are filesystem fixtures, not Windows service, power-loss, audio, or mouse acceptance evidence.
 
+`UpdateAdmission` independently checks the authenticated status payload and installed configuration shape. It requires the exact eight station IDs, stopped states, explicit false running intent, empty output definitions, no owned children, and a drained journal without a current error. The configuration must retain the fixed service pipe, operator, data and encoder paths and false AutoStart defaults. Missing fields are rejected. This parser does not itself authenticate a pipe, freeze concurrent commands, or prove an unchanged configuration; those remain responsibilities of the elevated maintenance workflow.
+
 ## Remaining gates before exposing update controls
 
 - An elevated helper must bind the review to the existing protected ownership/configuration, package bytes and journal schema contract.
