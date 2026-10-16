@@ -68,7 +68,8 @@ internal static partial class ServiceProbe
             await SetupService.SuspendForMaintenanceAsync(null,CancellationToken.None);SetupService.RequireMaintenanceStopped();
             Check("Repeated maintenance resumes the same stopped fence without starting the engine",true);
             await RestoreAsync();
-            Check("Maintenance leaves all installed channel configuration bytes unchanged",SHA256.HashData(config).SequenceEqual(SHA256.HashData(await File.ReadAllBytesAsync(ServiceEndpoint.ConfigPath))));
+            var afterFirstRestore=await File.ReadAllBytesAsync(ServiceEndpoint.ConfigPath);
+            Check("Maintenance leaves all installed channel configuration bytes unchanged",SHA256.HashData(config).SequenceEqual(SHA256.HashData(afterFirstRestore)));
             // Simulate interruption after the first durable SCM mutation, before actions are cleared.
             restored=false;
             Check("Partial-fence fixture disables only its owned development service",await MaintenanceScAsync(["config",ServiceEndpoint.Name,"start=","disabled"])==0);
@@ -77,7 +78,8 @@ internal static partial class ServiceProbe
             await SetupService.SuspendForMaintenanceAsync(null,CancellationToken.None);SetupService.RequireMaintenanceStopped();
             Check("A resumed partial fence clears recovery actions and completes a graceful stop",true);
             await RestoreAsync();
-            Check("Repeated maintenance and restoration retain all configuration bytes",config.SequenceEqual(await File.ReadAllBytesAsync(ServiceEndpoint.ConfigPath)));
+            var afterSecondRestore=await File.ReadAllBytesAsync(ServiceEndpoint.ConfigPath);
+            Check("Repeated maintenance and restoration retain all configuration bytes",config.SequenceEqual(afterSecondRestore));
         }
         catch(Exception ex){error=ex.ToString();}
         finally
