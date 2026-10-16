@@ -33,3 +33,11 @@ References: [SERVICE_FAILURE_ACTIONS](https://learn.microsoft.com/en-us/windows/
 - Provide System review/apply/resume/rollback controls and actual Windows SCM integration tests, then mouse acceptance on the broadcasting PC.
 
 Until those gates pass, no update endpoint or operational button calls this helper. The existing installed engine remains in place and the former broadcast program keeps source ownership.
+
+## Package review and stopped-journal inspection under qualification
+
+The next source adds a read-only external-package review binding the original operator, protected installation/configuration/ownership receipts, exact running service process and start time, both verified manifests and unchanged encoder runtime. The replacement must declare the explicit schema-one application-only contract; current data is retained on rollback. Installed/candidate/previous and new-data paths cannot be used as package sources. This review has no file/service mutation and remains an internal helper pending System integration.
+
+A separate early Host inspection mode reads only the fixed new journal or a fixed reviewed-operation snapshot path. It verifies the actual schema_info version, exact eight persisted stopped intents, preserved enabled states and SQLite quick_check without opening EventJournal, setting pragmas, checkpointing WAL or changing schema/state. Regression cases include committed running intent still in WAL, unsupported schema, missing/unknown channels and byte preservation. The disposable service fixture holds writer.lock during actual packaged inspection after service exit.
+
+Fresh CI is required for these additions. They do not expose a complete update/apply workflow or establish production readiness.

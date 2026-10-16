@@ -9,6 +9,14 @@ using OnAirNext.ServiceControl;
 if(!OperatingSystem.IsWindows())return 2;
 try
 {
+    if(args.Length==1&&args[0]=="--prepare-update")
+    {
+        WindowsOwnedJob.AttachCurrentProcess();
+        using var deadline=new CancellationTokenSource(TimeSpan.FromMinutes(3));
+        var root=Directory.GetParent(Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory))!.FullName;
+        var review=await AppUpdatePreparation.PrepareAsync(root,deadline.Token);
+        Console.WriteLine(JsonSerializer.Serialize(review));return 0;
+    }
     if(args.Length==3&&args[0]=="--prepare")
     {
         WindowsOwnedJob.AttachCurrentProcess();
@@ -67,7 +75,7 @@ try
 catch(Exception error)
 {
     var message=error is ArgumentException or InvalidOperationException ? error.Message : "Setup could not complete. Check the reviewed package, runtime files, permissions and free disk space. Existing broadcasts were not taken over.";
-    if(args.Length>0&&args[0]=="--prepare")Console.WriteLine(JsonSerializer.Serialize(new{error=message}));
+    if(args.Length>0&&args[0] is "--prepare" or "--prepare-update")Console.WriteLine(JsonSerializer.Serialize(new{error=message}));
     else if(args.Length==0||args[0]=="--open-console")SetupMessage.Show(message);
     return 1;
 }

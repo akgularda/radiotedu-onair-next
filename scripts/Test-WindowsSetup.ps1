@@ -7,7 +7,7 @@ $data=[IO.Path]::GetFullPath((Join-Path $env:ProgramData 'RadioTEDU-OnAirNext-De
 $fixture=[IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA ('RadioTEDU/OnAirNext-Dev/setup-fixture-'+[Guid]::NewGuid().ToString('N'))))
 $expectedFixture=$fixture
 $summary=Join-Path $PSScriptRoot '../artifacts/setup-smoke/summary.json'
-$checks=[Collections.Generic.List[string]]::new();$completed=$false;$failure=$null;$owned=$false;$plan=$null;$webProcess=$null;$shortcutPaths=@();$maintenance=$null
+$checks=[Collections.Generic.List[string]]::new();$completed=$false;$failure=$null;$owned=$false;$plan=$null;$webProcess=$null;$shortcutPaths=@();$maintenance=$null;$review=$null
 function Check([string]$name,[bool]$value){if(-not $value){throw ('Setup check failed: '+$name)};$checks.Add($name)}
 function Run([string]$exe,[string[]]$arguments){
  $start=[Diagnostics.ProcessStartInfo]::new($exe);$start.UseShellExecute=$false;$start.CreateNoWindow=$true;$start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
@@ -86,6 +86,16 @@ try{
  Check 'Visible console-close route releases its own web process' ($webProcess.WaitForExit(15000))
  $afterConsole=Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")
  Check 'Closing the console preserves the same running engine service' ($afterConsole.State -eq 'Running' -and $afterConsole.ProcessId -eq $service.ProcessId)
+ # Read-only package review must not reuse the currently installed manifest.
+ $samePackageRejected=$false;try{$null=Run $setup @('--prepare-update')}catch{$samePackageRejected=$true}
+ Check 'Read-only maintenance review rejects the already installed package' $samePackageRejected
+ # Synthetic replacement identity only: all executable bytes remain this CI build.
+ $replacementManifest=Get-Content -LiteralPath (Join-Path $fixture 'bundle.json') -Raw|ConvertFrom-Json
+ $replacementManifest.Source=('a'*40)
+ $replacementManifest|ConvertTo-Json -Depth 8|Set-Content -LiteralPath (Join-Path $fixture 'bundle.json') -Encoding utf8NoBOM
+ $review=(Run $setup @('--prepare-update'))|ConvertFrom-Json
+ Check 'Read-only maintenance review binds both manifests and schema-one rollback contract' ($review.Files.Original.BundleSha256 -eq $plan.BundleSha256 -and $review.Files.Replacement.BundleSha256 -eq (Get-FileHash -LiteralPath (Join-Path $fixture 'bundle.json') -Algorithm SHA256).Hash -and $review.JournalSchemaVersion -eq 1)
+ Check 'Read-only review retains original operator configuration and exact service process' ($review.OperatorSid -eq $plan.OperatorSid -and $review.ConfigurationSha256 -eq $before -and $review.ServiceProcessId -eq $service.ProcessId -and (Get-FileHash -LiteralPath (Join-Path $data 'host.json') -Algorithm SHA256).Hash -eq $before)
  $maintenance=(Run $lab @('--service-maintenance-probe'))|ConvertFrom-Json
  foreach($check in $maintenance.Checks){Check $check.Description $check.Passed}
  Check 'Maintenance fixture completed and restored its owned service' $maintenance.Passed
@@ -103,5 +113,5 @@ finally{
   if($completed -and -not $failure){foreach($target in @(@{Path=$install;Expected=(Join-Path $env:ProgramFiles 'RadioTEDU-OnAirNext-Development')},@{Path=$data;Expected=(Join-Path $env:ProgramData 'RadioTEDU-OnAirNext-Development')})){$full=[IO.Path]::GetFullPath($target.Path);if($full -ne [IO.Path]::GetFullPath($target.Expected) -or (Get-Item -LiteralPath $full).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Setup cleanup target validation failed'};Remove-Item -LiteralPath $full -Recurse -Force}}
  }
  $null=New-Item -ItemType Directory -Path (Split-Path -Parent $summary) -Force
- @{Source=$env:GITHUB_SHA;Scope='Disposable Windows installer software fixture; runtime encoder listing is an explicit test double, no real audio or broadcasting-PC commissioning';Completed=$completed;Passed=($completed -and -not $failure);Checks=$checks.ToArray();Maintenance=$maintenance;Error=$failure;ProductionChanged=$false}|ConvertTo-Json -Depth 8|Set-Content -LiteralPath $summary -Encoding utf8NoBOM
+ @{Source=$env:GITHUB_SHA;Scope='Disposable Windows installer software fixture; runtime encoder listing is an explicit test double, no real audio or broadcasting-PC commissioning';Completed=$completed;Passed=($completed -and -not $failure);Checks=$checks.ToArray();Maintenance=$maintenance;UpdateReview=$review;Error=$failure;ProductionChanged=$false}|ConvertTo-Json -Depth 8|Set-Content -LiteralPath $summary -Encoding utf8NoBOM
 }

@@ -62,6 +62,12 @@ internal static partial class ServiceProbe
             changed=true;await SetupService.SuspendForMaintenanceAsync(before.ProcessId,CancellationToken.None);
             SetupService.RequireMaintenanceStopped();
             Check("Maintenance gracefully stops the exact reviewed process and verifies the disabled recovery fence",originalProcess.HasExited);
+            var database=Path.Combine(ServiceEndpoint.EngineData,"playback.db");
+            await using(var writer=new FileStream(database+".writer.lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None))
+            {
+                var inspection=await InspectMaintenanceJournalAsync(database);
+                Check("The packaged host inspects schema one and all eight stopped journal intents while the writer lock stays held",inspection.SchemaVersion==1&&inspection.Integrity=="ok"&&inspection.Stations.Length==8&&inspection.Stations.All(s=>!s.RequestedRunning));
+            }
             var denied=await MaintenanceScAsync(["start",ServiceEndpoint.Name]);
             Check("Windows refuses an explicit start while the maintenance fence is disabled",denied==1058);
             SetupService.RequireMaintenanceStopped();
@@ -95,6 +101,21 @@ internal static partial class ServiceProbe
         await File.WriteAllTextAsync(evidence,json);Console.WriteLine(json);
         // The parent reads Passed and retains this JSON even when a check failed.
         return 0;
+    }
+    private static async Task<OnAirNext.Engine.MaintenanceJournalInspection> InspectMaintenanceJournalAsync(string database)
+    {
+        var start=new ProcessStartInfo(Path.Combine(ServiceEndpoint.InstallRoot,"bin","OnAirNext.Host.exe")){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};
+        start.ArgumentList.Add("--inspect-maintenance-journal");start.ArgumentList.Add(database);
+        using var process=Process.Start(start)??throw new IOException("Packaged journal inspector did not start.");
+        var output=process.StandardOutput.ReadToEndAsync();var errors=process.StandardError.ReadToEndAsync();
+        using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        try
+        {
+            await process.WaitForExitAsync(deadline.Token);var json=await output;await errors;
+            if(process.ExitCode!=0||json.Length>16384)throw new IOException("The packaged journal inspector did not return a bounded successful result.");
+            return JsonSerializer.Deserialize<OnAirNext.Engine.MaintenanceJournalInspection>(json)??throw new IOException("Journal inspection result is missing.");
+        }
+        finally{if(!process.HasExited){process.Kill();using var cleanup=new CancellationTokenSource(TimeSpan.FromSeconds(5));await process.WaitForExitAsync(cleanup.Token);}}
     }
     private static async Task<int> MaintenanceScAsync(string[] arguments)
     {

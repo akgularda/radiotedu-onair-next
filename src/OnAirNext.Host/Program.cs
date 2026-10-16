@@ -1,6 +1,8 @@
 using OnAirNext.Host;
 using OnAirNext.ServiceControl;
 
+if (args.Length == 2 && args[0] == "--inspect-maintenance-journal") return MaintenanceJournalProbe.Run(args[1]);
+
 if (args.Length == 2 && args[0] == "--probe-media-source") return await SourceAccessProbe.RunAsync(args[1]);
 
 var serviceMode = args.Length == 3 && args[0] == "--windows-service" && args[1] == "--config";

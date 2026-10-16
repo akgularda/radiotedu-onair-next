@@ -84,7 +84,7 @@ internal static class WindowsInstaller
             await ReceiptAsync(new(plan.Id,"Failed","Setup stopped during "+stage+". "+detail,bundle.Source));return 1;
         }
     }
-    private static void AssertProtected(string path)
+    internal static void AssertProtected(string path)
     {
         SetupPaths.RequireNoLinks(path);
         FileSystemSecurity security=Directory.Exists(path)?new DirectoryInfo(path).GetAccessControl(AccessControlSections.Access|AccessControlSections.Owner):new FileInfo(path).GetAccessControl(AccessControlSections.Access|AccessControlSections.Owner);
