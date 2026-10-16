@@ -102,9 +102,13 @@ public sealed class CadenceTests
         {
             old.Open(); using var command = old.CreateCommand();
             command.CommandText = """
-                DROP TRIGGER cadence_jingle_completed; DROP TRIGGER cadence_sweeper_completed;
+                DROP TRIGGER cadence_jingle_completed; DROP TRIGGER cadence_sweeper_completed; DROP TRIGGER cadence_music_completed;
+                DROP TABLE branding_attempts;
                 ALTER TABLE station_cadence DROP COLUMN completed_jingles;
                 ALTER TABLE station_cadence DROP COLUMN completed_sweepers;
+                ALTER TABLE station_cadence DROP COLUMN completed_music;
+                ALTER TABLE station_cadence DROP COLUMN last_jingle_attempt_music;
+                ALTER TABLE station_cadence DROP COLUMN last_sweeper_attempt_music;
                 """;
             command.ExecuteNonQuery();
         }

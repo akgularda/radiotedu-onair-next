@@ -158,6 +158,7 @@ public sealed partial class EventJournal : IAsyncDisposable
         {
             if (!WriteEvent(connection, transaction, entry)) return false;
             if (checkpoint is not null) WriteCheckpoint(connection, transaction, checkpoint);
+            RecordBrandingAttempt(connection, transaction, entry);
             if (entry.Type == "ended") CompleteCadence(connection, transaction, entry);
             if (entry.Type is "skipped" or "ended" or "failed" or "decode_failed")
                 ConsumeSkips(connection, transaction, entry.StationId, entry.OccurrenceId);

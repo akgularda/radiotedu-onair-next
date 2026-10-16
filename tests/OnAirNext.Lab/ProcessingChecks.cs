@@ -3,7 +3,7 @@ using OnAirNext.Engine;
 
 namespace OnAirNext.Lab;
 
-internal static class ProcessingChecks
+internal static partial class ProcessingChecks
 {
     private static void Check(CaseResult result,bool ok,string text){result.Checks.Add(new{Passed=ok,Description=text});if(!ok)throw new InvalidDataException(text);}
     public static async Task RunAsync(string ffmpeg,string root,CaseResult result)
@@ -16,8 +16,9 @@ internal static class ProcessingChecks
         await BufferedSkipAsync(ffmpeg,root,result,a,b);
         await SlowAuditAsync(ffmpeg,root,result,Fixture(root,"long",96000,0.03f));
         await MixedPeakAsync(ffmpeg,root,result,Fixture(root,"mix",192000,0.8f));
+        await BrandingChecksAsync(ffmpeg,root,result);
         Check(result,ChildProcess.ActiveProcesses.Count==0,"Processing qualification closes every owned decoder/validation worker.");
-        result.Details["scope"]="Synthetic final-mix limiting, prepared/audible EOF and Stop/Skip/recovery ownership, and bounded asynchronous audit only. No physical mic/cue/recording, encoded worst-case headroom, HE-AAC/all18 or production acceptance.";
+        result.Details["scope"]="Synthetic final-mix limiting, prepared/audible EOF, automatic branding PCM/order and Stop/Skip/recovery ownership, and bounded asynchronous audit only. No physical mic/cue/recording, encoded worst-case headroom, HE-AAC/all18 or production acceptance.";
     }
     private static async Task FiniteAsync(string ffmpeg,string root,CaseResult result,MediaItem[] items)
     {
@@ -121,13 +122,13 @@ internal static class ProcessingChecks
     private sealed class Capture(string database,bool inspectHistory=true):IProgramOutput
     {
         private long _frames;public long Frames=>Interlocked.Read(ref _frames);public List<float> Samples{get;}=new();
-        public long EventsAtStart{get;private set;}public bool FutureTerminalObserved{get;private set;}public float FirstLeft=>Samples[0];public Action? AfterFirst{get;set;}
+        public long EventsAtStart{get;private set;}public bool FutureTerminalObserved{get;private set;}public float FirstLeft=>Samples[0];public Action? AfterFirst{get;set;}public Action? AfterEach{get;set;}
         public void Start(){EventsAtStart=EventJournal.ReadEvents(database).Count;}
         public bool Publish(PcmBlock block)
         {
             var first=Frames==0;Samples.AddRange(MemoryMarshal.Cast<byte,float>(block.Memory.Span).ToArray());Interlocked.Add(ref _frames,block.Length/AudioFormat.BytesPerSampleFrame);
             if(inspectHistory&&EventJournal.ReadEvents(database).Any(x=>(x.Type is "ended" or "skipped")&&x.SamplePosition>Frames))FutureTerminalObserved=true;
-            if(first)AfterFirst?.Invoke();return true;
+            if(first)AfterFirst?.Invoke();AfterEach?.Invoke();return true;
         }
         public OutputSnapshot Snapshot()=>new("processing-sink","Ready",0,0,Frames,0,0,null,null);public ValueTask DisposeAsync()=>ValueTask.CompletedTask;
     }

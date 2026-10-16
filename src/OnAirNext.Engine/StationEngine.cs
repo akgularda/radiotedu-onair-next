@@ -10,7 +10,11 @@ public sealed partial class StationEngine : IStationSession
     private readonly IReadOnlyList<IProgramOutput> _outputs;
     private readonly EventJournal _journal;
     private readonly IPlayoutPlanner? _planner;
-    private PlayoutSelection? _selection,_nextSelection;
+    private readonly IBrandingSource? _branding;
+    private BrandingProgress _preparedBranding = null!;
+    private BrandingRotation? _brandingPool;
+    private readonly HashSet<string> _failedBrandingAssets = new(StringComparer.Ordinal);
+    private PlayoutSelection? _selection;
     private readonly string _sessionId=Guid.NewGuid().ToString("N");
     private long _itemSamples,_clockStart,_preparedSamples;
     private bool _recovered;
@@ -18,7 +22,8 @@ public sealed partial class StationEngine : IStationSession
     private int _refreshNext;
     private readonly CancellationTokenSource _stop=new();
     private Task? _run;
-    private MediaDecoder? _decoder,_next;
+    private MediaDecoder? _decoder;
+    private PreparedSource? _nextSource,_secondBrand,_musicFallback;
     private PcmBlock? _decoded;
     private int _decodedOffset,_index;
     private bool _announced;
@@ -37,15 +42,17 @@ public sealed partial class StationEngine : IStationSession
     public LiveInput Live {get;}=new();
     public Task Completion=>_run??Task.CompletedTask;
 
-    public StationEngine(string ffmpeg,StationSettings settings,EventJournal journal,IReadOnlyList<IProgramOutput>? outputs=null,IPlayoutPlanner? planner=null)
+    public StationEngine(string ffmpeg,StationSettings settings,EventJournal journal,IReadOnlyList<IProgramOutput>? outputs=null,IPlayoutPlanner? planner=null,
+        IBrandingSource? branding=null)
     {
         if(string.IsNullOrWhiteSpace(settings.Id))throw new ArgumentException("Station ID is required.");
         if(settings.Playlist.Count==0&&planner is null)throw new ArgumentException("An approved nonempty playlist is required.");
         if(settings.Outputs.Select(x=>x.Id).Distinct().Count()!=settings.Outputs.Count)throw new ArgumentException("Output IDs must be unique.");
         if(settings.Outputs.Select(x=>(x.Host,x.Port,x.Mount)).Distinct().Count()!=settings.Outputs.Count)throw new ArgumentException("Duplicate source ownership is prohibited.");
-        _ffmpeg=ffmpeg;_settings=settings;_journal=journal;_planner=planner;
+        _ffmpeg=ffmpeg;_settings=settings;_journal=journal;_planner=planner;_branding=branding;
         _outputs=outputs??settings.Outputs.Select(x=>(IProgramOutput)new IcecastOutput(ffmpeg,x)).ToArray();
         _releasedOutputs=new bool[_outputs.Count];
+        if(_branding is not null)_branding.Changed+=RefreshNext;
     }
     public async Task StartAsync()
     {
@@ -78,21 +85,27 @@ public sealed partial class StationEngine : IStationSession
         try
         {
             var saved=await _journal.PrepareRecoveryAsync(_settings.Id);await _journal.RecoverLoudnessAsync(_settings.Id);
+            if(saved is { HoldsRotation:true,Item:not null }&&(saved.Item.Kind is ContentKind.Jingle or ContentKind.Sweeper))
+            {
+                var approved=_branding?.Snapshot()?.ResolveRecovery(saved.Item);
+                if(approved is null)saved=await _journal.DiscardUnavailableHeldRecoveryAsync(_settings.Id,saved.OccurrenceId);
+                else saved=saved with{Item=approved};
+            }
+            _preparedBranding=(await _journal.BrandingProgressAsync(_settings.Id)).Validate();
             if(saved is not null)
             {
                 _index=saved.RotationIndex;_samples=saved.ProgramSamples;_lastCheckpoint=saved;
                 if(saved.State is "RestartPending" or "Stopped"&&saved.Item is not null)
                 {
-                    _selection=new(saved.Item,saved.QueueEntryId);_previousOccurrence=saved.Announced?saved.OccurrenceId:saved.PreviousOccurrenceId;
+                    _selection=new(saved.Item,saved.QueueEntryId,saved.HoldsRotation);_previousOccurrence=saved.Announced?saved.OccurrenceId:saved.PreviousOccurrenceId;
                     _itemSamples=0;_announced=false;_recovered=true;
                 }
             }
             _preparedSamples=_samples;_clockStart=_samples;
             if(_selection is null&&_planner is null&&!_settings.Repeat&&_index>=_settings.Playlist.Count){_exhausted=true;return;}
             _selection??=Select(_index);TrackSelection(_selection);
-            OpenCurrentDecoder();PrepareNext();
-            if(_decoder is not null)await _decoder.Ready.WaitAsync(TimeSpan.FromSeconds(15),_stop.Token);
-            if(_next is not null)await _next.Ready.WaitAsync(TimeSpan.FromSeconds(15),_stop.Token);
+            OpenCurrentDecoder();await PrepareNextAsync();
+            await Task.WhenAll(WaitCurrentReadyAsync(),WaitPreparedReadyAsync(IsBranding(_nextSource?.Selection)?_musicFallback:_nextSource));
             if(await _journal.HasPendingSkipAsync(_settings.Id,_occurrence))_requestedSkips.TryAdd(_occurrence,0);
             frame=await RenderNextAsync(_stop.Token);
             _anchor=DateTimeOffset.UtcNow.AddSeconds(-(double)_samples/AudioFormat.SampleRate);
@@ -151,19 +164,27 @@ public sealed partial class StationEngine : IStationSession
         {
             if(_disposed)return;await _stop.CancelAsync();
             if(_run is not null){try{await _run;}catch(Exception){}}
-            await ReleaseResourcesAsync();Live.Dispose();_stop.Dispose();_disposed=true;
+            await ReleaseResourcesAsync();if(_branding is not null)_branding.Changed-=RefreshNext;
+            Live.Dispose();_stop.Dispose();_disposed=true;
         }
         finally{_disposeGate.Release();}
     }
     private async Task ReleaseResourcesAsync()
     {
         _decoded?.Dispose();_decoded=null;var pending=new List<Task>{DrainAuditAsync()};
-        if(_decoder is not null)pending.Add(ReleaseDecoderAsync(_decoder,false));
-        if(_next is not null)pending.Add(ReleaseDecoderAsync(_next,true));
+        if(_decoder is not null)pending.Add(ReleaseCurrentDecoderAsync(_decoder));
+        if(_nextSource is not null)pending.Add(ReleasePreparedSourceAsync(_nextSource,0));
+        if(_secondBrand is not null)pending.Add(ReleasePreparedSourceAsync(_secondBrand,1));
+        if(_musicFallback is not null)pending.Add(ReleasePreparedSourceAsync(_musicFallback,2));
         if(_loudness is not null)pending.Add(_loudness.DisposeAsync().AsTask());
         for(var i=0;i<_outputs.Count;i++)if(!_releasedOutputs[i])pending.Add(ReleaseOutputAsync(i));
         await Task.WhenAll(pending);
     }
-    private async Task ReleaseDecoderAsync(MediaDecoder decoder,bool next){await decoder.DisposeAsync();if(next)_next=null;else _decoder=null;}
+    private async Task ReleaseCurrentDecoderAsync(MediaDecoder decoder){await decoder.DisposeAsync();_decoder=null;}
+    private async Task ReleasePreparedSourceAsync(PreparedSource source,int slot)
+    {
+        if(source.Decoder is not null)await source.Decoder.DisposeAsync();
+        if(slot==0)_nextSource=null;else if(slot==1)_secondBrand=null;else _musicFallback=null;
+    }
     private async Task ReleaseOutputAsync(int index){await _outputs[index].DisposeAsync();_releasedOutputs[index]=true;}
 }

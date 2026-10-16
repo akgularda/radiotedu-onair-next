@@ -70,7 +70,11 @@ public sealed record StationSettings(string Id, IReadOnlyList<MediaItem> Playlis
 public sealed record PlaybackEvent(string EventId, string OccurrenceId, string StationId, string Type, string ItemId,
     string Artist, string Title, ContentKind Kind, DateTimeOffset AtUtc, long SamplePosition, string Detail = "", string? QueueEntryId = null, string? PreviousOccurrenceId = null, string TimingQuality = "sample_clock",
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] SourceGain? SourceGain = null);
-public sealed record PlayoutSelection(MediaItem Item, string? QueueEntryId = null);
+public sealed record PlayoutSelection(MediaItem Item, string? QueueEntryId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool HoldsRotation = false)
+{
+    [JsonIgnore] public bool AdvancesRotation => QueueEntryId is null && !HoldsRotation;
+}
 public interface IPlayoutPlanner
 {
     int? AvailableItems => null;
@@ -83,7 +87,8 @@ public interface IPlayoutPlanner
 }
 public sealed record PlayoutCheckpoint(string StationId, string State, int RotationIndex, MediaItem? Item,
     string OccurrenceId, long ItemSamples, long ProgramSamples, bool Announced, DateTimeOffset SavedAtUtc,
-    string? QueueEntryId = null, string? SessionId = null, string? PreviousOccurrenceId = null);
+    string? QueueEntryId = null, string? SessionId = null, string? PreviousOccurrenceId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool HoldsRotation = false);
 public sealed record OutputSnapshot(string Id, string State, long EncoderStarts, long Connections, long FramesWritten,
     long DroppedBlocks, int QueuedBlocks, int? EncoderPid, string? LastError);
 public sealed record PlayoutItemSnapshot(string Id, string Artist, string Title, ContentKind Kind, double? DurationSeconds);

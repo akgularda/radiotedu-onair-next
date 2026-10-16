@@ -32,9 +32,11 @@ public sealed partial class StationEngine
         if(_boundaries.Count>=MaximumPreparedEntries)throw new InvalidOperationException("Prepared event ownership exceeded its bounded window.");
         var between=type is "ended" or "skipped" or "failed" or "decode_failed";
         var cursor=PreparedCursor();
+        _preparedBranding=_preparedBranding.Project(cursor.Selection.Item.Kind,type);
         var checkpoint=new PlayoutCheckpoint(_settings.Id,between?"BetweenItems":"Playing",
-            _index+(between&&_selection?.QueueEntryId is null?1:0),between?null:_selection?.Item,_occurrence,
-            between?0:_itemSamples,position,!between&&_announced,default,between?null:_selection?.QueueEntryId,_sessionId,_previousOccurrence);
+            _index+(between&&_selection?.AdvancesRotation==true?1:0),between?null:_selection?.Item,_occurrence,
+            between?0:_itemSamples,position,!between&&_announced,default,between?null:_selection?.QueueEntryId,_sessionId,_previousOccurrence,
+            !between&&_selection?.HoldsRotation==true);
         _boundaries.Enqueue(new(type,position,detail,cursor,checkpoint));
     }
     // Start at the end of the published span is still unheard. Terminal at that end belongs to the published span.
@@ -78,13 +80,13 @@ public sealed partial class StationEngine
         var occurrence=Volatile.Read(ref _audible)?.Occurrence;
         var next=_slices.FirstOrDefault(x=>x.Cursor.Occurrence!=occurrence)?.Cursor.Selection.Item;
         if(next is null&&_selection is not null&&_occurrence!=occurrence)next=_selection.Item;
-        next??=_nextSelection?.Item;Volatile.Write(ref _visibleNext,next);
+        next??=_nextSource?.Selection.Item;Volatile.Write(ref _visibleNext,next);
     }
     private PlayoutCheckpoint AudibleCheckpoint(string state)
     {
         var cursor=Volatile.Read(ref _audible);
         if(cursor is not null)return new(_settings.Id,state,cursor.RotationIndex,cursor.Selection.Item,cursor.Occurrence,
-            cursor.ItemSamples,_samples,true,DateTimeOffset.UtcNow,cursor.Selection.QueueEntryId,_sessionId,cursor.PreviousOccurrence);
+            cursor.ItemSamples,_samples,true,DateTimeOffset.UtcNow,cursor.Selection.QueueEntryId,_sessionId,cursor.PreviousOccurrence,cursor.Selection.HoldsRotation);
         return (_lastCheckpoint??new(_settings.Id,"BetweenItems",_index,null,"",0,_samples,false,default,SessionId:_sessionId))
             with{ProgramSamples=_samples,SavedAtUtc=DateTimeOffset.UtcNow};
     }
@@ -92,7 +94,7 @@ public sealed partial class StationEngine
     {
         var cursor=Volatile.Read(ref _audible);if(cursor is null)return;
         var item=cursor.Selection.Item;var checkpoint=AudibleCheckpoint(type=="interrupted"?"Stopped":"BetweenItems");
-        if(type!="interrupted")checkpoint=checkpoint with{RotationIndex=cursor.RotationIndex+(cursor.Selection.QueueEntryId is null?1:0),Item=null,ItemSamples=0,Announced=false,QueueEntryId=null};
+        if(type!="interrupted")checkpoint=checkpoint with{RotationIndex=cursor.RotationIndex+(cursor.Selection.AdvancesRotation?1:0),Item=null,ItemSamples=0,Announced=false,QueueEntryId=null,HoldsRotation=false};
         var entry=new PlaybackEvent(Guid.NewGuid().ToString("N"),cursor.Occurrence,_settings.Id,type,item.Id,item.Artist,item.Title,
             item.Kind,_anchor.AddSeconds((double)_samples/AudioFormat.SampleRate),_samples,detail,cursor.Selection.QueueEntryId,cursor.PreviousOccurrence,
             SourceGain:SourceNormalization.Decide(item.Loudness));

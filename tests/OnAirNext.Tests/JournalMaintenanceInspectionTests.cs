@@ -60,6 +60,21 @@ public sealed class JournalMaintenanceInspectionTests
         Assert.Equal(database,afterDatabase);Assert.Equal(wal,afterWal);
     }
     [Fact]
+    public async Task UnfinishedAutomaticBrandingRejectsMaintenanceWithoutRewritingRecovery()
+    {
+        var path=await CreateAsync();
+        await using(var journal=new EventJournal(path))
+        {
+            var item=new MediaItem("j","synthetic.wav","Fixture","Identifier",ContentKind.Jingle);
+            await journal.SaveCheckpointAsync(new("1","Stopped",3,item,"unfinished",960,960,true,DateTimeOffset.UtcNow,HoldsRotation:true));
+            await Assert.ThrowsAsync<InvalidOperationException>(()=>journal.RequireRecoveryReaderAsync(null));
+            await journal.RequireRecoveryReaderAsync([RecoveryCompatibility.HeldRotationFeature]);
+        }
+        var before=await File.ReadAllBytesAsync(path);
+        Assert.Throws<InvalidOperationException>(()=>JournalMaintenanceInspection.Read(path,Ids));
+        Assert.Equal(before,await File.ReadAllBytesAsync(path));
+    }
+    [Fact]
     public async Task ArbitraryOrRepeatedRosterIsRejectedBeforeOpeningTheJournal()
     {
         var path=await CreateAsync();Assert.Throws<ArgumentException>(()=>JournalMaintenanceInspection.Read(path,["1"]));

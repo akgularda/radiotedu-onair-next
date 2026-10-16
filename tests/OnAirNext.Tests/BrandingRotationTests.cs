@@ -100,7 +100,8 @@ public sealed class BrandingRotationTests
     {
         var rotation = new BrandingRotation(Enabled, Assets);
         Assert.Equal("jingle-b", rotation.Decide(new("station", 2, 0, 1, 0)).Item!.Id);
-        Assert.Throws<ArgumentNullException>(() => rotation.Decide(null!));
+        Assert.Throws<ArgumentNullException>(() => rotation.Decide((BrandingCadence)null!));
+        Assert.Throws<ArgumentNullException>(() => rotation.DecideProjected(null!));
     }
 
     [Theory]

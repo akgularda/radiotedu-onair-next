@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using System.Text.Json;
 
 namespace OnAirNext.Engine;
 
@@ -34,6 +35,11 @@ public static class JournalMaintenanceInspection
         }
         if(stations.Count!=8||stations.Select(s=>s.StationId).Distinct(StringComparer.Ordinal).Count()!=8)
             throw new InvalidDataException("The maintenance journal must retain all eight explicitly stopped channels.");
+        using var checkpoints=connection.CreateCommand();checkpoints.CommandText="SELECT payload FROM playout_checkpoints";
+        using(var reader=checkpoints.ExecuteReader())
+            while(reader.Read())
+                RecoveryCompatibility.RequireNoHeldMaintenance(JsonSerializer.Deserialize<PlayoutCheckpoint>(reader.GetString(0))
+                    ??throw new InvalidDataException("A retained checkpoint is empty."));
         using var check=connection.CreateCommand();check.CommandText="PRAGMA quick_check";
         using(var reader=check.ExecuteReader())
             if(!reader.Read()||reader.IsDBNull(0)||reader.GetString(0)!="ok"||reader.Read())
