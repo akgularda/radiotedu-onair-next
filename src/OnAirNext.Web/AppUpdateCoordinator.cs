@@ -84,7 +84,7 @@ internal sealed class AppUpdateCoordinator:IAsyncDisposable
         lock(_gate)
         {
             if(!_operation.IsCompleted)throw new InvalidOperationException("Wait for the current application update operation.");
-            _phase="Checking";_detail="Reading package, ownership, stopped channel states and unchanged codec runtime. No service is changed during review.";
+            _phase="Checking";_detail="Reading package, ownership, stopped channel states and unchanged codec runtime. Windows may request administrator approval to verify the exact service process. No service is changed during review.";
             _operation=Task.Run(PrepareCoreAsync);
         }
     }

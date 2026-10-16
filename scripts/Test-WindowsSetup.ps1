@@ -124,6 +124,32 @@ try{
  Check 'External console prepares a read-back update review through its authenticated route' ($uiReview.phase -eq 'Review' -and $uiReview.canApply -and $uiReview.review.id -match '^[a-f0-9]{32}$')
  $savedReview=Join-Path $env:LOCALAPPDATA ('RadioTEDU/OnAirNext-Dev/browser-console/app-updates/'+$uiReview.review.id+'.json')
  $review=Get-Content -LiteralPath $savedReview -Raw|ConvertFrom-Json
+ # Exercise the approved read-only helper using the already elevated disposable runner.
+ # Actual filtered-token UAC/mouse acceptance remains a target-PC requirement.
+ $approvalFolder=Join-Path $env:LOCALAPPDATA 'RadioTEDU/OnAirNext-Dev/browser-console/access/update-reviews'
+ $null=New-Item -ItemType Directory -Path $approvalFolder -Force
+ $approvalId=[Guid]::NewGuid().ToString('N');$approvalPath=Join-Path $approvalFolder ($approvalId+'.request.json');$approvalResult=Join-Path $approvalFolder ($approvalId+'.result.json')
+ $approvalRequest=@{Id=$approvalId;OperatorSid=$plan.OperatorSid;PackageSha256=(Get-FileHash -LiteralPath (Join-Path $fixture 'bundle.json') -Algorithm SHA256).Hash}
+ $approvalRequest|ConvertTo-Json|Set-Content -LiteralPath $approvalPath -Encoding utf8NoBOM
+ $approvalHash=(Get-FileHash -LiteralPath $approvalPath -Algorithm SHA256).Hash
+ $null=Run $setup @('--prepare-update-approved',$approvalPath,$approvalHash)
+ $approved=Get-Content -LiteralPath $approvalResult -Raw|ConvertFrom-Json
+ Check 'Approved read-only helper returns the original operator and exact service incarnation' ($approved.Id -eq $approvalId -and -not $approved.Error -and $approved.Review.OperatorSid -eq $plan.OperatorSid -and $approved.Review.ServiceProcessId -eq $service.ProcessId -and $approved.Review.ServiceStartedAtUtc -eq $review.ServiceStartedAtUtc)
+ Check 'Approved review binds the requested package without changing installed configuration' ($approved.Review.Files.Replacement.BundleSha256 -eq $approvalRequest.PackageSha256 -and (Get-FileHash -LiteralPath (Join-Path $data 'host.json') -Algorithm SHA256).Hash -eq $before)
+ $approvalResultHash=(Get-FileHash -LiteralPath $approvalResult -Algorithm SHA256).Hash
+ $approvalReplayRejected=$false;try{$null=Run $setup @('--prepare-update-approved',$approvalPath,$approvalHash)}catch{$approvalReplayRejected=$true}
+ Check 'Approved request replay retains its original immutable result' ($approvalReplayRejected -and (Get-FileHash -LiteralPath $approvalResult -Algorithm SHA256).Hash -eq $approvalResultHash)
+ foreach($badKind in @('foreign-operator','changed-package')){
+  $badId=[Guid]::NewGuid().ToString('N');$badPath=Join-Path $approvalFolder ($badId+'.request.json')
+  $badRequest=@{Id=$badId;OperatorSid=$plan.OperatorSid;PackageSha256=$approvalRequest.PackageSha256}
+  if($badKind -eq 'foreign-operator'){$badRequest.OperatorSid='S-1-5-19'}else{$badRequest.PackageSha256=('b'*64)}
+  $badRequest|ConvertTo-Json|Set-Content -LiteralPath $badPath -Encoding utf8NoBOM
+  $badHash=(Get-FileHash -LiteralPath $badPath -Algorithm SHA256).Hash;$badRejected=$false
+  try{$null=Run $setup @('--prepare-update-approved',$badPath,$badHash)}catch{$badRejected=$true}
+  Check ('Approved review rejects '+$badKind+' before publishing a result') ($badRejected -and -not (Test-Path -LiteralPath (Join-Path $approvalFolder ($badId+'.result.json'))))
+ }
+ $afterApproval=Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")
+ Check 'All approved-review cases leave the same running service and stopped configuration' ($afterApproval.ProcessId -eq $service.ProcessId -and $afterApproval.State -eq 'Running' -and (Get-FileHash -LiteralPath (Join-Path $data 'host.json') -Algorithm SHA256).Hash -eq $before)
  Close-ExternalFixtureConsole
  Check 'Read-only maintenance review binds both manifests and schema-one rollback contract' ($review.Files.Original.BundleSha256 -eq $plan.BundleSha256 -and $review.Files.Replacement.BundleSha256 -eq (Get-FileHash -LiteralPath (Join-Path $fixture 'bundle.json') -Algorithm SHA256).Hash -and $review.JournalSchemaVersion -eq 1)
  Check 'Read-only review retains original operator configuration and exact service process' ($review.OperatorSid -eq $plan.OperatorSid -and $review.ConfigurationSha256 -eq $before -and $review.ServiceProcessId -eq $service.ProcessId -and (Get-FileHash -LiteralPath (Join-Path $data 'host.json') -Algorithm SHA256).Hash -eq $before)

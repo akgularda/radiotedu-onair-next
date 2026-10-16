@@ -19,8 +19,17 @@ try
         WindowsOwnedJob.AttachCurrentProcess();
         using var deadline=new CancellationTokenSource(TimeSpan.FromMinutes(3));
         var root=Directory.GetParent(Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory))!.FullName;
-        var review=await AppUpdatePreparation.PrepareAsync(root,deadline.Token);
+        AppUpdateReview review;
+        try{review=await AppUpdatePreparation.PrepareAsync(root,deadline.Token);}
+        catch(Exception error)when(WindowsReviewElevation.NeedsApproval(error))
+        {review=await WindowsReviewElevation.PrepareAsync(root,deadline.Token);}
         Console.WriteLine(JsonSerializer.Serialize(review));return 0;
+    }
+    if(args.Length==3&&args[0]=="--prepare-update-approved")
+    {
+        WindowsOwnedJob.AttachCurrentProcess();
+        using var deadline=new CancellationTokenSource(TimeSpan.FromMinutes(3));
+        return await WindowsReviewElevation.RunAsync(args[1],args[2],deadline.Token);
     }
     if(args.Length==3&&args[0]=="--prepare")
     {
@@ -79,8 +88,8 @@ try
 }
 catch(Exception error)
 {
-    var message=error is ArgumentException or InvalidOperationException ? error.Message : "Setup could not complete. Check the reviewed package, runtime files, permissions and free disk space. Existing broadcasts were not taken over.";
-    if(args.Length>0&&args[0] is "--prepare" or "--prepare-update")Console.WriteLine(JsonSerializer.Serialize(new{error=message}));
+    var message=args.Length>0&&args[0] is "--prepare-update" or "--prepare-update-approved" ? WindowsReviewElevation.FailureMessage(error) : error is ArgumentException or InvalidOperationException ? error.Message : "Setup could not complete. Check the reviewed package, runtime files, permissions and free disk space. Existing broadcasts were not taken over.";
+    if(args.Length>0&&args[0] is "--prepare" or "--prepare-update" or "--prepare-update-approved")Console.WriteLine(JsonSerializer.Serialize(new{error=message}));
     else if(args.Length==0||args[0]=="--open-console")SetupMessage.Show(message);
     return 1;
 }
