@@ -18,6 +18,8 @@ The Windows packaging job also prepares a plan against the actual codec artifact
 
 Legacy installation plan serialization is unchanged. Application updates normalize the original runtime paths for installed-file verification and preserve that exact inventory. This fresh-setup change does not supplement a previously installed flat runtime.
 
+The first full-inventory attempt (`8e891b9`, run 38943510328) passed 312 unit cases and the actual 20-file provider preparation, but its synthetic installer fixture failed before installing anything. The diagnostic follow-up (`9d2ded9`, run 38945249579) exposed `Unexpected runtime file`: the fixture had recursively included framework DLLs under bin/runtimes in its codec manifest. Provider binaries must be directly under bin. The correction narrows that fixture inventory, asserts the boundary before preparation and adds a nested-DLL rejection case; product validation is retained. Fresh complete qualification is required. [Failure evidence](../artifacts/evidence/complete-runtime-setup-first-failure-20261016.json).
+
 ## Qualification boundary
 
 The Windows job performs real AAC-LC 192 kb/s, libfdk HE-AACv2 64 kb/s and 24-bit Ogg FLAC encodes from deterministic stereo 48 kHz float PCM. It probes the actual profiles, stereo/sample rate and FLAC bit depth, then decodes AAC explicitly with FFmpeg's native AAC decoder and measures each decoded file with ebur128. It preserves the tool diagnostics and structured result on failure as well as success. There is no alternate-codec fallback.

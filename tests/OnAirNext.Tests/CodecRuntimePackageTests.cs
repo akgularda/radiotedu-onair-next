@@ -28,7 +28,7 @@ public sealed class CodecRuntimePackageTests
     public void Partial_provider_cannot_pass_as_a_complete_package(string missing)=>Assert.Throws<ArgumentException>(()=>CodecRuntimePackage.ParseReference(Reference(Paths.Where(x=>x!=missing).Select(Item).ToArray())));
     [Fact] public void Source_build_identity_cannot_disagree_with_its_declared_file()=>Assert.Throws<ArgumentException>(()=>CodecRuntimePackage.ParseReference(Reference(scriptHash:new('F',64))));
     [Fact] public void Flattening_rejects_two_sources_for_the_same_installed_binary()=>Assert.Throws<ArgumentException>(()=>SetupPaths.InstalledRuntimeFiles([Item("bin/ffmpeg.exe"),Item("ffmpeg.exe")]));
-    [Theory] [InlineData("Sources/../private.txt")] [InlineData("bin/unknown.exe")] [InlineData("private/credentials.json")]
+    [Theory] [InlineData("Sources/../private.txt")] [InlineData("bin/unknown.exe")] [InlineData("private/credentials.json")] [InlineData("bin/runtimes/win-x64/native/e_sqlite3.dll")]
     public void Provider_cannot_introduce_unlisted_component_paths(string path)=>Assert.Throws<ArgumentException>(()=>CodecRuntimePackage.ParseReference(Reference(Paths.Select(Item).Append(Item(path)).ToArray())));
     [Fact] public void Existing_flat_plan_bytes_remain_the_same_after_runtime_mapping()
     {
