@@ -38,6 +38,17 @@ public sealed class UpdateSwap
         var sorted=right.ToDictionary(f=>f.Path,StringComparer.OrdinalIgnoreCase);
         return left.All(f=>sorted.TryGetValue(f.Path,out var item)&&f.Bytes==item.Bytes&&f.Sha256.Equals(item.Sha256,StringComparison.OrdinalIgnoreCase));
     }
+    // Metadata verification must also work in the intentional gap between the
+    // two directory renames. These are derived reviewed roots, never a supplied
+    // backup path. InspectAsync independently verifies the complete image bytes.
+    public string RuntimeInventoryRoot()
+    {
+        foreach(var path in new[]{InstallRoot,CandidateRoot,PreviousRoot})
+        {SetupPaths.RequireNoLinks(path);if(File.Exists(path))throw new IOException("A reviewed update folder was replaced by a file.");}
+        if(Directory.Exists(InstallRoot))return InstallRoot;
+        if(Directory.Exists(PreviousRoot)&&Directory.Exists(CandidateRoot))return PreviousRoot;
+        throw new IOException("No reviewed runtime image is available. Retain all update folders and inspect the saved operation.");
+    }
     public static async Task<SetupBundle> VerifyImageAsync(string root,UpdateImage image,CancellationToken token=default)
     {
         Validate(image);root=SetupPaths.CanonicalRoot(root);

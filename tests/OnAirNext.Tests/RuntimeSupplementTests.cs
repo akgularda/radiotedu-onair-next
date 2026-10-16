@@ -118,4 +118,22 @@ public sealed class RuntimeSupplementTests
         _=new UpdateSwap(f.Installed,Guid.NewGuid().ToString("N"),new(new('A',64),effective),new(new('B',64),effective.ToArray()));
         Assert.Equal(before,JsonSerializer.SerializeToUtf8Bytes(f.Initial));Assert.Contains(f.Receipt,protectedReads);Assert.Contains(Path.Combine(f.Installed,"tools","runtime-manifest.json"),protectedReads);
     }
+    [Fact] public async Task Completed_inventory_remains_readable_during_the_release_rename_gap()
+    {
+        var f=Create();await ReceiptAsync(f,"Complete");await ManifestAsync(f);
+        var runtime=SetupPaths.InstalledRuntimeFiles(f.Plan.RuntimeFiles);var swap=new UpdateSwap(f.Installed,Guid.NewGuid().ToString("N"),new(new('A',64),runtime),new(new('B',64),runtime));
+        Assert.Equal(f.Installed,swap.RuntimeInventoryRoot());
+        // Both reviewed paths share the freshly created private fixture parent.
+        Assert.Equal(f.Root,Path.GetDirectoryName(swap.PreviousRoot));Assert.Equal(f.Root,Path.GetDirectoryName(swap.InstallRoot));
+        Directory.CreateDirectory(swap.CandidateRoot);Directory.Move(swap.InstallRoot,swap.PreviousRoot);
+        Assert.Equal(swap.PreviousRoot,swap.RuntimeInventoryRoot());
+        var effective=await RuntimeSupplementInventory.EffectiveAsync(f.Initial,f.InitialHash,f.Receipt,swap.RuntimeInventoryRoot(),_=>{});
+        Assert.Equal(runtime,effective);Assert.False(Directory.Exists(swap.InstallRoot));
+    }
+    [Fact] public async Task A_current_installation_file_cannot_be_hidden_by_a_retained_image()
+    {
+        var f=Create();var runtime=SetupPaths.InstalledRuntimeFiles(f.Plan.RuntimeFiles);var swap=new UpdateSwap(f.Installed,Guid.NewGuid().ToString("N"),new(new('A',64),runtime),new(new('B',64),runtime));
+        Directory.CreateDirectory(swap.PreviousRoot);Directory.CreateDirectory(swap.CandidateRoot);await System.IO.File.WriteAllTextAsync(swap.InstallRoot,"unrelated");
+        Assert.Throws<IOException>(()=>swap.RuntimeInventoryRoot());
+    }
 }
