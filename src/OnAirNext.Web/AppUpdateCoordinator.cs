@@ -40,11 +40,12 @@ internal sealed class AppUpdateCoordinator:IAsyncDisposable
     public async Task<object> StatusAsync(CancellationToken token)
     {
         AppUpdateReview? review;string phase,detail;bool busy;lock(_gate){review=_review;phase=_phase;detail=_detail;busy=!_operation.IsCompleted;}
-        UpdateIntent? intent=null;AppUpdateCompletion? completion=null;object? failure=null;string? readError=null;
+        UpdateIntent? intent=null;AppUpdateCompletion? completion=null;object? failure=null;string? readError=null;var maintenanceBusy=false;
         if(review is not null)
         {
             try
             {
+                maintenanceBusy=UpdateMaintenanceLock.IsHeld(Path.Combine(ServiceEndpoint.DataRoot,"setup.lock"));
                 var folder=Path.Combine(ServiceEndpoint.DataRoot,"updates",review.Files.Id);SetupPaths.RequireNoLinks(folder);
                 if(Directory.Exists(folder))
                 {
@@ -69,12 +70,13 @@ internal sealed class AppUpdateCoordinator:IAsyncDisposable
             catch(Exception error)when(error is IOException or UnauthorizedAccessException or JsonException or ArgumentException)
             {readError="Retained update progress could not be verified. Keep all application images and retry reading this same operation.";}
         }
+        if(maintenanceBusy){busy=true;phase="Maintenance in progress";detail="Another operation owns the installation lock. Read its saved progress and wait for completion before resuming or rolling back.";}
         return new{supported=OperatingSystem.IsWindows(),packageAvailable=Available,busy,phase,detail,readError,
             review=review is null?null:new{id=review.Files.Id,from=review.OriginalSource,to=review.ReplacementSource,package=_package,reviewedPackage=review.PackageRoot,schema=review.JournalSchemaVersion,reviewedAt=review.Files.CreatedAtUtc},
             intent=intent is null?null:new{direction=intent.Direction.ToString(),phase=intent.Phase,revision=intent.Revision,at=intent.UpdatedAtUtc},
             completion=completion is null?null:new{direction=completion.Direction.ToString(),at=completion.VerifiedAtUtc,image=completion.ImageSha256},failure,
             canApply=Available&&!busy&&review is not null&&review.Files.Replacement.BundleSha256.Equals(_packageIdentity,StringComparison.OrdinalIgnoreCase)&&phase!="Review failed"&&intent?.Direction!=UpdateDirection.Rollback&&readError is null,
-            canRollback=Available&&!busy&&review is not null&&review.PackageRoot.Equals(_package,StringComparison.OrdinalIgnoreCase)&&intent is not null&&readError is null};
+            canRollback=Available&&!busy&&review is not null&&review.Files.Replacement.BundleSha256.Equals(_packageIdentity,StringComparison.OrdinalIgnoreCase)&&intent is not null&&readError is null};
     }
     public void Prepare()
     {

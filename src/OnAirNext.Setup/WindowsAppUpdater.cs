@@ -28,7 +28,7 @@ internal static class WindowsAppUpdater
             external.StartsWith(ServiceEndpoint.InstallRoot+".candidate-",StringComparison.OrdinalIgnoreCase)||external.StartsWith(ServiceEndpoint.InstallRoot+".previous-",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("Run this update from the complete external package used for its review.");
         await SetupPaths.VerifyBundleAsync(external,review.Files.Replacement.BundleSha256,CancellationToken.None);
         foreach(var path in new[]{ServiceEndpoint.DataRoot,ServiceEndpoint.ConfigPath,Path.Combine(ServiceEndpoint.DataRoot,"setup-plan.json"),Path.Combine(ServiceEndpoint.DataRoot,"setup-ownership.json"),Path.Combine(ServiceEndpoint.DataRoot,"setup.lock")})WindowsInstaller.AssertProtected(path);
-        await using var setupLock=new FileStream(Path.Combine(ServiceEndpoint.DataRoot,"setup.lock"),FileMode.Open,FileAccess.ReadWrite,FileShare.None);
+        await using var setupLock=await UpdateMaintenanceLock.AcquireAsync(Path.Combine(ServiceEndpoint.DataRoot,"setup.lock"));
         await VerifyRetainedConfigurationAsync(review);
         var updates=Path.Combine(ServiceEndpoint.DataRoot,"updates");WindowsInstaller.CreateProtected(updates,account,false);
         var folder=Path.Combine(updates,id);WindowsInstaller.CreateProtected(folder,account,false);
@@ -136,15 +136,15 @@ internal static class WindowsAppUpdater
         var bytes=bundle.Files.Sum(f=>f.Bytes)+review.Files.Replacement.RuntimeFiles.Sum(f=>f.Bytes);
         if(new DriveInfo(Path.GetPathRoot(swap.InstallRoot)!).AvailableFreeSpace<bytes+2L*1024*1024*1024)throw new IOException("Application maintenance needs the candidate size plus 2 GiB free.");
         WindowsInstaller.CreateProtected(swap.CandidateRoot,account,false);var copied=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
-        foreach(var file in bundle.Files)await WindowsInstaller.CopyAsync(SetupPaths.Resolve(package,file.Path),SetupPaths.Resolve(swap.CandidateRoot,file.Path),file,account,false,copied);
+        foreach(var file in bundle.Files)await WindowsInstaller.CopyAsync(SetupPaths.Resolve(package,file.Path),SetupPaths.Resolve(swap.CandidateRoot,file.Path),file,account,false,copied,2*1024*1024);
         foreach(var file in review.Files.Replacement.RuntimeFiles)
         {
             var source=SetupPaths.Resolve(swap.InstallRoot,"tools/"+file.Path);WindowsInstaller.AssertProtected(source);
             copied[file.Sha256+":"+file.Bytes]=source;
-            await WindowsInstaller.CopyAsync(source,SetupPaths.Resolve(swap.CandidateRoot,"tools/"+file.Path),file,account,false,copied);
+            await WindowsInstaller.CopyAsync(source,SetupPaths.Resolve(swap.CandidateRoot,"tools/"+file.Path),file,account,false,copied,2*1024*1024);
         }
         var manifest=Path.Combine(package,"bundle.json");
-        await WindowsInstaller.CopyAsync(manifest,Path.Combine(swap.CandidateRoot,"bundle.json"),new("bundle.json",new FileInfo(manifest).Length,review.Files.Replacement.BundleSha256),account,false,copied);
+        await WindowsInstaller.CopyAsync(manifest,Path.Combine(swap.CandidateRoot,"bundle.json"),new("bundle.json",new FileInfo(manifest).Length,review.Files.Replacement.BundleSha256),account,false,copied,2*1024*1024);
         await UpdateSwap.VerifyImageAsync(swap.CandidateRoot,review.Files.Replacement);
     }
     private static async Task SnapshotAsync(AppUpdateReview review,string folder,string fullHash,SecurityIdentifier account,string inspector)
@@ -185,7 +185,7 @@ internal static class WindowsAppUpdater
             SetupPaths.RequireNoLinks(source);var bytes=new FileInfo(source).Length;
             if(bytes<1||bytes>536870912||(total+=bytes)>805306368)throw new IOException("The metadata snapshot exceeds its bounded maintenance size.");
             var file=new SetupFile(relative,bytes,await SetupPaths.HashAsync(source));files.Add(file);
-            await WindowsInstaller.CopyAsync(source,SetupPaths.Resolve(snapshot,relative),file,account,false,copied);
+            await WindowsInstaller.CopyAsync(source,SetupPaths.Resolve(snapshot,relative),file,account,false,copied,2*1024*1024);
         }
         await InspectJournalAsync(inspector,Path.Combine(snapshot,"data","journal","playback.db"));
         await WindowsInstaller.WriteNewAsync(manifest,new AppUpdateSnapshot(fullHash,snapshotName,DateTimeOffset.UtcNow,files.ToArray()));

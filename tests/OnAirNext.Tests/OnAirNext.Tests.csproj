@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="../Signals/StereoReferenceSignals.cs" Link="Measurement/StereoReferenceSignals.cs" />
     <Compile Include="../../src/OnAirNext.Setup/SetupModels.cs" Link="Installation/SetupModels.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/UpdateMaintenanceLock.cs" Link="Installation/UpdateMaintenanceLock.cs" />
     <Compile Include="../../src/OnAirNext.Setup/UpdateSwap.cs" Link="Installation/UpdateSwap.cs" />
     <Compile Include="../../src/OnAirNext.Setup/UpdateOperationStore.cs" Link="Installation/UpdateOperationStore.cs" />
     <Compile Include="../../src/OnAirNext.Setup/UpdateAdmission.cs" Link="Installation/UpdateAdmission.cs" />

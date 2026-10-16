@@ -22,3 +22,9 @@ The elevated helper holds the global setup lock. Records and guard files receive
 The new source adds a disposable Windows setup round trip, same-operation retry, rollback from a relocated unchanged package, stale Apply rejection, and a real service command committed after the snapshot and retained after application rollback. This fixture uses an explicit encoder-listing test double and a synthetic replacement manifest identity with the same compiled binaries. It tests filesystem/SCM/current-data behavior; it does not establish compatibility with every older executable, real audio, actual-PC UAC/mouse acceptance, physical power loss or production readiness.
 
 This new execution/UI integration is pending fresh CI and actual mouse acceptance. The previous foundation passed 285 unit cases, 49 service checks and 37 setup checks in run 38911582084, plus scoped real audio and codec qualification. Those results apply to source 55a88ca6 and do not qualify the newer execution/UI code.
+
+## Recovery and IO refinements pending fresh qualification
+
+Newer source detects the retained installation lease using a read-only probe after a console reopen, so another in-progress maintenance operation disables duplicate Apply/Rollback controls. The helper briefly retries a shared-file acquisition rather than racing the UI probe. Physical candidate and metadata copy fallbacks are paced to 2 MiB/s with a pooled buffer and below-normal process priority; existing matching files and immutable hard links need no content copy.
+
+Additional software checks prepare the review through the authenticated external console route, reopen a relocated console to recover the same review, verify rollback availability by manifest identity, hold the real installation lease to confirm duplicate controls are disabled, and read back rollback completion with stale Apply disabled. These refinements require fresh CI and do not replace actual mouse/UAC acceptance.

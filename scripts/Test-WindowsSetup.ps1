@@ -15,6 +15,24 @@ function Run([string]$exe,[string[]]$arguments){
  $process=[Diagnostics.Process]::Start($start);$out=$process.StandardOutput.ReadToEndAsync();$err=$process.StandardError.ReadToEndAsync()
  try{if(-not $process.WaitForExit(240000)){$process.Kill($true);$process.WaitForExit(10000)|Out-Null;throw 'Owned setup fixture process exceeded its deadline'};if($process.ExitCode -ne 0){throw ('Setup process failed ('+$process.ExitCode+'): '+$err.GetAwaiter().GetResult())};return $out.GetAwaiter().GetResult()}finally{$process.Dispose()}
 }
+function Open-ExternalFixtureConsole {
+ if($script:webProcess){if(-not $script:webProcess.HasExited){throw 'Close the owned fixture console before reopening it'};$script:webProcess.Dispose()}
+ $start=[Diagnostics.ProcessStartInfo]::new((Join-Path $fixture 'console/OnAirNext.Web.exe'));$start.UseShellExecute=$false;$start.CreateNoWindow=$true;$start.WorkingDirectory=Join-Path $fixture 'console'
+ $script:webProcess=[Diagnostics.Process]::Start($start);$script:session=$null;$until=[DateTime]::UtcNow.AddSeconds(30)
+ do{
+  try{
+   $descriptor=Join-Path $env:LOCALAPPDATA 'RadioTEDU/OnAirNext-Dev/browser-console/access/console.json';$capability=Get-Content -LiteralPath $descriptor -Raw|ConvertFrom-Json
+   if($capability.ProcessId -ne $script:webProcess.Id){throw 'Waiting for this fixture console identity'}
+   $script:session=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/session' -Headers @{'X-Studio-Bootstrap'=$capability.Token} -SessionVariable fixtureUiSession -TimeoutSec 2
+   $script:setupWebSession=$fixtureUiSession;$script:headers=@{'X-Studio-Token'=$script:session.token;Origin='http://127.0.0.1:18121'};break
+  }catch{};Start-Sleep -Milliseconds 200
+ }while([DateTime]::UtcNow -lt $until)
+ if(-not $script:session.token){throw 'The owned external package console did not authenticate'}
+}
+function Close-ExternalFixtureConsole {
+ $null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/console/close' -Method Post -WebSession $setupWebSession -Headers $headers -TimeoutSec 5
+ if(-not $webProcess.WaitForExit(15000)){throw 'The owned external fixture console did not exit'}
+}
 try{
  if((Test-Path -LiteralPath $install) -or (Test-Path -LiteralPath $data) -or (Get-Service -Name $serviceName -ErrorAction SilentlyContinue)){throw 'The isolated roots or service already exist; fixture refused to overwrite them'}
  $null=New-Item -ItemType Directory -Path $fixture
@@ -99,7 +117,14 @@ try{
  $replacementManifest=Get-Content -LiteralPath (Join-Path $fixture 'bundle.json') -Raw|ConvertFrom-Json
  $replacementManifest.Source=('a'*40)
  $replacementManifest|ConvertTo-Json -Depth 8|Set-Content -LiteralPath (Join-Path $fixture 'bundle.json') -Encoding utf8NoBOM
- $review=(Run $setup @('--prepare-update'))|ConvertFrom-Json
+ Open-ExternalFixtureConsole
+ $null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update/review' -Method Post -WebSession $setupWebSession -Headers $headers -TimeoutSec 5
+ $until=[DateTime]::UtcNow.AddSeconds(60);$uiReview=$null
+ do{$uiReview=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update' -WebSession $setupWebSession -Headers $headers -TimeoutSec 5;if(-not $uiReview.busy){break};Start-Sleep -Milliseconds 200}while([DateTime]::UtcNow -lt $until)
+ Check 'External console prepares a read-back update review through its authenticated route' ($uiReview.phase -eq 'Review' -and $uiReview.canApply -and $uiReview.review.id -match '^[a-f0-9]{32}$')
+ $savedReview=Join-Path $env:LOCALAPPDATA ('RadioTEDU/OnAirNext-Dev/browser-console/app-updates/'+$uiReview.review.id+'.json')
+ $review=Get-Content -LiteralPath $savedReview -Raw|ConvertFrom-Json
+ Close-ExternalFixtureConsole
  Check 'Read-only maintenance review binds both manifests and schema-one rollback contract' ($review.Files.Original.BundleSha256 -eq $plan.BundleSha256 -and $review.Files.Replacement.BundleSha256 -eq (Get-FileHash -LiteralPath (Join-Path $fixture 'bundle.json') -Algorithm SHA256).Hash -and $review.JournalSchemaVersion -eq 1)
  Check 'Read-only review retains original operator configuration and exact service process' ($review.OperatorSid -eq $plan.OperatorSid -and $review.ConfigurationSha256 -eq $before -and $review.ServiceProcessId -eq $service.ProcessId -and (Get-FileHash -LiteralPath (Join-Path $data 'host.json') -Algorithm SHA256).Hash -eq $before)
  $reviewPath=Join-Path $fixture 'update-review.json';$review|ConvertTo-Json -Depth 24|Set-Content -LiteralPath $reviewPath -Encoding utf8NoBOM
@@ -121,6 +146,14 @@ try{
  if([IO.Path]::GetFullPath($fixture) -ne $expectedFixture -or [IO.Path]::GetDirectoryName($relocated) -ne [IO.Path]::GetDirectoryName($expectedFixture) -or (Test-Path -LiteralPath $relocated) -or (Get-Item -LiteralPath $fixture).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Owned package relocation validation failed'}
  Move-Item -LiteralPath $fixture -Destination $relocated
  $fixture=$relocated;$expectedFixture=$relocated;$setup=Join-Path $fixture 'setup/OnAirNext.Setup.exe';$reviewPath=Join-Path $fixture 'update-review.json'
+ Open-ExternalFixtureConsole
+ $reopened=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update' -WebSession $setupWebSession -Headers $headers -TimeoutSec 5
+ Check 'Relocated console recovers the same review and enables rollback by package identity' ($reopened.review.id -eq $review.Files.Id -and $reopened.canRollback)
+ $heldMaintenance=[IO.File]::Open((Join-Path $data 'setup.lock'),[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+ try{
+  $busyMaintenance=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update' -WebSession $setupWebSession -Headers $headers -TimeoutSec 5
+  Check 'Recovered console disables duplicate maintenance while the installation lease is held' ($busyMaintenance.busy -and -not $busyMaintenance.canApply -and -not $busyMaintenance.canRollback)
+ }finally{$heldMaintenance.Dispose()}
  $null=Run $setup @('--rollback-update',$reviewPath,$reviewHash)
  $rollback=Get-Content -LiteralPath (Join-Path $operationFolder 'rollback.completed.json') -Raw|ConvertFrom-Json
  $retained=(Run $lab @('--service-maintenance-check-mark',$marker))|ConvertFrom-Json
@@ -128,6 +161,9 @@ try{
  $rollbackService=Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")
  $staleApplyRejected=$false;try{$null=Run $setup @('--apply-update',$reviewPath,$reviewHash)}catch{$staleApplyRejected=$true}
  Check 'Retained rollback rejects stale Apply without restarting the original service' ($staleApplyRejected -and (Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")).ProcessId -eq $rollbackService.ProcessId)
+ $afterUiRollback=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update' -WebSession $setupWebSession -Headers $headers -TimeoutSec 5
+ Check 'Recovered console reads rollback completion and keeps stale Apply disabled' ($afterUiRollback.completion.direction -eq 'Rollback' -and -not $afterUiRollback.canApply)
+ Close-ExternalFixtureConsole
  $maintenance=(Run $lab @('--service-maintenance-probe'))|ConvertFrom-Json
  foreach($check in $maintenance.Checks){Check $check.Description $check.Passed}
  Check 'Maintenance fixture completed and restored its owned service' $maintenance.Passed

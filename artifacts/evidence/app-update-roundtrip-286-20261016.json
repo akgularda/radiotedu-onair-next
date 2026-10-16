@@ -1,0 +1,105 @@
+{
+  "head": "8bec51d3be4342c3d33f4e7ad6d3722c7a9978fe",
+  "executionSource": "80305808f28147b81c2eb7dc7039b8ce4df22c17",
+  "tree": "c96fc58e69ad59f5ca54e1cd0686ea31b7aa3127",
+  "reviewedAndExecutedTreesMatch": true,
+  "run": 38920181466,
+  "url": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38920181466",
+  "conclusion": "success",
+  "unit": 286,
+  "serviceChecks": 49,
+  "setupChecks": [
+    "Preparation keeps the service and machine roots absent",
+    "Preparation preserves the invoking operator SID",
+    "Installer records the exact plan and source version",
+    "Initial installation contains eight stopped channels and no outputs",
+    "Only the isolated LocalService image is registered",
+    "Installed engine is authenticated and all eight requested states are stopped",
+    "Installed service uses its packaged runtime without global dotnet",
+    "Runtime copy preserves the selected bytes",
+    "Identical immutable runtimes share one installed file identity",
+    "Same reviewed plan retries without replacing configuration or restarting service",
+    "Packaged console starts without Codex or a global SDK",
+    "Anonymous loopback callers cannot obtain an operator session",
+    "Read-only folder browsing requires the authorized console session",
+    "Startup capability is stored without unlisted account access",
+    "Application update status rejects anonymous callers",
+    "Console health exposes the exact compiled build identity",
+    "Installed console exposes update status without enabling in-place maintenance",
+    "Installed console refuses update preparation from its own locked application image",
+    "Per-user shortcut targets the installed launcher with console arguments",
+    "Per-user shortcut targets the installed launcher with console arguments",
+    "Repeating shortcut creation preserves existing matching shortcut bytes",
+    "Visible console-close route releases its own web process",
+    "Closing the console preserves the same running engine service",
+    "Read-only maintenance review rejects the already installed package",
+    "Read-only maintenance review binds both manifests and schema-one rollback contract",
+    "Read-only review retains original operator configuration and exact service process",
+    "Completed snapshot names a retained operation-local attempt",
+    "Reviewed update retains the original image and a verified metadata snapshot",
+    "Completed update retry does not restart the verified service",
+    "Real service commits a new stopped-intent receipt after the snapshot",
+    "Relocated matching package rolls back original bytes while retaining later real journal receipts",
+    "Retained rollback rejects stale Apply without restarting the original service",
+    "Maintenance fixture starts with eight explicitly stopped channels and zero outputs",
+    "A stale reviewed process is rejected before changing service policy or process",
+    "Maintenance gracefully stops the exact reviewed process and verifies the disabled recovery fence",
+    "The packaged host inspects schema one and all eight stopped journal intents while the writer lock stays held",
+    "Windows refuses an explicit start while the maintenance fence is disabled",
+    "Repeated maintenance resumes the same stopped fence without starting the engine",
+    "Maintenance restores owned delayed-auto service and exact 5/15/60-second recovery policy",
+    "Maintenance leaves all installed channel configuration bytes unchanged",
+    "Partial-fence fixture disables only its owned development service",
+    "Partial fence retains the running process and original recovery actions",
+    "A resumed partial fence clears recovery actions and completes a graceful stop",
+    "Maintenance restores owned delayed-auto service and exact 5/15/60-second recovery policy",
+    "Repeated maintenance and restoration retain all configuration bytes",
+    "Maintenance fixture completed and restored its owned service"
+  ],
+  "setupPassed": true,
+  "setupFailures": [],
+  "audioChecks": 365,
+  "referenceSignals": 15,
+  "codecProfiles": 3,
+  "originalArchives": [
+    {
+      "name": "windows-unit-results",
+      "digest": "sha256:7338775a58a57b4f53d7a92cd8fe84c37968aec899aaa9f17a9276186e48be20",
+      "bytes": 70767
+    },
+    {
+      "name": "windows-service-qualification",
+      "digest": "sha256:1675d5f0107205158e2f8dc541e20357b0aac65882ded9c5090b6d22a4023e12",
+      "bytes": 1472
+    },
+    {
+      "name": "windows-setup-qualification",
+      "digest": "sha256:5cc27681dec08383112bb854b7e813859df279caafe0353225e30fe1f05882a8",
+      "bytes": 3078
+    },
+    {
+      "name": "windows-runtime-package-evidence",
+      "digest": "sha256:5bd58600eb64ff463f3773bde2558afe8aad1787c3ed730b6a00d356f93aa364",
+      "bytes": 4238
+    },
+    {
+      "name": "loudness-reference-qualification",
+      "digest": "sha256:9b19956992419e5094dc704b11d601d2949f9faaf8af09f799eb382423648090",
+      "bytes": 2655
+    },
+    {
+      "name": "windows-real-audio-qualification",
+      "digest": "sha256:77f0036cf0fb34474e104968bbe6d9fb6213bb304abbd88f8bd6bf3392b0b3b7",
+      "bytes": 48670
+    },
+    {
+      "name": "windows-codec-qualification",
+      "digest": "sha256:f67da91dc6e5f9103d49e504f11910841f1b304ad07419a9cab0540b391c7dc6",
+      "bytes": 15680
+    }
+  ],
+  "allSevenOriginalArchiveByteCountsAndSha256Verified": true,
+  "scope": "Disposable Windows software fixture. Actual SCM/image update and rollback; unchanged compiled binaries with a synthetic replacement manifest. Real stopped-intent receipt committed after snapshot survives app rollback. Not older-binary compatibility, target-PC, mouse/UAC/physical power or production readiness.",
+  "productionGroupsMigrated": 0,
+  "newerSource": "Recovered-console lease controls, UI-route review/relocation readback and paced copy refinements require fresh qualification."
+}

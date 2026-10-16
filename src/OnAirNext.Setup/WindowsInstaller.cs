@@ -104,8 +104,9 @@ internal static class WindowsInstaller
         if(Directory.Exists(directory)){if(!data)AssertProtected(directory);return;}
         new DirectoryInfo(directory).Create(Security(account,data));
     }
-    internal static async Task CopyAsync(string source,string destination,SetupFile file,SecurityIdentifier account,bool running,Dictionary<string,string> installed)
+    internal static async Task CopyAsync(string source,string destination,SetupFile file,SecurityIdentifier account,bool running,Dictionary<string,string> installed,int maximumBytesPerSecond=0)
     {
+        if(maximumBytesPerSecond!=0&&(maximumBytesPerSecond is <262144 or >16777216))throw new ArgumentOutOfRangeException(nameof(maximumBytesPerSecond));
         SetupPaths.RequireNoLinks(source);SetupPaths.RequireNoLinks(destination);
         if(File.Exists(destination))
         {
@@ -130,7 +131,25 @@ internal static class WindowsInstaller
         {
             await using(var input=new FileStream(source,FileMode.Open,FileAccess.Read,FileShare.Read,65536,FileOptions.Asynchronous|FileOptions.SequentialScan))
             await using(var output=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None,65536,true))
-            {if(input.Length!=file.Bytes)throw new IOException("A source package file changed.");await input.CopyToAsync(output,65536);await output.FlushAsync();output.Flush(true);}
+            {
+                if(input.Length!=file.Bytes)throw new IOException("A source package file changed.");
+                if(maximumBytesPerSecond==0)await input.CopyToAsync(output,65536);
+                else
+                {
+                    var buffer=System.Buffers.ArrayPool<byte>.Shared.Rent(65536);long copied=0;var clock=System.Diagnostics.Stopwatch.StartNew();
+                    try
+                    {
+                        int count;while((count=await input.ReadAsync(buffer.AsMemory(0,65536)))>0)
+                        {
+                            await output.WriteAsync(buffer.AsMemory(0,count));copied+=count;
+                            var delay=TimeSpan.FromSeconds(copied/(double)maximumBytesPerSecond)-clock.Elapsed;
+                            if(delay>TimeSpan.Zero)await Task.Delay(delay);
+                        }
+                    }
+                    finally{System.Buffers.ArrayPool<byte>.Shared.Return(buffer);}
+                }
+                await output.FlushAsync();output.Flush(true);
+            }
             SetOwner(temporary);
             if(!string.Equals(await SetupPaths.HashAsync(temporary),file.Sha256,StringComparison.OrdinalIgnoreCase))throw new IOException("Copied package bytes do not match the reviewed file.");
             File.Move(temporary,destination,false);installed[key]=destination;
