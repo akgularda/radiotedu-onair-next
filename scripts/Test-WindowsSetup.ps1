@@ -13,7 +13,7 @@ function Run([string]$exe,[string[]]$arguments){
  $start=[Diagnostics.ProcessStartInfo]::new($exe);$start.UseShellExecute=$false;$start.CreateNoWindow=$true;$start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
  foreach($argument in $arguments){$start.ArgumentList.Add($argument)}
  $process=[Diagnostics.Process]::Start($start);$out=$process.StandardOutput.ReadToEndAsync();$err=$process.StandardError.ReadToEndAsync()
- try{if(-not $process.WaitForExit(240000)){$process.Kill($true);$process.WaitForExit(10000)|Out-Null;throw 'Owned setup fixture process exceeded its deadline'};if($process.ExitCode -ne 0){throw ('Setup process failed ('+$process.ExitCode+'): '+$err.GetAwaiter().GetResult())};return $out.GetAwaiter().GetResult()}finally{$process.Dispose()}
+ try{if(-not $process.WaitForExit(240000)){$process.Kill($true);$process.WaitForExit(10000)|Out-Null;throw 'Owned setup fixture process exceeded its deadline'};if($process.ExitCode -ne 0){$stdout=$out.GetAwaiter().GetResult();$stderr=$err.GetAwaiter().GetResult();throw ('Setup process failed ('+$process.ExitCode+', '+$arguments[0]+'): '+$stdout.Substring(0,[Math]::Min(2048,$stdout.Length))+' '+$stderr.Substring(0,[Math]::Min(2048,$stderr.Length)))};return $out.GetAwaiter().GetResult()}finally{$process.Dispose()}
 }
 function Open-ExternalFixtureConsole {
  if($script:webProcess){if(-not $script:webProcess.HasExited){throw 'Close the owned fixture console before reopening it'};$script:webProcess.Dispose()}
