@@ -78,6 +78,62 @@ public sealed class LegacyImportPreviews : IAsyncDisposable
             Save(result); return Read(id);
         }
     }
+    public LegacyMusicProof PrepareMusicAssignment(string id, int revision, string targetStation,
+        string selectedFolder, long expectedLibraryRevision)
+    {
+        LegacyImportPreview saved; LegacyStationPreview sourceStation;
+        lock (_gate)
+        {
+            saved = Read(id);
+            if (saved.State != "Mapping saved" || saved.Revision != revision || saved.Backup is null || saved.Mappings is null)
+                throw new InvalidOperationException("Save and review the current channel mapping before assigning its music folder.");
+            LegacyImportPreview.ValidateMappings(saved, saved.Mappings, _targets);
+            var mapping = saved.Mappings.SingleOrDefault(row => row.TargetStationId == targetStation)
+                ?? throw new InvalidOperationException("This channel is not selected in the saved mapping.");
+            sourceStation = saved.Stations!.Single(station => station.Id == mapping.LegacyStationId);
+        }
+        if (string.IsNullOrWhiteSpace(sourceStation.MusicFolder))
+            throw new InvalidOperationException("The former station has no saved music folder. Choose a source directly in Library.");
+        var proof = new LegacyMusicProof(id, revision, sourceStation.Id, sourceStation.Name, targetStation,
+            sourceStation.MusicFolder, EventJournal.NormalizeLibraryPath(selectedFolder), expectedLibraryRevision,
+            saved.SettingsFingerprint!, saved.Backup!, DateTimeOffset.UtcNow);
+        proof.Validate(); RequireCurrentMusicMapping(proof);
+        foreach (var station in saved.Stations!)
+        {
+            var mapped = saved.Mappings!.Any(row => row.LegacyStationId == station.Id && row.TargetStationId is not null);
+            if (station.Id != sourceStation.Id && (mapped || station.PrimaryOutput?.Enabled == true) &&
+                !string.IsNullOrWhiteSpace(station.MusicFolder) && LegacyMusicProof.PathsOverlap(proof.SelectedMusicFolder, station.MusicFolder))
+                throw new InvalidOperationException("Choose this station's own music folder, separate from the other stations.");
+            if (!string.IsNullOrWhiteSpace(station.JingleFolder) && LegacyMusicProof.PathsOverlap(proof.SelectedMusicFolder, station.JingleFolder))
+                throw new InvalidOperationException("Keep jingle folders separate from the music folder. A shared parent would mix branding into song rotation.");
+        }
+        var database = Path.Combine(saved.LegacyRoot, "cleanroom.db"); RequireNoLinks(database);
+        if (!File.Exists(database) || new FileInfo(database).Length > 1073741824) throw new IOException("The former station database is unavailable or exceeds its limit.");
+        // This read is outside the new journal's write transaction and never retrieves source passwords.
+        using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = database, Mode = SqliteOpenMode.ReadOnly, Pooling = false, DefaultTimeout = 2 }.ToString()))
+        {
+            connection.Open(); using var transaction = connection.BeginTransaction(deferred: true);
+            using var command = connection.CreateCommand(); command.Transaction = transaction;
+            command.CommandText = "SELECT s.name,ss.value FROM stations s LEFT JOIN station_settings ss ON ss.station_id=s.id AND ss.key='music_library_folder' WHERE s.id=$id LIMIT 2";
+            command.Parameters.AddWithValue("$id", sourceStation.Id);
+            using var row = command.ExecuteReader();
+            if (!row.Read() || row.IsDBNull(1) || row.GetString(0) != proof.LegacyStationName || row.GetString(1) != proof.OriginalMusicFolder || row.Read())
+                throw new InvalidOperationException("The former station identity or music folder changed. Prepare and review a fresh mapping.");
+        }
+        RequireCurrentMusicMapping(proof); return proof;
+    }
+    public void RequireCurrentMusicMapping(LegacyMusicProof proof)
+    {
+        lock (_gate)
+        {
+            var current = _current;
+            if (current is null || current.Id != proof.PreviewId || current.State != "Mapping saved" ||
+                current.Revision != proof.MappingRevision || current.SettingsFingerprint != proof.SettingsFingerprint ||
+                current.Backup != proof.Backup || current.Mappings?.Any(row => row.LegacyStationId == proof.LegacyStationId && row.TargetStationId == proof.TargetStationId) != true ||
+                current.Stations?.Any(station => station.Id == proof.LegacyStationId && station.Name == proof.LegacyStationName && station.MusicFolder == proof.OriginalMusicFolder) != true)
+                throw new InvalidOperationException("The music mapping changed. Reopen this assignment from the current saved mapping.");
+        }
+    }
     private void Inspect(LegacyImportPreview preview)
     {
         if (OperatingSystem.IsWindows()) Thread.CurrentThread.Priority = ThreadPriority.BelowNormal;

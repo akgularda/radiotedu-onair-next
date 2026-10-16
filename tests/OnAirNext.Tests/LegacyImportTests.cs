@@ -7,7 +7,7 @@ using Xunit;
 
 namespace OnAirNext.Tests;
 
-public sealed class LegacyImportTests
+public sealed partial class LegacyImportTests
 {
     private static (string Root, string Source, string Target) Fixture(bool wrongHash = false)
     {

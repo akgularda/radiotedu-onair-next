@@ -158,7 +158,7 @@ internal static class ServiceProbe
         }
         var backupVerified = preview.State == "Ready for mapping" && preview.Backup is { } backupProof && backupProof.Sha256 == digest && backupProof.Bytes == fixtureBytes.Length;
         if (!backupVerified) throw new InvalidOperationException("Synthetic migration backup was not confirmed: " + preview.State);
-        LegacyStationMapping[] mappings = [new(4, "service-fixture"), new(9, "source-fixture")];
+        LegacyStationMapping[] mappings = [new(4, "source-fixture"), new(9, "service-fixture")];
         response = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "legacy-mapping-save", PreviewId = id, Revision = 0, Mappings = mappings });
         if (!response.GetProperty("accepted").GetBoolean()) throw new InvalidOperationException("Synthetic mapping was not accepted.");
         response = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "legacy-preview", PreviewId = id });
@@ -169,12 +169,82 @@ internal static class ServiceProbe
         mappingReadback &= replay.Revision == 1 && replay.State == "Mapping saved";
         var serialized = JsonSerializer.Serialize(saved);
         var secretsExcluded = !serialized.Contains("synthetic-service-source-secret", StringComparison.Ordinal) && !serialized.Contains("ai_host_enabled", StringComparison.Ordinal);
+        var siblingBefore = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "status" });
+        var siblingIntentBefore = siblingBefore.GetProperty("stations").EnumerateArray().Single(station => station.GetProperty("Id").GetString() == "service-fixture").GetProperty("RequestedRunning").GetBoolean();
+        const string musicTarget = "source-fixture";
+        var chosenMusic = Path.Combine(root, "Chosen-Pop"); Directory.CreateDirectory(chosenMusic);
+        var musicAccessId = Guid.NewGuid().ToString("N");
+        await RequestAsync(new { Id = musicAccessId, Action = "library-source-check", StationId = musicTarget, Path = chosenMusic });
+        string? accessState = null;
+        using (var accessDeadline = new CancellationTokenSource(TimeSpan.FromSeconds(20)))
+        {
+            while (accessState is null or "Checking")
+            {
+                accessDeadline.Token.ThrowIfCancellationRequested();
+                var access = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "library-source-status", StationId = musicTarget, SourceCheckId = musicAccessId });
+                accessState = access.GetProperty("check").GetProperty("State").GetString();
+                if (accessState is null or "Checking") await Task.Delay(25, accessDeadline.Token);
+            }
+        }
+        var musicAccessChecked = accessState == "Accessible";
+        var libraryBefore = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "library-status", StationId = musicTarget });
+        var oldRoot = libraryBefore.GetProperty("page").GetProperty("Root");
+        var expectedRevision = oldRoot.ValueKind == JsonValueKind.Null ? 0 : oldRoot.GetProperty("Revision").GetInt64();
+        var musicCommandId = Guid.NewGuid().ToString("N");
+        var musicCommand = new { Id = musicCommandId, Action = "library-legacy-root", StationId = musicTarget, Path = chosenMusic,
+            PreviewId = id, MappingRevision = saved.Revision, Revision = expectedRevision, SourceCheckId = musicAccessId };
+        var withoutAccess = await RequestAsync(new { Id = musicCommandId, Action = "library-legacy-root", StationId = musicTarget, Path = chosenMusic,
+            PreviewId = id, MappingRevision = saved.Revision, Revision = expectedRevision });
+        var rejectedLibrary = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "library-status", StationId = musicTarget });
+        var rejectedRoot = rejectedLibrary.GetProperty("page").GetProperty("Root");
+        var rejectedRevision = rejectedRoot.ValueKind == JsonValueKind.Null ? 0 : rejectedRoot.GetProperty("Revision").GetInt64();
+        var missingAccessRejected = !withoutAccess.GetProperty("accepted").GetBoolean() && rejectedRevision == expectedRevision;
+        var musicResult = await RequestAsync(musicCommand);
+        if (!musicResult.GetProperty("accepted").GetBoolean()) throw new InvalidOperationException("Music assignment rejected: " + musicResult.GetProperty("error").GetString());
+        var assignedRevision = musicResult.GetProperty("assignment").GetProperty("RootRevision").GetInt64();
+        var libraryAfter = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "library-status", StationId = musicTarget });
+        var musicPage = libraryAfter.GetProperty("page");
+        var musicReadback = assignedRevision == expectedRevision + 1 && musicPage.GetProperty("Root").GetProperty("Path").GetString() == chosenMusic &&
+            musicPage.GetProperty("LegacyMusicAssignment").GetProperty("CommandId").GetString() == musicCommandId;
+        // Empty folder and a software codec fixture: this never claims decoded audio or production readiness.
+        await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "start-station", StationId = musicTarget });
+        var rejectedActive = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "library-legacy-root", StationId = musicTarget, Path = chosenMusic,
+            PreviewId = id, MappingRevision = saved.Revision, Revision = assignedRevision, SourceCheckId = musicAccessId });
+        var activeTargetRejected = !rejectedActive.GetProperty("accepted").GetBoolean() && rejectedActive.GetProperty("error").GetString()!.Contains("stopped", StringComparison.OrdinalIgnoreCase);
+        var replayMusic = await RequestAsync(musicCommand);
+        var intentStatus = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "status" });
+        var musicRetryStable = replayMusic.GetProperty("accepted").GetBoolean() && replayMusic.GetProperty("assignment").GetProperty("RootRevision").GetInt64() == assignedRevision &&
+            intentStatus.GetProperty("stations").EnumerateArray().Single(station => station.GetProperty("Id").GetString() == musicTarget).GetProperty("RequestedRunning").GetBoolean();
+        await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "stop-station", StationId = musicTarget });
+        using (var stopDeadline = new CancellationTokenSource(TimeSpan.FromSeconds(35)))
+        {
+            while (true)
+            {
+                stopDeadline.Token.ThrowIfCancellationRequested();
+                var stopping = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "status" });
+                var stoppedTarget = stopping.GetProperty("stations").EnumerateArray().Single(station => station.GetProperty("Id").GetString() == musicTarget);
+                if (!stoppedTarget.GetProperty("RequestedRunning").GetBoolean() && stoppedTarget.GetProperty("State").GetString() == "Stopped") break;
+                await Task.Delay(100, stopDeadline.Token);
+            }
+        }
+        var siblingAfter = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "status" });
+        var siblingUnchanged = siblingAfter.GetProperty("stations").EnumerateArray().Single(station => station.GetProperty("Id").GetString() == "service-fixture").GetProperty("RequestedRunning").GetBoolean() == siblingIntentBefore;
+        var musicSupported = siblingAfter.GetProperty("controller").GetProperty("capabilities").EnumerateArray().Any(capability => capability.GetString() == "legacy-music-assignment-v1");
         var after = await File.ReadAllBytesAsync(database);
         var unchanged = before.AsSpan().SequenceEqual(System.Security.Cryptography.SHA256.HashData(after));
+        // Deliberate fixture mutation is after the read-only import hash comparison above.
+        using (var connection = new Microsoft.Data.Sqlite.SqliteConnection(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder { DataSource = database, Pooling = false }.ToString()))
+        {
+            connection.Open(); using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE station_settings SET value='changed-by-fixture' WHERE station_id=4 AND key='music_library_folder'"; command.ExecuteNonQuery();
+        }
+        var changedSource = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "library-legacy-root", StationId = musicTarget, Path = chosenMusic,
+            PreviewId = id, MappingRevision = saved.Revision, Revision = assignedRevision, SourceCheckId = musicAccessId });
+        var changedSourceRejected = !changedSource.GetProperty("accepted").GetBoolean() && changedSource.GetProperty("error").GetString()!.Contains("changed", StringComparison.OrdinalIgnoreCase);
         var status = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "status" });
         var unarmed = status.GetProperty("stations").EnumerateArray().All(station => station.GetProperty("State").GetString() == "Stopped" && station.GetProperty("Outputs").GetArrayLength() == 0);
-        Console.WriteLine(JsonSerializer.Serialize(new { backupVerified, mappingReadback, secretsExcluded, sourceUnchanged = unchanged, unarmed, previewId = id }));
-        return backupVerified && mappingReadback && secretsExcluded && unchanged && unarmed ? 0 : 1;
+        Console.WriteLine(JsonSerializer.Serialize(new { backupVerified, mappingReadback, secretsExcluded, sourceUnchanged = unchanged, unarmed, previewId = id, musicAccessChecked, missingAccessRejected, musicSupported, siblingUnchanged, musicReadback, musicRetryStable, activeTargetRejected, changedSourceRejected }));
+        return backupVerified && mappingReadback && secretsExcluded && unchanged && unarmed && musicAccessChecked && missingAccessRejected && musicSupported && siblingUnchanged && musicReadback && musicRetryStable && activeTargetRejected && changedSourceRejected ? 0 : 1;
     }
 
     public static async Task<int> OwnedChildFixtureAsync(bool leaf)

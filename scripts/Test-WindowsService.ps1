@@ -136,6 +136,12 @@ try{
  Check 'LocalService independently verifies a synthetic legacy recovery receipt' $migration.backupVerified
  Check 'Mapping save and retry cross the service boundary with persisted readback' $migration.mappingReadback
  Check 'Migration preview excludes source secrets and AI settings' $migration.secretsExcluded
+ Check 'Music assignment requires an engine-account source-access proof' ($migration.musicAccessChecked -and $migration.missingAccessRejected -and $migration.musicSupported)
+ Check 'Music folder and mapping receipt are read back through the LocalService boundary' $migration.musicReadback
+ Check 'An acknowledged music retry preserves the current running intent and library revision' $migration.musicRetryStable
+ Check 'Music import rejects a target with running intent' $migration.activeTargetRejected
+ Check 'Music assignment preserves another channel persisted intent' $migration.siblingUnchanged
+ Check 'Changed former music source is rejected before an assignment' $migration.changedSourceRejected
  Check 'Migration preparation leaves source data and stopped output ownership unchanged' ($migration.sourceUnchanged -and $migration.unarmed)
 
  Check 'Start intent is durably acknowledged' ((Probe 'start-station').accepted -eq $true)

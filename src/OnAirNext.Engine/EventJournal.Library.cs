@@ -14,7 +14,7 @@ public sealed record LibraryAsset(string Id, string RelativePath, string Artist,
 }
 public sealed record LibraryImport(string Id, string StationId, long Revision, string[] Paths, string State, string? Error);
 public sealed record LibraryPage(LibraryRoot? Root, long Total, long Ready, long Missing,
-    IReadOnlyList<LibraryAsset> Items, int Offset, LibraryImport? Import, long Retired = 0);
+    IReadOnlyList<LibraryAsset> Items, int Offset, LibraryImport? Import, long Retired = 0, LegacyMusicAssignment? LegacyMusicAssignment = null);
 
 public sealed partial class EventJournal
 {
@@ -23,6 +23,8 @@ public sealed partial class EventJournal
         using var cmd = c.CreateCommand(); cmd.Transaction = t;
         cmd.CommandText = """
             CREATE TABLE IF NOT EXISTS library_roots(station_id TEXT PRIMARY KEY,path TEXT NOT NULL,revision INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS library_legacy_music(command_id TEXT PRIMARY KEY,station_id TEXT NOT NULL,revision INTEGER NOT NULL,
+              payload TEXT NOT NULL,payload_hash TEXT NOT NULL,created_utc TEXT NOT NULL,UNIQUE(station_id,revision));
             CREATE TABLE IF NOT EXISTS library_assets(station_id TEXT NOT NULL,revision INTEGER NOT NULL,id TEXT NOT NULL,
               relative_path TEXT NOT NULL,artist TEXT NOT NULL,title TEXT NOT NULL,seconds REAL NOT NULL,
               bytes INTEGER NOT NULL,modified_ticks INTEGER NOT NULL,state TEXT NOT NULL,error TEXT,
@@ -197,7 +199,7 @@ public sealed partial class EventJournal
         using (var r = rows.ExecuteReader()) while (r.Read()) assets.Add(ReadAsset(r));
         using var job = LibraryCommand(c, t, "SELECT id,station_id,revision,payload,state,error FROM library_imports WHERE station_id=$station ORDER BY created_utc DESC,id DESC LIMIT 1", ("$station", station));
         LibraryImport? import; using (var r = job.ExecuteReader()) import = r.Read() ? ReadImport(r) : null;
-        return new(root, total, ready, missing, assets, offset, import, retired);
+        return new(root, total, ready, missing, assets, offset, import, retired, CurrentLegacyMusicAssignment(c, t, root));
     }
 
     public IReadOnlyList<LibraryAsset> LibraryAssets(LibraryRoot root, bool raw = false)

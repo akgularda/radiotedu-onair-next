@@ -82,6 +82,12 @@ internal static class EngineHost
             await using var legacyPreviews = new LegacyImportPreviews(config.DataRoot, config.Stations.Select(station => station.Id),
                 () => coordinator.Snapshot().All(station => station.State == "Stopped" && station.Outputs.Count == 0));
             legacyPreviews.Initialize();
+            void RequireMusicTargetUnarmed(string stationId)
+            {
+                var target = coordinator.Snapshot().SingleOrDefault(station => station.Id == stationId);
+                if (target is null || target.State != "Stopped" || target.RequestedRunning || target.Outputs.Count != 0)
+                    throw new InvalidOperationException("Music migration requires this target channel stopped with no configured outputs. Other channels keep running.");
+            }
             if (serviceMode) WindowsServiceDiagnostics.Stage("controller ready");
             ready();
             Console.WriteLine(JsonSerializer.Serialize(new { state = "controller-ready", config.PipeName, stations = config.Stations.Count, loopbackOnly = true, mode = serviceMode ? "windows-service" : "developer" }));
@@ -108,7 +114,7 @@ internal static class EngineHost
                             case "status":
                                 result = JsonSerializer.Serialize(new { stations = coordinator.Snapshot(),
                                     audit = new { journal.PendingEvents, journal.RejectedEvents, journal.Error },
-                                    children = ChildProcess.ActiveProcesses, controller = new { mode = serviceMode ? "windows-service" : "developer", service = serviceMode ? ServiceEndpoint.Name : null } });
+                                    children = ChildProcess.ActiveProcesses, controller = new { mode = serviceMode ? "windows-service" : "developer", service = serviceMode ? ServiceEndpoint.Name : null, capabilities = new[] { "legacy-music-assignment-v1" } } });
                                 break;
                             case "start-station" or "stop-station" when request.StationId is { } targetStation:
                                 await coordinator.RequestRunningAsync(targetStation, request.Action == "start-station", request.Id);
@@ -147,6 +153,35 @@ internal static class EngineHost
                                 result = JsonSerializer.Serialize(new { accepted = true, check = sourceChecks.Start(sourceStation, sourcePath, request.Id) }); break;
                             case "library-source-status" when request.StationId is { } checkedStation && request.SourceCheckId is { } sourceId:
                                 result = JsonSerializer.Serialize(new { check = sourceChecks.Get(checkedStation, sourceId) }); break;
+                            case "library-legacy-root" when request.StationId is { } musicStation && request.Path is { } musicPath && request.PreviewId is { } musicPreview && request.MappingRevision is >= 1:
+                                var normalizedMusicPath = EventJournal.NormalizeLibraryPath(musicPath);
+                                var previousAssignment = journal.LegacyMusicAssignment(request.Id);
+                                LegacyMusicProof musicProof;
+                                if (previousAssignment is not null)
+                                {
+                                    musicProof = previousAssignment.Proof;
+                                    if (musicProof.PreviewId != musicPreview || musicProof.MappingRevision != request.MappingRevision ||
+                                        musicProof.TargetStationId != musicStation || musicProof.ExpectedLibraryRevision != request.Revision ||
+                                        musicProof.SelectedMusicFolder != normalizedMusicPath)
+                                        throw new InvalidOperationException("This request ID belongs to another saved music assignment.");
+                                }
+                                else
+                                {
+                                    RequireMusicTargetUnarmed(musicStation);
+                                    musicProof = await Task.Factory.StartNew(() =>
+                                    {
+                                        if (OperatingSystem.IsWindows()) Thread.CurrentThread.Priority = ThreadPriority.BelowNormal;
+                                        return legacyPreviews.PrepareMusicAssignment(musicPreview, request.MappingRevision.GetValueOrDefault(),
+                                            musicStation, normalizedMusicPath, request.Revision);
+                                    }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+                                }
+                                await library.SetLegacyMusicRootAsync(musicStation, normalizedMusicPath, request.Id, musicProof, () =>
+                                {
+                                    RequireMusicTargetUnarmed(musicStation);
+                                    sourceChecks.RequireReady(musicStation, normalizedMusicPath, request.SourceCheckId);
+                                    legacyPreviews.RequireCurrentMusicMapping(musicProof);
+                                });
+                                result = JsonSerializer.Serialize(new { accepted = true, assignment = journal.LegacyMusicAssignment(request.Id) }); break;
                             case "library-root" when request.StationId is { } rootStation && request.Path is { } rootPath:
                                 await library.SetRootAsync(rootStation, rootPath, request.Id, serviceMode
                                     ? () => sourceChecks.RequireReady(rootStation, rootPath, request.SourceCheckId) : null);
@@ -212,4 +247,4 @@ internal static class EngineHost
 internal sealed record HostSettings(string Ffmpeg, string DataRoot, string PipeName, List<StationSettings> Stations, string? OperatorSid = null);
 internal sealed record EngineCommand(string Id, string Action, string? StationId, string? Path = null,
     string[]? Paths = null, string? Query = null, int Offset = 0, string? AssetId = null,
-    long Revision = 0, long ExpectedVersion = 0, string? Artist = null, string? Title = null, string? SourceCheckId = null, string? ReportPeriod = null, string? ReportSelection = null, string? ReportId = null, string? PreviewId = null, LegacyStationMapping[]? Mappings = null);
+    long Revision = 0, long ExpectedVersion = 0, string? Artist = null, string? Title = null, string? SourceCheckId = null, string? ReportPeriod = null, string? ReportSelection = null, string? ReportId = null, string? PreviewId = null, LegacyStationMapping[]? Mappings = null, int? MappingRevision = null);

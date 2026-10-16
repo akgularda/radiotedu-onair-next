@@ -58,6 +58,12 @@ public sealed class StationLibrary : IAsyncDisposable
         if (await _journal.SetLibraryRootAsync(station, root, command, authorizeNewAssignment))
         { lock (_publication) { _playback[station] = new(true, [], Interlocked.Increment(ref _version)); Changed?.Invoke(station, false); } Wake(); }
     }
+    public async Task SetLegacyMusicRootAsync(string station, string root, string command, LegacyMusicProof proof, Action authorize)
+    {
+        RequireStation(station);
+        if (await _journal.SetLegacyMusicRootAsync(station, root, command, proof, authorize))
+        { lock (_publication) { _playback[station] = new(true, [], Interlocked.Increment(ref _version)); Changed?.Invoke(station, false); } Wake(); }
+    }
     public async Task ImportAsync(string station, string[] paths, string command, bool uploaded = false)
     {
         RequireStation(station);

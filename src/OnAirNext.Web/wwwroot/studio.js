@@ -218,13 +218,30 @@
   for(const [prefix,dialog,getTarget] of [['asset-editor','asset-editor',()=>state.editTarget],['asset-state','asset-state-dialog',()=>state.assetStateTarget]]){
     $(prefix+'-retry').addEventListener('click',()=>{const saved=pending(),target=getTarget();if(saved&&target&&saved.request.AssetId===target.asset.Id&&saved.request.Revision===target.revision)void submitAsset(saved.request.Action,target,dialog,prefix+'-feedback',{},saved);});
   }
-  function resetLibrary(){text('folder-name','Live folder not loaded');text('folder-path','Connect the engine to view or assign a folder.');text('folder-state','Not connected');text('library-count','No library loaded');text('library-progress','Waiting for engine connection');$('managed-folder').hidden=true;stableEmpty('library-rows',String(fresh()),emptyLibrary);renderUploads();libraryControls();}
+  function resetLibrary(){$('legacy-music-receipt').hidden=true;text('legacy-music-receipt','');text('folder-name','Live folder not loaded');text('folder-path','Connect the engine to view or assign a folder.');text('folder-state','Not connected');text('library-count','No library loaded');text('library-progress','Waiting for engine connection');$('managed-folder').hidden=true;stableEmpty('library-rows',String(fresh()),emptyLibrary);renderUploads();libraryControls();}
   function emptyLibrary(){const row=element('tr'),cell=element('td','table-empty large-empty');cell.colSpan=6;cell.append(icon('folder'),element('strong','','A home for your station’s music'),element('span','','Choose a live folder or add audio files. Original files stay unchanged.'));if(!fresh()){const button=element('button','button subtle','Connect engine');button.append(icon('chevron'));button.addEventListener('click',()=>navigate('system'));cell.append(button);}row.append(cell);return row;}
+  function renderLegacyMusicReceipt(page){
+    const receipt=page?.LegacyMusicAssignment,root=page?.Root;
+    const verified=!!receipt&&receipt.StationId===state.station&&receipt.RootRevision===root?.Revision&&receipt.Proof.SelectedMusicFolder===root.Path;
+    $('legacy-music-receipt').hidden=!verified;
+    text('legacy-music-receipt',verified?'Saved music assignment from '+receipt.Proof.LegacyStationName+' · mapping revision '+receipt.Proof.MappingRevision+' · library revision '+receipt.RootRevision+' · '+clock.format(new Date(receipt.AppliedAtUtc))+' Istanbul. Original source: '+receipt.Proof.OriginalMusicFolder+'. Recovery reference: '+receipt.Proof.Backup.FileName+' · SHA-256 '+receipt.Proof.Backup.Sha256+'. Branding and outputs are separate steps.':'');
+  }
+  async function beginLegacyMusic(preview,station,mapping){
+    if(!fresh()||state.busy||!mapping?.TargetStationId||state.controller?.capabilities?.includes('legacy-music-assignment-v1')!==true)return;
+    const engine=state.engine,target=mapping.TargetStationId,channel=state.stations.find(item=>item.Id===target);
+    if(channel?.State!=='Stopped'||channel.RequestedRunning||channel.Outputs?.length!==0){text('migration-feedback','Stop and disarm only this target channel before importing its music folder.');return;}
+    selectStation(target);navigate('library');await loadLibrary();
+    if(engine!==state.engine||target!==state.station||!state.library?.page||pending())return;
+    state.folderTarget={station:target,engine,legacy:{PreviewId:preview.Id,MappingRevision:preview.Revision,Revision:state.library.page.Root?.Revision??0}};
+    $('folder-mapping-note').hidden=false;
+    text('folder-mapping-note','Music assignment for '+stationName(target)+' from saved mapping revision '+preview.Revision+'. Former source: '+station.MusicFolder+'. You may choose a different station folder below. This does not import branding, configure outputs or start a broadcast.');
+    $('confirm-folder').textContent='Apply music folder';$('folder-dialog').showModal();await browseFolder(station.MusicFolder);
+  }
   async function loadLibrary(){
     if(!fresh())return;const engine=state.engine,station=state.station,query=state.query,offset=state.offset;
-    try{const result=await api('/api/library?'+new URLSearchParams({engine,station,query,offset:String(offset)}));if(engine!==state.engine||station!==state.station||query!==state.query||offset!==state.offset)return;state.library=result;const page=result.page,root=page.Root;text('folder-name',root?'Live music folder':'No folder assigned');text('folder-path',root?.Path??'Add files to create a managed folder, or choose an existing live folder.');$('folder-path').title=root?.Path??'';text('folder-state',result.worker?.State??'Unknown');text('library-count',`${page.Ready??0} validated · ${page.Retired??0} removed · ${page.Total??0} indexed`);text('library-page',page.Items?.length?`${offset+1}–${offset+page.Items.length}`:'0');$('managed-folder').hidden=result.canImportFiles||!root;
+    try{const result=await api('/api/library?'+new URLSearchParams({engine,station,query,offset:String(offset)}));if(engine!==state.engine||station!==state.station||query!==state.query||offset!==state.offset)return;if(result.accepted===false||!result.page)throw new Error(result.error??'Library response is unavailable.');state.library=result;const page=result.page,root=page.Root;renderLegacyMusicReceipt(page);text('folder-name',root?'Live music folder':'No folder assigned');text('folder-path',root?.Path??'Add files to create a managed folder, or choose an existing live folder.');$('folder-path').title=root?.Path??'';text('folder-state',result.worker?.State??'Unknown');text('library-count',`${page.Ready??0} validated · ${page.Retired??0} removed · ${page.Total??0} indexed`);text('library-page',page.Items?.length?`${offset+1}–${offset+page.Items.length}`:'0');$('managed-folder').hidden=result.canImportFiles||!root;
       const rows=(page.Items??[]).map(asset=>{const row=element('tr');row.title=asset.Error??'';const item=element('td');item.append(icon('music'));const title=element('td');title.append(element('span','asset-title',asset.Title),element('span','asset-artist',asset.Artist||'Unknown artist'));const file=element('td','quiet',asset.RelativePath);file.title=asset.RelativePath;const status=element('td');status.append(element('span','asset-state '+asset.State.toLowerCase(),asset.State));if(asset.AnalysisRequested)status.append(element('small','asset-analysis','Analysis queued'));else if(asset.State==='Ready')status.append(element('small','asset-analysis',RadioTeduMeter.sourceGain(asset.Normalization).text));const actions=element('td');const group=element('div','asset-actions');const edit=element('button','button asset-action','Edit');edit.setAttribute('aria-label','Edit metadata for '+asset.Title);edit.addEventListener('click',()=>openAssetEditor(asset));const toggle=element('button','button asset-action',asset.State==='Retired'?'Restore':'Remove');toggle.setAttribute('aria-label',(asset.State==='Retired'?'Restore ':'Remove from rotation: ')+asset.Title);toggle.addEventListener('click',()=>openAssetState(asset));group.append(edit,toggle);actions.append(group);row.append(item,title,file,status,element('td','align-right mono',duration(asset.Seconds)),actions);return row;});if(rows.length)$('library-rows').replaceChildren(...rows);else stableEmpty('library-rows',String(fresh()),emptyLibrary);text('library-progress',[result.worker?.State,result.worker?.Error,page.Import?`Latest import: ${page.Import.State}`:null,page.Import?.Error].filter(Boolean).join(' · '));renderUploads();libraryControls();
-    }catch(error){text('library-progress','Library unavailable: '+error.message);}
+    }catch(error){if(engine!==state.engine||station!==state.station||query!==state.query||offset!==state.offset)return;state.library=null;$('legacy-music-receipt').hidden=true;text('library-progress','Library unavailable: '+error.message);libraryControls();}
   }
   let searchTimer; $('library-search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{state.query=$('library-search').value.trim();state.offset=0;void loadLibrary();},250);});
   $('library-prev').addEventListener('click',()=>{state.offset=Math.max(0,state.offset-50);void loadLibrary();});$('library-next').addEventListener('click',()=>{state.offset+=50;void loadLibrary();});
@@ -282,7 +299,7 @@
     const matched=source?.check?.State==='Accessible'&&source.check.Path===state.folder&&Date.parse(source.check.ExpiresAt)>Date.now();
     $('check-folder-access').disabled=!context||!state.folder||state.busy||source?.submitting||source?.check?.State==='Checking';
     $('confirm-folder').disabled=!context||!matched||state.busy||!!saved;
-    $('folder-retry').hidden=!(saved?.request.Action==='library-root'&&saved.request.Path===state.folder&&folderContext());
+    $('folder-retry').hidden=!(['library-root','library-legacy-root'].includes(saved?.request.Action)&&saved.request.Path===state.folder&&folderContext());
     $('folder-retry').disabled=!context||state.busy;
     if(!folderContext())text('folder-access-info','The channel changed. Close this window and choose the folder again.');
   }
@@ -329,13 +346,24 @@
   }
   $('choose-folder').addEventListener('click',()=>{state.folderTarget={station:state.station,engine:state.engine};$('folder-dialog').showModal();void browseFolder();});
   $('check-folder-access').addEventListener('click',()=>void checkFolderAccess());
-  $('confirm-folder').addEventListener('click',async()=>{
-    if(!folderContext()||!state.folder||state.folderSource?.check?.State!=='Accessible')return;
-    const result=await command('library-root',{Path:state.folder,SourceCheckId:state.folderSource.check.Id});
-    if(result?.accepted)$('folder-dialog').close();else text('folder-access-info',$('action-status').textContent);folderControls();
-  });
-  $('folder-retry').addEventListener('click',async()=>{const saved=pending();if(!folderContext()||saved?.request.Action!=='library-root'||saved.request.Path!==state.folder)return;const result=await command('library-root',{},saved);if(result?.accepted)$('folder-dialog').close();else text('folder-access-info',$('action-status').textContent);folderControls();});
-  $('folder-dialog').addEventListener('close',()=>{state.folderGeneration++;state.folderSource=null;state.folderTarget=null;});
+  async function submitFolder(retry=null){
+    if(!folderContext()||!state.folder||(!retry&&state.folderSource?.check?.State!=='Accessible'))return;
+    const target=state.folderTarget,path=state.folder,legacy=target.legacy??(retry?.request.Action==='library-legacy-root'?retry.request:null);
+    const action=retry?.request.Action??(legacy?'library-legacy-root':'library-root');
+    const result=await command(action,{Path:path,SourceCheckId:state.folderSource?.check?.Id,...(legacy??{})},retry);
+    if(!folderContext()||state.folderTarget!==target)return;
+    if(result?.accepted){
+      if(legacy){const receipt=state.library?.page?.LegacyMusicAssignment,root=state.library?.page?.Root;
+        if(!result.assignment||receipt?.CommandId!==result.assignment.CommandId||receipt.RootRevision!==root?.Revision||
+          receipt.Proof.PreviewId!==legacy.PreviewId||receipt.Proof.MappingRevision!==legacy.MappingRevision||receipt.Proof.SelectedMusicFolder!==root.Path){
+          text('folder-access-info','The command was saved, but the current folder receipt has not been confirmed. Refresh Library before continuing.');folderControls();return;}
+        message('Music folder assignment read back from the journal for '+stationName()+'. The channel remains stopped. Branding and outputs still require their own import.');}
+      $('folder-dialog').close();
+    }else text('folder-access-info',$('action-status').textContent);folderControls();
+  }
+  $('confirm-folder').addEventListener('click',()=>void submitFolder());
+  $('folder-retry').addEventListener('click',()=>{const saved=pending();if(!folderContext()||!['library-root','library-legacy-root'].includes(saved?.request.Action)||saved.request.Path!==state.folder)return;void submitFolder(saved);});
+  $('folder-dialog').addEventListener('close',()=>{state.folderGeneration++;state.folderSource=null;state.folderTarget=null;$('folder-mapping-note').hidden=true;$('confirm-folder').textContent='Use this folder';});
   let setupState=null,setupPath=null,setupParent=null,setupLoading=false,setupInputDirty=false;
   function setupControls(){
     const available=!state.session?.preview&&setupState?.supported&&setupState.packageAvailable;
@@ -379,6 +407,8 @@
   $('setup-refresh').addEventListener('click',()=>void loadSetup());
 
   function migrationControls(){
+    const musicSupported=state.controller?.capabilities?.includes('legacy-music-assignment-v1')===true;
+    $('migration-music-version').hidden=!fresh()||musicSupported;
     const pending=migration.pending?.engine===state.engine?migration.pending:null;
     const connected=fresh()&&!state.session?.preview;
     const unarmed=connected&&state.stations.length>0&&state.stations.every(s=>s.State==='Stopped'&&(s.Outputs??[]).length===0);
@@ -399,11 +429,11 @@
     text('migration-phase',preview.State);
     if(preview.Error)text('migration-feedback',preview.Error);
     else if(preview.State==='Verifying backup')text('migration-feedback','Independently checking the saved recovery file · '+(preview.CheckedBytes/1048576).toFixed(1)+' MiB checked. Playback ownership is unchanged.');
-    else if(preview.State==='Mapping saved')text('migration-feedback','Mapping read back from disk · revision '+preview.Revision+'. No channel has been imported or started.');
+    else if(preview.State==='Mapping saved')text('migration-feedback','Mapping read back from disk · revision '+preview.Revision+'. Review a station’s music folder to apply that assignment separately. Playback ownership is unchanged.');
     else if(preview.State==='Ready for mapping')text('migration-feedback','Recovery checksum matches. Review each proposed channel assignment, then save the mapping.');
     else text('migration-feedback',preview.State==='Inspecting'?'Reading saved legacy settings without changing them.':'A fresh preview is required before continuing.');
     const proof=preview.Backup;text('migration-backup',proof?'Verified recovery file: '+proof.FileName+' · '+proof.Bytes.toLocaleString('en-GB')+' bytes · SHA-256 '+proof.Sha256:'Recovery proof is not confirmed.');
-    const key=state.engine+':'+preview.Id+':'+preview.Revision+':'+!!proof+':'+preview.SettingsFingerprint;
+    const key=state.engine+':'+preview.Id+':'+preview.Revision+':'+!!proof+':'+preview.SettingsFingerprint+':'+(state.controller?.capabilities?.includes('legacy-music-assignment-v1')===true);
     if(key!==migration.key){
       migration.key=key;migration.selects.clear();
       $('migration-rows').replaceChildren(...(preview.Stations??[]).map(station=>{
@@ -415,7 +445,12 @@
         const select=element('select');select.setAttribute('aria-label','Target channel for '+station.Name);const leave=element('option','','Leave with former program');leave.value='';select.append(leave);
         for(const s of state.stations){const option=element('option','',stationName(s.Id));option.value=s.Id;select.append(option);}
         const mapping=preview.Mappings?.find(m=>m.LegacyStationId===station.Id);select.value=mapping?mapping.TargetStationId??'':state.stations.some(s=>s.Id===String(station.Id))?String(station.Id):'';
-        select.disabled=!proof;migration.selects.set(station.Id,select);target.append(select);row.append(identity,folders,output,target);return row;
+        select.disabled=!proof;migration.selects.set(station.Id,select);target.append(select);
+        const music=element('button','button','Review music folder');music.type='button';music.setAttribute('aria-label','Review music folder for '+station.Name);
+        music.disabled=state.controller?.capabilities?.includes('legacy-music-assignment-v1')!==true||preview.State!=='Mapping saved'||!mapping?.TargetStationId||!station.MusicFolder;
+        select.addEventListener('change',()=>{music.disabled=state.controller?.capabilities?.includes('legacy-music-assignment-v1')!==true||preview.State!=='Mapping saved'||!mapping?.TargetStationId||!station.MusicFolder||select.value!==mapping.TargetStationId;});
+        music.addEventListener('click',()=>{if(select.value!==mapping?.TargetStationId){text('migration-feedback','Save the changed mapping before assigning music.');return;}void beginLegacyMusic(preview,station,mapping);});target.append(music);
+        row.append(identity,folders,output,target);return row;
       }));
     }
     $('migration-table').hidden=!(preview.Stations?.length);migrationControls();

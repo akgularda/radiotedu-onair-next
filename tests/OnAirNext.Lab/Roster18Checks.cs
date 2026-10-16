@@ -34,10 +34,12 @@ internal static class Roster18Checks
         var database=Path.Combine(root,"playback.db");
         var probes=new List<Probe>(); var probeStarts=new Dictionary<Probe,long>(); var engines=new List<StationEngine>(); var outputs=new List<OutputSettings>();
         var readings=new List<object>(); result.Details["encodedListeners"]=readings;
-        result.Details["scope"]="Eight synthetic station programs: eight AAC-LC 192, eight libfdk HE-AACv2 64 and two 24-bit Ogg FLAC branches, all 48 kHz stereo. A concurrent annual export includes 10025 synthetic archived attempts seeded before audio. Low-crest sources only. This is not an imported production rate/name map, worst-case encoded headroom, actual-PC resource, 24/72h or UI acceptance.";
+        result.Details["scope"]="Eight synthetic station programs: eight AAC-LC 192, eight libfdk HE-AACv2 64 and two 24-bit Ogg FLAC branches, all 48 kHz stereo. A concurrent annual export includes 10025 synthetic archived attempts seeded before audio. A concurrent metadata-only music assignment exercises the shared journal; its legacy source inspection and UI are separate checks. Low-crest sources only. This is not an imported production rate/name map, worst-case encoded headroom, actual-PC resource, 24/72h or UI acceptance.";
         await using (var journal=new EventJournal(database))
         {
             await SeedReportHistoryAsync(journal);
+            await journal.InitializeLibraryAsync();
+            await journal.InitializeDesiredStateAsync(new("migration-prep", [], [], AutoStart: false));
             await using var resources=new Resources();
             await using var reports=new ReportExports(journal,Enumerable.Range(1,8).Select(index=>"roster-"+index));
             await reports.InitializeAsync();
@@ -68,6 +70,23 @@ internal static class Roster18Checks
                 reportId=Guid.NewGuid().ToString("N");
                 await reports.StartAsync(reportId,"year",TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow,PlayReports.Istanbul).Year.ToString("D4",CultureInfo.InvariantCulture));
                 await Task.Delay(6000);
+                var beforeMusic=engines.Select(engine=>engine.Snapshot()).ToArray();
+                var musicProof=new LegacyMusicProof(Guid.NewGuid().ToString("N"),1,99,"Synthetic preparation only","migration-prep",
+                    Path.Combine(root,"old-preparation-source"),Path.Combine(root,"prepared-music"),0,new string('a',64),
+                    new("synthetic-recovery.db.dpapi",new string('b',64),50,"2026-10-16T08:00:00Z"),DateTimeOffset.UtcNow);
+                var musicCommand=Guid.NewGuid().ToString("N");
+                Check(result,await journal.SetLegacyMusicRootAsync("migration-prep",musicProof.SelectedMusicFolder,musicCommand,musicProof,()=>{}),
+                    "An unarmed metadata-only music assignment commits while all eighteen codec branches are active.");
+                var musicPage=journal.LibraryPage("migration-prep");var musicReceipt=journal.LegacyMusicAssignment(musicCommand)!;
+                result.Details["concurrentMusicAssignment"]=new{Receipt=musicReceipt,Scope="Atomic journal assignment under full-roster audio; not legacy-database inspection, UI acceptance or a real station migration."};
+                Check(result,musicPage.LegacyMusicAssignment==musicReceipt&&musicPage.Root?.Path==musicProof.SelectedMusicFolder,
+                    "Concurrent music assignment reads back the same root and immutable receipt.");
+                Check(result,!await journal.SetLegacyMusicRootAsync("migration-prep",musicProof.SelectedMusicFolder,musicCommand,musicReceipt.Proof,()=>throw new InvalidOperationException("A completed assignment must not reauthorize."))&&journal.LibraryPage("migration-prep").Root!.Revision==1,
+                    "A repeated metadata assignment does not create another library revision under full-roster load.");
+                var afterMusic=engines.Select(engine=>engine.Snapshot()).ToArray();
+                Check(result,beforeMusic.Zip(afterMusic).All(pair=>pair.Second.Samples>=pair.First.Samples&&pair.First.Outputs.Zip(pair.Second.Outputs).All(output=>
+                    output.First.EncoderPid==output.Second.EncoderPid&&output.First.EncoderStarts==output.Second.EncoderStarts&&output.First.Connections==output.Second.Connections)),
+                    "Music preparation leaves every active encoder identity, source connection and programme timeline in place.");
                 foreach(var output in outputs)await MeasureOutputAsync(ffmpeg,origin.Port,root,output,readings,result);
                 var exported=journal.Report(reportId)!;result.Details["reportExport"]=exported;
                 Check(result,exported.State=="Completed","A full annual export completes while all eighteen real codec branches remain active.");
