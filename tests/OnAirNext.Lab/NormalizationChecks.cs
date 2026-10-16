@@ -77,12 +77,12 @@ internal static class NormalizationChecks
         await engine.StartAsync();
         using var ready=new CancellationTokenSource(TimeSpan.FromSeconds(15));
         while(engine.Snapshot().Outputs.Any(x=>x.State!="SourceConnected"))await Task.Delay(50,ready.Token);
-        var readings=new List<object>();
+        var readings=new List<object>();result.Details["encodedListeners"]=readings;
         foreach(var output in outputs)
         {
             var process=ChildProcess.Start(ffmpeg,["-hide_banner","-v","info","-nostats","-nostdin","-rw_timeout","5000000",
                 "-analyzeduration","200000","-probesize","32768","-i",$"http://127.0.0.1:{origin.Port}{output.Mount}",
-                "-t","4","-vn","-sn","-dn","-filter_threads","1","-af",SourceNormalization.DecodeFormat+",ebur128=peak=true:framelog=verbose","-f","null","-"],role:"normalized-listener-meter");
+                "-t","4","-vn","-sn","-dn","-filter_threads","1","-af",SourceNormalization.DecodeFormat+",asetpts=N/SR/TB,atrim=end_sample=192000,ebur128=peak=true:framelog=verbose,astats=measure_perchannel=none:measure_overall=Number_of_samples","-f","null","-"],role:"normalized-listener-meter");
             try
             {
                 var errors=ChildProcess.DrainErrorAsync(process);await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(15));var diagnostic=await errors;
@@ -96,9 +96,12 @@ internal static class NormalizationChecks
                     return double.Parse(match.Groups[1].Value,CultureInfo.InvariantCulture);
                 }
                 var integrated=Metric("I","LUFS");var peak=Metric("Peak","dBFS");
-                Check(result,Math.Abs(integrated+23)<=0.2,output.Profile+": independently decoded synthetic output measures -23 +/-0.2 LUFS.");
-                Check(result,peak<=-1,output.Profile+": independently decoded synthetic output stays below -1 dBTP.");
-                readings.Add(new{Profile=output.Profile.ToString(),Mount=output.Mount,RequestedSeconds=4,IntegratedLufs=integrated,TruePeakDbtp=peak,Scope="Low-crest synthetic programme; not worst-case codec-headroom qualification"});
+                var samples=Regex.Matches(diagnostic,@"Number of samples:\s*(\d+(?:\.\d+)?)",RegexOptions.CultureInvariant);
+                var frames=samples.Count==0?0:double.Parse(samples[^1].Groups[1].Value,CultureInfo.InvariantCulture);
+                readings.Add(new{Profile=output.Profile.ToString(),Mount=output.Mount,RequestedSeconds=4,DecodedFrames=frames,SampleClock="Decoded PCM count rebased to zero; no transport timestamp trimming",IntegratedLufs=integrated,TruePeakDbtp=peak,DiagnosticTail=diagnostic[^Math.Min(1800,diagnostic.Length)..],Scope="Low-crest synthetic programme; not worst-case codec-headroom qualification"});
+                Check(result,frames==192000,output.Profile+": listener measures exactly 192000 decoded stereo frames (observed "+frames.ToString(CultureInfo.InvariantCulture)+").");
+                Check(result,Math.Abs(integrated+23)<=0.2,output.Profile+": independently decoded synthetic output measures -23 +/-0.2 LUFS (observed "+integrated.ToString(CultureInfo.InvariantCulture)+").");
+                Check(result,peak<=-1,output.Profile+": independently decoded synthetic output stays below -1 dBTP (observed "+peak.ToString(CultureInfo.InvariantCulture)+").");
             }
             finally{await ChildProcess.StopAsync(process);}
         }

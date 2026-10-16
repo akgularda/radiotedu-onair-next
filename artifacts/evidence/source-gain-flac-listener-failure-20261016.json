@@ -1,0 +1,200 @@
+{
+  "source": "badc9a6dc0afeb91dc92b89908b8bf7928ab3261",
+  "runId": "38841449108",
+  "conclusion": "failure",
+  "unitPassed": 179,
+  "normalizationChecks": [
+    {
+      "passed": true,
+      "description": "Completed target scan binds the full source SHA-256."
+    },
+    {
+      "passed": true,
+      "description": "target: no added latency, samples or finite-EOF padding."
+    },
+    {
+      "passed": true,
+      "description": "target: independent native instrument agrees with FFmpeg source I within 0.15 LU."
+    },
+    {
+      "passed": true,
+      "description": "target: real decoder applies only the measured fixed stereo gain."
+    },
+    {
+      "passed": true,
+      "description": "target: measured source true peak stays below the linear ceiling."
+    },
+    {
+      "passed": true,
+      "description": "target: target/peak/boost/silence decision is explicit."
+    },
+    {
+      "passed": true,
+      "description": "target: independently measured processed programme is within -23 +/-0.2 LUFS."
+    },
+    {
+      "passed": true,
+      "description": "target: distinct stereo channels survive processing."
+    },
+    {
+      "passed": true,
+      "description": "target: original media is unchanged."
+    },
+    {
+      "passed": true,
+      "description": "Completed loud scan binds the full source SHA-256."
+    },
+    {
+      "passed": true,
+      "description": "loud: no added latency, samples or finite-EOF padding."
+    },
+    {
+      "passed": true,
+      "description": "loud: independent native instrument agrees with FFmpeg source I within 0.15 LU."
+    },
+    {
+      "passed": true,
+      "description": "loud: real decoder applies only the measured fixed stereo gain."
+    },
+    {
+      "passed": true,
+      "description": "loud: measured source true peak stays below the linear ceiling."
+    },
+    {
+      "passed": true,
+      "description": "loud: target/peak/boost/silence decision is explicit."
+    },
+    {
+      "passed": true,
+      "description": "loud: independently measured processed programme is within -23 +/-0.2 LUFS."
+    },
+    {
+      "passed": true,
+      "description": "loud: distinct stereo channels survive processing."
+    },
+    {
+      "passed": true,
+      "description": "loud: original media is unchanged."
+    },
+    {
+      "passed": true,
+      "description": "Completed quiet scan binds the full source SHA-256."
+    },
+    {
+      "passed": true,
+      "description": "quiet: no added latency, samples or finite-EOF padding."
+    },
+    {
+      "passed": true,
+      "description": "quiet: independent native instrument agrees with FFmpeg source I within 0.15 LU."
+    },
+    {
+      "passed": true,
+      "description": "quiet: real decoder applies only the measured fixed stereo gain."
+    },
+    {
+      "passed": true,
+      "description": "quiet: measured source true peak stays below the linear ceiling."
+    },
+    {
+      "passed": true,
+      "description": "quiet: target/peak/boost/silence decision is explicit."
+    },
+    {
+      "passed": true,
+      "description": "quiet: distinct stereo channels survive processing."
+    },
+    {
+      "passed": true,
+      "description": "quiet: original media is unchanged."
+    },
+    {
+      "passed": true,
+      "description": "Completed transient scan binds the full source SHA-256."
+    },
+    {
+      "passed": true,
+      "description": "transient: no added latency, samples or finite-EOF padding."
+    },
+    {
+      "passed": true,
+      "description": "transient: independent native instrument agrees with FFmpeg source I within 0.15 LU."
+    },
+    {
+      "passed": true,
+      "description": "transient: real decoder applies only the measured fixed stereo gain."
+    },
+    {
+      "passed": true,
+      "description": "transient: measured source true peak stays below the linear ceiling."
+    },
+    {
+      "passed": true,
+      "description": "transient: target/peak/boost/silence decision is explicit."
+    },
+    {
+      "passed": true,
+      "description": "transient: distinct stereo channels survive processing."
+    },
+    {
+      "passed": true,
+      "description": "transient: original media is unchanged."
+    },
+    {
+      "passed": true,
+      "description": "Completed silence scan binds the full source SHA-256."
+    },
+    {
+      "passed": true,
+      "description": "silence: no added latency, samples or finite-EOF padding."
+    },
+    {
+      "passed": true,
+      "description": "silence: real decoder applies only the measured fixed stereo gain."
+    },
+    {
+      "passed": true,
+      "description": "silence: measured source true peak stays below the linear ceiling."
+    },
+    {
+      "passed": true,
+      "description": "silence: target/peak/boost/silence decision is explicit."
+    },
+    {
+      "passed": true,
+      "description": "silence: original media is unchanged."
+    },
+    {
+      "passed": true,
+      "description": "Real finite station completes at the original exact sample boundary."
+    },
+    {
+      "passed": true,
+      "description": "Actual programme publication carries the normalized source."
+    },
+    {
+      "passed": true,
+      "description": "Actual attempt records preserve the gain used at start and completion."
+    },
+    {
+      "passed": true,
+      "description": "Attempt hash chain still verifies after source-gain evidence is added."
+    },
+    {
+      "passed": true,
+      "description": "AacLc192: independently decoded synthetic output measures -23 +/-0.2 LUFS."
+    },
+    {
+      "passed": true,
+      "description": "AacLc192: independently decoded synthetic output stays below -1 dBTP."
+    },
+    {
+      "passed": false,
+      "description": "OggFlac: independently decoded synthetic output measures -23 +/-0.2 LUFS."
+    }
+  ],
+  "error": "System.IO.InvalidDataException: OggFlac: independently decoded synthetic output measures -23 +/-0.2 LUFS.\r\n   at OnAirNext.Lab.NormalizationChecks.Check(CaseResult result, Boolean success, String text) in /_/tests/OnAirNext.Lab/NormalizationChecks.cs:line 14\r\n   at OnAirNext.Lab.NormalizationChecks.EncodedChecksAsync(String ffmpeg, String icecastRoot, String root, MediaItem target, CaseResult result) in /_/tests/OnAirNext.Lab/NormalizationChecks.cs:line 99\r\n   at OnAirNext.Lab.NormalizationChecks.EncodedChecksAsync(String ffmpeg, String icecastRoot, String root, MediaItem target, CaseResult result)\r\n   at OnAirNext.Lab.NormalizationChecks.EncodedChecksAsync(String ffmpeg, String icecastRoot, String root, MediaItem target, CaseResult result) in /_/tests/OnAirNext.Lab/NormalizationChecks.cs:line 106\r\n   at OnAirNext.Lab.NormalizationChecks.EncodedChecksAsync(String ffmpeg, String icecastRoot, String root, MediaItem target, CaseResult result) in /_/tests/OnAirNext.Lab/NormalizationChecks.cs:line 106\r\n   at OnAirNext.Lab.NormalizationChecks.EncodedChecksAsync(String ffmpeg, String icecastRoot, String root, MediaItem target, CaseResult result) in /_/tests/OnAirNext.Lab/NormalizationChecks.cs:line 106\r\n   at OnAirNext.Lab.NormalizationChecks.RunAsync(String ffmpeg, String icecastRoot, String root, CaseResult result) in /_/tests/OnAirNext.Lab/NormalizationChecks.cs:line 63\r\n   at OnAirNext.Lab.NormalizationChecks.RunAsync(String ffmpeg, String icecastRoot, String root, CaseResult result) in /_/tests/OnAirNext.Lab/NormalizationChecks.cs:line 68\r\n   at Program.<Main>$(String[] args) in /_/tests/OnAirNext.Lab/Program.cs:line 51",
+  "qualificationAccepted": false,
+  "diagnosticLimitation": "Failed assertion did not retain the numeric FLAC reading. The next fixture retains every reading before assertions, counts exactly 192000 decoded frames and rebases its measurement-only clock. Late Ogg timestamps are a hypothesis until the corrected run is measured.",
+  "productionChanged": false
+}
