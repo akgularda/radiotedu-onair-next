@@ -72,4 +72,30 @@ public sealed class LibraryEditingWorkerTests
         await WaitAsync(library, () => planner.AvailableItems == 1);
         Assert.Equal("Offline edit", planner.Select(0).Item.Title);
     }
+    [Fact]
+    public async Task ReanalysisKeepsThePreviousValidatedGainUntilTheNewScanCommits()
+    {
+        var directory=Root();var music=Path.Combine(directory,"music");Directory.CreateDirectory(music);
+        var file=Path.Combine(music,"song.wav");await File.WriteAllTextAsync(file,"synthetic catalog fixture");
+        var signature=new FileInfo(file);var refreshing=false;
+        var entered=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        AudioMetadata Metadata(double level)=>new("Artist","Song",60,new(new string('A',64),signature.Length,signature.LastWriteTimeUtc.Ticks,60,level,-10,4,DateTimeOffset.UtcNow));
+        await using var journal=new EventJournal(Path.Combine(directory,"catalog.db"));await journal.InitializeDesiredStateAsync(Settings);
+        await using var library=new StationLibrary(journal,"unused",directory,["a"],async (_,token)=>
+        {
+            if(!Volatile.Read(ref refreshing))return Metadata(-18);
+            entered.TrySetResult();await release.Task.WaitAsync(token);return Metadata(-26);
+        });
+        await library.InitializeAsync();await library.SetRootAsync("a",music,"root");var planner=library.Planner(Settings)!;
+        await WaitAsync(library,()=>planner.AvailableItems==1);
+        var page=library.Page("a","",0);var item=Assert.Single(page.Items);Assert.Equal(-5,SourceNormalization.Decide(planner.Select(0).Item.Loudness).AppliedDb);
+        Volatile.Write(ref refreshing,true);
+        var queued=await library.EditAssetAsync("a",page.Root!.Revision,item.Id,0,LibraryEditKind.AnalyzeLoudness,"analysis");
+        Assert.True(queued.AnalysisRequested);await entered.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        Assert.Equal(1,planner.AvailableItems);Assert.Equal(-5,SourceNormalization.Decide(planner.Select(0).Item.Loudness).AppliedDb);
+        release.TrySetResult();await WaitAsync(library,()=>!library.Page("a","",0).Items.Single().AnalysisRequested && SourceNormalization.Decide(planner.Select(0).Item.Loudness).AppliedDb==3);
+        Assert.Equal(1,planner.AvailableItems);Assert.Equal(3,SourceNormalization.Decide(planner.Select(0).Item.Loudness).AppliedDb);
+    }
+
 }

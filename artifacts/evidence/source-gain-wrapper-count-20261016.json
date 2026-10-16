@@ -1,0 +1,58 @@
+{
+  "at": "2026-10-16T02:38:13.578Z",
+  "source": "f7b25aacc9bf98e97a4fc9da308f9fe7e6bec19f",
+  "runId": "38840886113",
+  "runConclusion": "success",
+  "unitPassed": 178,
+  "independentSyntheticCases": 9,
+  "realScenarios": [
+    {
+      "name": "baseline",
+      "passed": true,
+      "checks": 22
+    },
+    {
+      "name": "precision",
+      "passed": true,
+      "checks": 7
+    },
+    {
+      "name": "normalization",
+      "passed": true,
+      "checks": 46
+    },
+    {
+      "name": "live",
+      "passed": true,
+      "checks": 13
+    },
+    {
+      "name": "recovery",
+      "passed": true,
+      "checks": 17
+    },
+    {
+      "name": "finite",
+      "passed": true,
+      "checks": 5
+    },
+    {
+      "name": "backpressure",
+      "passed": true,
+      "checks": 16
+    },
+    {
+      "name": "corrupt",
+      "passed": true,
+      "checks": 15
+    }
+  ],
+  "audioWrapper": {
+    "completed": false,
+    "passed": false,
+    "error": null
+  },
+  "qualificationAccepted": false,
+  "reason": "Eight actual scenarios passed, but wrapper completion compared count to seven. Overall GitHub job success did not establish audio summary completion. Corrected source must rerun.",
+  "productionChanged": false
+}

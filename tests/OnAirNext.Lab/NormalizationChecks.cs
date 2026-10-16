@@ -1,5 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
+using System.Globalization;
 using OnAirNext.Engine;
 
 namespace OnAirNext.Lab;
@@ -11,7 +13,7 @@ internal static class NormalizationChecks
         result.Checks.Add(new {Passed=success,Description=text});
         if(!success)throw new InvalidDataException(text);
     }
-    public static async Task RunAsync(string ffmpeg,string root,CaseResult result)
+    public static async Task RunAsync(string ffmpeg,string icecastRoot,string root,CaseResult result)
     {
         Directory.CreateDirectory(root);
         await using var probe=new LibraryAudioProbe(ffmpeg);
@@ -23,7 +25,8 @@ internal static class NormalizationChecks
             var metadata=await probe.VerifyAsync(path,CancellationToken.None);
             var measured=metadata.Loudness ?? throw new InvalidDataException("Missing measured source.");
             Check(result,measured.ContentSha256==original,"Completed "+name+" scan binds the full source SHA-256.");
-            var item=new MediaItem(name,path,"Synthetic engineering signal",name,DurationSeconds:metadata.Seconds,Loudness:measured);
+            var kind=name switch{"loud"=>ContentKind.Jingle,"quiet"=>ContentKind.Sweeper,"transient"=>ContentKind.Advertisement,"silence"=>ContentKind.Program,_=>ContentKind.Music};
+            var item=new MediaItem(name,path,"Synthetic engineering signal",name,Kind:kind,DurationSeconds:metadata.Seconds,Loudness:measured);
             var raw=await DecodeAsync(ffmpeg,item with{Loudness=null});
             var processed=await DecodeAsync(ffmpeg,item);
             var before=Measure(raw);var after=Measure(processed);var gain=SourceNormalization.Decide(measured);
@@ -57,12 +60,52 @@ internal static class NormalizationChecks
             Check(result,EventJournal.Verify(journal.DatabasePath),"Attempt hash chain still verifies after source-gain evidence is added.");
             result.Details["engine"]=new{State=state,Reading=reading,Events=events};
         }
+        await EncodedChecksAsync(ffmpeg,icecastRoot,root,target!,result);
         var bad=target! with{Loudness=target!.Loudness! with{ModifiedTicks=target.Loudness!.ModifiedTicks-1}};
         var rejected=false;try{await using var decoder=new MediaDecoder(ffmpeg,bad);}catch(InvalidDataException){rejected=true;}
         Check(result,rejected,"A changed source revision is rejected before a decoder starts.");
         Check(result,ChildProcess.ActiveProcesses.Count==0,"All real validation/decoder workers are confirmed closed.");
-        result.Details["scope"]="Synthetic full-file source measurement, fixed-gain PCM, finite playout and history only. No final-mix limiter, encoded-output normalization, HE-AAC, production media or commissioning acceptance.";
+        result.Details["scope"]="Synthetic full-file source measurement, fixed-gain PCM, finite playout and history only. Two loopback AAC-LC/FLAC branches use a low-crest synthetic programme only; no final-mix limiter, worst-case codec headroom, HE-AAC, all-18-output, production media or commissioning acceptance.";
     }
+
+    private static async Task EncodedChecksAsync(string ffmpeg,string icecastRoot,string root,MediaItem target,CaseResult result)
+    {
+        await using var origin=new Sandbox(icecastRoot,Path.Combine(root,"encoded"));await origin.StartAsync();
+        await using var journal=new EventJournal(Path.Combine(root,"encoded-playback.db"));
+        var outputs=new[]{origin.Output("normalized-aac",CodecProfile.AacLc192),origin.Output("normalized-flac",CodecProfile.OggFlac)};
+        await using var engine=new StationEngine(ffmpeg,new("encoded-normalized",[target],outputs),journal);
+        await engine.StartAsync();
+        using var ready=new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        while(engine.Snapshot().Outputs.Any(x=>x.State!="SourceConnected"))await Task.Delay(50,ready.Token);
+        var readings=new List<object>();
+        foreach(var output in outputs)
+        {
+            var process=ChildProcess.Start(ffmpeg,["-hide_banner","-v","info","-nostats","-nostdin","-rw_timeout","5000000",
+                "-analyzeduration","200000","-probesize","32768","-i",$"http://127.0.0.1:{origin.Port}{output.Mount}",
+                "-t","4","-vn","-sn","-dn","-filter_threads","1","-af",SourceNormalization.DecodeFormat+",ebur128=peak=true:framelog=verbose","-f","null","-"],role:"normalized-listener-meter");
+            try
+            {
+                var errors=ChildProcess.DrainErrorAsync(process);await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(15));var diagnostic=await errors;
+                if(process.ExitCode!=0)throw new InvalidDataException("Normalized listener decode failed: "+output.Id);
+                var at=diagnostic.LastIndexOf("Summary:",StringComparison.Ordinal);if(at<0)throw new InvalidDataException("Listener meter summary missing.");
+                var summary=diagnostic[at..];
+                double Metric(string key,string unit)
+                {
+                    var match=Regex.Match(summary,@"(?m)^\s*"+key+@":\s*(-?\d+(?:\.\d+)?)\s+"+unit+@"\s*$",RegexOptions.CultureInvariant);
+                    if(!match.Success)throw new InvalidDataException("Listener meter value missing: "+key);
+                    return double.Parse(match.Groups[1].Value,CultureInfo.InvariantCulture);
+                }
+                var integrated=Metric("I","LUFS");var peak=Metric("Peak","dBFS");
+                Check(result,Math.Abs(integrated+23)<=0.2,output.Profile+": independently decoded synthetic output measures -23 +/-0.2 LUFS.");
+                Check(result,peak<=-1,output.Profile+": independently decoded synthetic output stays below -1 dBTP.");
+                readings.Add(new{Profile=output.Profile.ToString(),Mount=output.Mount,RequestedSeconds=4,IntegratedLufs=integrated,TruePeakDbtp=peak,Scope="Low-crest synthetic programme; not worst-case codec-headroom qualification"});
+            }
+            finally{await ChildProcess.StopAsync(process);}
+        }
+        Check(result,engine.Snapshot().Outputs.All(x=>x.EncoderStarts==1&&x.DroppedBlocks==0),"Both normalized codec branches remain connected without encoder restarts or dropped blocks during sequential listener measurements.");
+        result.Details["encodedListeners"]=readings;
+    }
+
     private static async Task<float[]> DecodeAsync(string ffmpeg,MediaItem item)
     {
         using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(12));

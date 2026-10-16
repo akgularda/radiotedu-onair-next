@@ -92,8 +92,8 @@
     for(const [name,level] of Object.entries(model.levels)){
       text('meter-'+name,level.text);const bar=$('bar-'+name);if(!bar)continue;
       bar.firstElementChild.style.transform=`scaleX(${level.ratio})`;
-      if(level.value===null){bar.setAttribute('role','img');bar.removeAttribute('aria-valuenow');bar.setAttribute('aria-label',(name==='momentary'?'Momentary loudness':'Short-term loudness')+': no fresh measurement');bar.setAttribute('aria-valuetext','No fresh measurement');}
-      else{bar.setAttribute('role','meter');bar.setAttribute('aria-label',name==='momentary'?'Momentary loudness':'Short-term loudness');const min=Number(bar.getAttribute('aria-valuemin')),max=Number(bar.getAttribute('aria-valuemax'));bar.setAttribute('aria-valuenow',String(Math.max(min,Math.min(max,level.value))));bar.setAttribute('aria-valuetext',level.text+(name==='peak'?' dBTP':' LUFS'));}
+      if(level.value===null){bar.setAttribute('role','img');bar.removeAttribute('aria-valuenow');bar.setAttribute('aria-label',({momentary:'Momentary loudness',shortTerm:'Short-term loudness',integrated:'Integrated loudness',peak:'Maximum true peak'}[name]??'Audio level')+': no fresh measurement');bar.setAttribute('aria-valuetext','No fresh measurement');}
+      else{bar.setAttribute('role','meter');bar.setAttribute('aria-label',{momentary:'Momentary loudness',shortTerm:'Short-term loudness',integrated:'Integrated loudness',peak:'Maximum true peak'}[name]??'Audio level');const min=Number(bar.getAttribute('aria-valuemin')),max=Number(bar.getAttribute('aria-valuemax'));bar.setAttribute('aria-valuenow',String(Math.max(min,Math.min(max,level.value))));bar.setAttribute('aria-valuetext',level.text+(name==='peak'?' dBTP':' LUFS'));}
       bar.classList.toggle('over',name==='peak'&&level.value!==null&&level.value>-1);
     }
     text('meter-window',model.elapsedSeconds===null?'1-hour continuous windows':duration(model.elapsedSeconds)+' / 1 hour');
