@@ -7,13 +7,13 @@ public sealed record ReportExport(string Id, string Period, string Selection, st
 {
     public string Timezone => "Europe/Istanbul";
     public string FileName => $"radiotedu-{Selection}-{Id}-{Attempt}.csv";
-    public DateTimeOffset FromUtc => PlayReports.PeriodBounds(Period, Selection).Start;
-    public DateTimeOffset ToUtc => PlayReports.PeriodBounds(Period, Selection).End;
+    public DateTimeOffset FromUtc => ReportCalendar.PeriodBounds(Period, Selection).Start;
+    public DateTimeOffset ToUtc => ReportCalendar.PeriodBounds(Period, Selection).End;
     public static void Validate(string id, string period, string selection, string? station)
     {
         if (!Guid.TryParseExact(id, "N", out var parsed) || parsed.ToString("N") != id)
             throw new ArgumentException("A report requires a lowercase export ID.");
-        _ = PlayReports.PeriodBounds(period, selection);
+        _ = ReportCalendar.PeriodBounds(period, selection);
         if (station is not null && (station.Length is < 1 or > 100 || station.Any(char.IsControl)))
             throw new ArgumentException("Choose a known station or all stations.");
     }

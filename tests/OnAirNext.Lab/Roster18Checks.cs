@@ -97,7 +97,7 @@ internal static class Roster18Checks
             catch(Exception ex){runFailure=ex;}
             finally
             {
-                if(reportId is not null)result.Details["reportExportAtCleanup"]=journal.Report(reportId);
+                if(reportId is not null)result.Details["reportExportAtCleanup"]=journal.Report(reportId) ?? (object)new { State = "Missing" };
                 result.Details["journalAtCleanup"]=new{journal.CommittedTransactions,journal.CommittedEvents,journal.PendingEvents};
                 result.Details["stationsAtCleanup"]=engines.Select(e=>e.Snapshot()).ToArray();
                 result.Details["resourcesAtCleanup"]=resources.Snapshot();
