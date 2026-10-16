@@ -43,7 +43,7 @@ A bounded stereo 48 kHz BS.1770-5/EBU-mode measurement core has scoped synthetic
 - Dedicated FULL-WAL SQLite writer, exclusive database ownership, immutable attempt metadata and hash-chain verification.
 - Unfinished items restart from the beginning as linked attempts; completed items remain consumed.
 - Durable enabled/run/stop intent, per-station lifecycle workers and ID/payload deduplication.
-- Distinct durable jingle/sweeper counters; actual legacy behavior import/planner integration remain incomplete.
+- Distinct durable jingle/sweeper counters and a bounded asset-selection/collision policy; programme integration and operator controls remain incomplete. See [branding implementation and remaining acceptance](docs/BRANDING_AUTOMATION.md).
 - Per-station live-root revisions, stable recursive discovery, complete decode validation outside the programme loop, bounded import jobs and paged catalog reads.
 - Interrupted copy jobs resume without overwriting originals. Missing-drive history is retained. External folders are watched read-only in the isolated build; copying is confined to private managed storage.
 - Published in-memory library rotation uses bounded selection work. Versioned metadata editing, reset-to-file-tags and reversible removal/restore are implemented, with catalog/worker tests. Connected mouse acceptance remains pending; playlists, queue editing and resource-budgeted analysis remain unfinished.
