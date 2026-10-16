@@ -38,7 +38,7 @@ internal static class WindowsAppUpdater
         var fileHash=await store.SaveReviewAsync(review.Files);
         var prior=await store.ReadIntentAsync(id,fileHash);
         if(prior?.Direction==UpdateDirection.Rollback&&direction==UpdateDirection.Apply)throw new InvalidOperationException("This operation has retained rollback intent. Prepare a new review before applying another update.");
-        FileStream? writer=null;var maintenance=false;
+        FileStream? writer=null;var maintenance=false;var executionPhase="Staging candidate";
         try
         {
             // Staging resumes verified manifest-owned files, retaining all other data.
@@ -64,6 +64,7 @@ internal static class WindowsAppUpdater
             }
             async Task Progress(string phase)
             {
+                executionPhase=phase;
                 if(phase is not ("Update requested" or "Rollback requested"))return;
                 await VerifyRetainedConfigurationAsync(review);
                 var service=SetupService.Read()??throw new IOException("The owned service is missing.");SetupService.RequireOwned(service);
@@ -83,12 +84,12 @@ internal static class WindowsAppUpdater
                 writer=new FileStream(database+".writer.lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None);
                 await Fence();
                 var inspector=Directory.Exists(swap.CandidateRoot)?Path.Combine(swap.CandidateRoot,"bin","OnAirNext.Host.exe"):Path.Combine(swap.InstallRoot,"bin","OnAirNext.Host.exe");
-                await InspectJournalAsync(inspector,database);
-                await SnapshotAsync(review,folder,fullHash,account,inspector);
+                executionPhase="Inspecting stopped journal";await InspectJournalAsync(inspector,database);
+                executionPhase="Verifying metadata snapshot";await SnapshotAsync(review,folder,fullHash,account,inspector);
             }
             await store.RunAsync(id,fileHash,direction,Fence,Progress);
             if(writer is not null){await writer.DisposeAsync();writer=null;}
-            await RestoreAsync(review);await CompleteAsync(folder,fullHash,direction,review);return 0;
+            executionPhase="Restoring and verifying service";await RestoreAsync(review);await CompleteAsync(folder,fullHash,direction,review);return 0;
         }
         catch(Exception error)
         {
@@ -105,7 +106,7 @@ internal static class WindowsAppUpdater
                 catch{recovery="The new service remains in maintenance or needs attention. Keep all images and use the targeted rollback controls.";}
             }
             var detail=error is InvalidOperationException or ArgumentException?error.Message:"The reviewed update could not complete. Check its retained files, permissions, free space and service state.";
-            await WindowsInstaller.WriteNewAsync(Path.Combine(folder,"failure-"+Guid.NewGuid().ToString("N")+".json"),new{AtUtc=DateTimeOffset.UtcNow,ReviewSha256=fullHash,Direction=direction,Detail=detail,Recovery=recovery,ErrorType=error.GetType().Name});
+            await WindowsInstaller.WriteNewAsync(Path.Combine(folder,"failure-"+Guid.NewGuid().ToString("N")+".json"),new{AtUtc=DateTimeOffset.UtcNow,ReviewSha256=fullHash,Direction=direction,Phase=executionPhase,Detail=detail,Recovery=recovery,ErrorType=error.GetType().Name,HResult=error.HResult,Diagnostics=error.ToString()});
             return 1;
         }
         finally{if(writer is not null)await writer.DisposeAsync();}
@@ -198,8 +199,8 @@ internal static class WindowsAppUpdater
         var output=process.StandardOutput.ReadToEndAsync();var errors=process.StandardError.ReadToEndAsync();using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(25));
         try
         {
-            await process.WaitForExitAsync(deadline.Token);var json=await output;await errors;
-            if(process.ExitCode!=0||json.Length>16384)throw new IOException("The retained journal did not pass compatible stopped-state inspection.");
+            await process.WaitForExitAsync(deadline.Token);var json=await output;var diagnostics=await errors;
+            if(process.ExitCode!=0||json.Length>16384)throw new IOException("The retained journal did not pass compatible stopped-state inspection (inspector exit "+process.ExitCode+").",new IOException(diagnostics[..Math.Min(diagnostics.Length,8192)]));
             using var document=JsonDocument.Parse(json);var state=document.RootElement;
             if(state.GetProperty("SchemaVersion").GetInt32()!=1||state.GetProperty("Integrity").GetString()!="ok"||state.GetProperty("Stations").GetArrayLength()!=8||state.GetProperty("Stations").EnumerateArray().Any(s=>s.GetProperty("RequestedRunning").GetBoolean()))throw new IOException("The inspected journal is not compatible and explicitly stopped.");
         }

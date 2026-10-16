@@ -7,7 +7,7 @@ $data=[IO.Path]::GetFullPath((Join-Path $env:ProgramData 'RadioTEDU-OnAirNext-De
 $fixture=[IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA ('RadioTEDU/OnAirNext-Dev/setup-fixture-'+[Guid]::NewGuid().ToString('N'))))
 $expectedFixture=$fixture
 $summary=Join-Path $PSScriptRoot '../artifacts/setup-smoke/summary.json'
-$checks=[Collections.Generic.List[string]]::new();$completed=$false;$failure=$null;$owned=$false;$plan=$null;$webProcess=$null;$shortcutPaths=@();$maintenance=$null;$review=$null
+$checks=[Collections.Generic.List[string]]::new();$completed=$false;$failure=$null;$owned=$false;$plan=$null;$webProcess=$null;$shortcutPaths=@();$maintenance=$null;$review=$null;$updateFailures=@();$updateIntent=$null
 function Check([string]$name,[bool]$value){if(-not $value){throw ('Setup check failed: '+$name)};$checks.Add($name)}
 function Run([string]$exe,[string[]]$arguments){
  $start=[Diagnostics.ProcessStartInfo]::new($exe);$start.UseShellExecute=$false;$start.CreateNoWindow=$true;$start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
@@ -108,7 +108,7 @@ try{
  $operationFolder=Join-Path $data ('updates/'+$review.Files.Id)
  $completion=Get-Content -LiteralPath (Join-Path $operationFolder 'apply.completed.json') -Raw|ConvertFrom-Json
  $snapshot=Get-Content -LiteralPath (Join-Path $operationFolder 'snapshot.json') -Raw|ConvertFrom-Json
- Check 'Completed snapshot names a retained operation-local attempt' ($snapshot.Folder -match '^snapshot-[a-f0-9]{32}
+ Check 'Completed snapshot names a retained operation-local attempt' ($snapshot.Folder -match '^snapshot-[a-f0-9]{32}$')
  Check 'Reviewed update retains the original image and a verified metadata snapshot' ((Test-Path -LiteralPath ($install+'.previous-'+$review.Files.Id)) -and (Test-Path -LiteralPath (Join-Path $operationFolder ($snapshot.Folder+'/data/journal/playback.db'))) -and $completion.ImageSha256 -eq $review.Files.Replacement.BundleSha256)
  $updatedService=Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")
  $null=Run $setup @('--apply-update',$reviewPath,$reviewHash)
@@ -116,7 +116,7 @@ try{
  $marker=[Guid]::NewGuid().ToString('N')
  $marked=(Run $lab @('--service-maintenance-mark',$marker))|ConvertFrom-Json
  Check 'Real service commits a new stopped-intent receipt after the snapshot' $marked.Marked
- # Relocating an unchanged complete package must not require editing its saved review.
+ # Move only this owned, verified CI fixture; the saved review retains its historical path.
  $relocated=[IO.Path]::GetFullPath($fixture+'-relocated')
  if([IO.Path]::GetFullPath($fixture) -ne $expectedFixture -or [IO.Path]::GetDirectoryName($relocated) -ne [IO.Path]::GetDirectoryName($expectedFixture) -or (Test-Path -LiteralPath $relocated) -or (Get-Item -LiteralPath $fixture).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Owned package relocation validation failed'}
  Move-Item -LiteralPath $fixture -Destination $relocated
@@ -134,6 +134,15 @@ try{
  $completed=$true
 }catch{$failure=$_.Exception.Message;throw}
 finally{
+ if($review -and $review.Files.Id -match '^[a-f0-9]{32}$'){
+  try{
+   $operationFolder=Join-Path $data ('updates/'+$review.Files.Id)
+   if(Test-Path -LiteralPath $operationFolder){
+    foreach($file in @(Get-ChildItem -LiteralPath $operationFolder -Filter 'failure-*.json' -File|Select-Object -First 100)){if($file.Length -le 32768){$updateFailures+=@(Get-Content -LiteralPath $file.FullName -Raw|ConvertFrom-Json)}}
+    $intentPath=Join-Path $operationFolder ($review.Files.Id+'.intent.json');if((Test-Path -LiteralPath $intentPath) -and (Get-Item -LiteralPath $intentPath).Length -le 32768){$updateIntent=Get-Content -LiteralPath $intentPath -Raw|ConvertFrom-Json}
+   }
+  }catch{$updateFailures+=@(@{EvidenceReadError=$_.Exception.Message})}
+ }
  if($webProcess){try{if(-not $webProcess.HasExited){$webProcess.Kill($true);$webProcess.WaitForExit(10000)|Out-Null}}finally{$webProcess.Dispose()}}
  foreach($path in $shortcutPaths){if(Test-Path -LiteralPath $path){$full=[IO.Path]::GetFullPath($path);if([IO.Path]::GetFileName($full) -ne 'RadioTEDU OnAir Next.lnk' -or (Get-Item -LiteralPath $full).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Shortcut cleanup validation failed'};Remove-Item -LiteralPath $full -Force}}
  $env:ONAIR_SETUP_TEST_RUNTIME=$null
@@ -145,39 +154,5 @@ finally{
   if($completed -and -not $failure){foreach($target in @(@{Path=$install;Expected=(Join-Path $env:ProgramFiles 'RadioTEDU-OnAirNext-Development')},@{Path=$data;Expected=(Join-Path $env:ProgramData 'RadioTEDU-OnAirNext-Development')})){$full=[IO.Path]::GetFullPath($target.Path);if($full -ne [IO.Path]::GetFullPath($target.Expected) -or (Get-Item -LiteralPath $full).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Setup cleanup target validation failed'};Remove-Item -LiteralPath $full -Recurse -Force}}
  }
  $null=New-Item -ItemType Directory -Path (Split-Path -Parent $summary) -Force
- @{Source=$env:GITHUB_SHA;Scope='Disposable Windows installer software fixture; runtime encoder listing is an explicit test double, no real audio or broadcasting-PC commissioning';Completed=$completed;Passed=($completed -and -not $failure);Checks=$checks.ToArray();Maintenance=$maintenance;UpdateReview=$review;Error=$failure;ProductionChanged=$false}|ConvertTo-Json -Depth 8|Set-Content -LiteralPath $summary -Encoding utf8NoBOM
-}
-)
- Check 'Reviewed update retains the original image and a verified metadata snapshot' ((Test-Path -LiteralPath ($install+'.previous-'+$review.Files.Id)) -and (Test-Path -LiteralPath (Join-Path $operationFolder 'snapshot/data/journal/playback.db')) -and $completion.ImageSha256 -eq $review.Files.Replacement.BundleSha256)
- $updatedService=Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")
- $null=Run $setup @('--apply-update',$reviewPath,$reviewHash)
- Check 'Completed update retry does not restart the verified service' ((Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")).ProcessId -eq $updatedService.ProcessId)
- $marker=[Guid]::NewGuid().ToString('N')
- $marked=(Run $lab @('--service-maintenance-mark',$marker))|ConvertFrom-Json
- Check 'Real service commits a new stopped-intent receipt after the snapshot' $marked.Marked
- $null=Run $setup @('--rollback-update',$reviewPath,$reviewHash)
- $rollback=Get-Content -LiteralPath (Join-Path $operationFolder 'rollback.completed.json') -Raw|ConvertFrom-Json
- $retained=(Run $lab @('--service-maintenance-check-mark',$marker))|ConvertFrom-Json
- Check 'Application rollback restores original bytes while retaining later real journal receipts' ($rollback.ImageSha256 -eq $plan.BundleSha256 -and $retained.Marked -and (Get-FileHash -LiteralPath (Join-Path $install 'bundle.json') -Algorithm SHA256).Hash -eq $plan.BundleSha256)
- $rollbackService=Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")
- $staleApplyRejected=$false;try{$null=Run $setup @('--apply-update',$reviewPath,$reviewHash)}catch{$staleApplyRejected=$true}
- Check 'Retained rollback rejects stale Apply without restarting the original service' ($staleApplyRejected -and (Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")).ProcessId -eq $rollbackService.ProcessId)
- $maintenance=(Run $lab @('--service-maintenance-probe'))|ConvertFrom-Json
- foreach($check in $maintenance.Checks){Check $check.Description $check.Passed}
- Check 'Maintenance fixture completed and restored its owned service' $maintenance.Passed
- $completed=$true
-}catch{$failure=$_.Exception.Message;throw}
-finally{
- if($webProcess){try{if(-not $webProcess.HasExited){$webProcess.Kill($true);$webProcess.WaitForExit(10000)|Out-Null}}finally{$webProcess.Dispose()}}
- foreach($path in $shortcutPaths){if(Test-Path -LiteralPath $path){$full=[IO.Path]::GetFullPath($path);if([IO.Path]::GetFileName($full) -ne 'RadioTEDU OnAir Next.lnk' -or (Get-Item -LiteralPath $full).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Shortcut cleanup validation failed'};Remove-Item -LiteralPath $full -Force}}
- $env:ONAIR_SETUP_TEST_RUNTIME=$null
- if(-not $completed -and -not $failure){$failure='Setup fixture interrupted before completion'}
- if($owned -and (Test-Path -LiteralPath (Join-Path $data 'setup-ownership.json'))){
-  $owner=Get-Content -LiteralPath (Join-Path $data 'setup-ownership.json') -Raw|ConvertFrom-Json
-  if($owner.PlanId -ne $plan.Id){throw 'Setup fixture ownership mismatch; cleanup refused'}
-  if(Get-Service -Name $serviceName -ErrorAction SilentlyContinue){Stop-Service -Name $serviceName -ErrorAction SilentlyContinue;& "$env:SystemRoot/System32/sc.exe" delete $serviceName|Out-Null}
-  if($completed -and -not $failure){foreach($target in @(@{Path=$install;Expected=(Join-Path $env:ProgramFiles 'RadioTEDU-OnAirNext-Development')},@{Path=$data;Expected=(Join-Path $env:ProgramData 'RadioTEDU-OnAirNext-Development')})){$full=[IO.Path]::GetFullPath($target.Path);if($full -ne [IO.Path]::GetFullPath($target.Expected) -or (Get-Item -LiteralPath $full).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Setup cleanup target validation failed'};Remove-Item -LiteralPath $full -Recurse -Force}}
- }
- $null=New-Item -ItemType Directory -Path (Split-Path -Parent $summary) -Force
- @{Source=$env:GITHUB_SHA;Scope='Disposable Windows installer software fixture; runtime encoder listing is an explicit test double, no real audio or broadcasting-PC commissioning';Completed=$completed;Passed=($completed -and -not $failure);Checks=$checks.ToArray();Maintenance=$maintenance;UpdateReview=$review;Error=$failure;ProductionChanged=$false}|ConvertTo-Json -Depth 8|Set-Content -LiteralPath $summary -Encoding utf8NoBOM
+ @{Source=$env:GITHUB_SHA;Scope='Disposable Windows installer software fixture; runtime encoder listing is an explicit test double, no real audio or broadcasting-PC commissioning';Completed=$completed;Passed=($completed -and -not $failure);Checks=$checks.ToArray();Maintenance=$maintenance;UpdateReview=$review;UpdateFailures=$updateFailures;UpdateIntent=$updateIntent;Error=$failure;ProductionChanged=$false}|ConvertTo-Json -Depth 8|Set-Content -LiteralPath $summary -Encoding utf8NoBOM
 }

@@ -122,9 +122,13 @@ internal sealed class AppUpdateCoordinator:IAsyncDisposable
         {
             if(!_operation.IsCompleted)throw new InvalidOperationException("Wait for the current application update operation.");
             if(_review?.Files.Id!=id||_path is null||_hash is null||_phase=="Review failed"||!_review.Files.Replacement.BundleSha256.Equals(_packageIdentity,StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("Read the matching package's saved update review before continuing.");
-            var review=_review;var path=_path;var hash=_hash;_phase="Administrator approval";_detail=direction==UpdateDirection.Apply?"Approve the reviewed update of the stopped, unarmed new service. The former broadcasts keep their existing owner.":"Approve application rollback. Current library, queue and journal data will be retained.";
+            var review=_review;var path=_path;var hash=_hash;_phase="Verifying package";_detail="Rechecking the reviewed files before Windows administrator approval.";
             _operation=Task.Run(()=>ExecuteCoreAsync(review,path,hash,direction));
         }
+    }
+    private void ApprovalDetail(UpdateDirection direction)
+    {
+        lock(_gate){_phase="Administrator approval";_detail=direction==UpdateDirection.Apply?"Approve the reviewed update of the stopped, unarmed new service. The former broadcasts keep their existing owner.":"Approve application rollback. Current library, queue and journal data will be retained.";}
     }
     private async Task ExecuteCoreAsync(AppUpdateReview review,string path,string hash,UpdateDirection direction)
     {
@@ -132,6 +136,7 @@ internal sealed class AppUpdateCoordinator:IAsyncDisposable
         {
             await SetupPaths.ReadVerifiedAsync<AppUpdateReview>(path,hash,_stop.Token);
             await SetupPaths.VerifyBundleAsync(_package,review.Files.Replacement.BundleSha256,_stop.Token);
+            ApprovalDetail(direction);
             var start=new ProcessStartInfo(_helper){UseShellExecute=true,Verb="runas",WindowStyle=ProcessWindowStyle.Hidden,WorkingDirectory=_package};
             start.ArgumentList.Add(direction==UpdateDirection.Apply?"--apply-update":"--rollback-update");start.ArgumentList.Add(path);start.ArgumentList.Add(hash);
             SetupPaths.RequireNoLinks(_helper);using var child=Process.Start(start)??throw new IOException("Windows application maintenance did not start.");

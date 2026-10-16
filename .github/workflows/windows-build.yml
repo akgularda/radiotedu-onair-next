@@ -112,6 +112,17 @@ jobs:
       DOTNET_PROCESSOR_COUNT: '2'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Parse PowerShell fixtures before compilation
+        shell: pwsh
+        run: |
+          $count=0
+          foreach($file in Get-ChildItem -LiteralPath ./scripts -Filter '*.ps1' -File -Recurse){
+            $parseTokens=$null;$parseErrors=$null
+            $null=[Management.Automation.Language.Parser]::ParseFile($file.FullName,[ref]$parseTokens,[ref]$parseErrors)
+            if($parseErrors.Count){foreach($parseError in $parseErrors){Write-Error ($file.Name+':'+$parseError.Extent.StartLineNumber+': '+$parseError.Message)};throw 'PowerShell fixture syntax failed'}
+            $count++
+          }
+          Write-Output ("Parsed "+$count+" PowerShell files without executing fixtures.")
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: 10.0.402
