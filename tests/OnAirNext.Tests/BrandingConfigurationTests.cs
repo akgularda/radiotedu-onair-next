@@ -52,6 +52,6 @@ public sealed class BrandingConfigurationTests
             try{await journal.SaveBrandingConfigurationAsync("a",0,i==0?Enabled:BrandingRules.Disabled,"request-"+i);return true;}
             catch(InvalidOperationException){return false;}
         }));
-        Assert.Single(results.Where(x=>x));Assert.Equal(1,(await journal.BrandingConfigurationAsync("a")).Version);
+        Assert.Single(results,x=>x);Assert.Equal(1,(await journal.BrandingConfigurationAsync("a")).Version);
     }
 }
