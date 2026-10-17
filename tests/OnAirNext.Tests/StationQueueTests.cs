@@ -34,7 +34,9 @@ public sealed class StationQueueTests
         Assert.Equal("append-b", Assert.Single((await journal.ReadStationQueueAsync("b")).Entries).Id);
         await Assert.ThrowsAsync<InvalidOperationException>(() => journal.AppendStationQueueAsync("b", Item(), 1, "append-a"));
         await Assert.ThrowsAsync<InvalidOperationException>(() => journal.AppendStationQueueAsync("a", Item("changed"), 0, "append-a"));
-        Assert.Equal(retry, journal.PublishedQueue("a"));
+        var published = journal.PublishedQueue("a")!;
+        Assert.Equal(retry.Revision, published.Revision);
+        Assert.Equal(retry.Entries, published.Entries);
     }
 
     [Fact]
