@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "source": "3a531359ad966eace6b833fd23f86dc010dfa17b",
+  "runId": "38853840691",
+  "runUrl": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38853840691",
+  "conclusion": "failure",
+  "productionChanged": false,
+  "verifiedResultArchives": [
+    {
+      "name": "loudness-reference-qualification",
+      "digest": "sha256:d8458bebbc704d4c7b0f597fce9cec0bb497cce66980c2415a21c96093fb48c2",
+      "bytes": 2655
+    },
+    {
+      "name": "windows-codec-qualification",
+      "digest": "sha256:3eb584c3dbb173c69146ed6f929b84a9d4924bdff94c117b53b78afaff4cad6a",
+      "bytes": 471
+    }
+  ],
+  "codec": {
+    "Source": "3a531359ad966eace6b833fd23f86dc010dfa17b",
+    "Completed": false,
+    "Passed": false,
+    "ProductionChanged": false,
+    "Scope": "Disposable Windows runtime dependency integrity and real AAC-LC/HE-AACv2/24-bit Ogg FLAC smoke encodes/decodes only. Not the 18-output engine, worst-case encoded headroom, actual-PC, long-run or mouse qualification.",
+    "Profiles": [],
+    "Mode": "Real profile encode/decode smoke",
+    "Error": "Codec runtime was built from different pinned inputs."
+  },
+  "engineQualification": "Skipped because codec qualification failed; none claimed.",
+  "cause": "The Python build script did not have a repository LF rule. Windows checkout changed its raw bytes to CRLF while the Linux-built runtime manifest correctly recorded LF bytes. The dependency verifier rejected the mismatch.",
+  "correction": "Explicit LF attributes for Python/YAML/shell source, separate expected/actual lock/build-script hash readback. Byte-level hash checks are retained. No new codec build input and no encoder fallback."
+}

@@ -5,19 +5,48 @@ using System.IO.Pipes;
 using OnAirNext.Engine;
 using OnAirNext.Lab;
 
+if (args.Length == 2 && args[0] is "--service-maintenance-mark" or "--service-maintenance-check-mark")
+{
+    if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Disposable Windows CI setup fixture only.");
+    return await ServiceProbe.MaintenanceMarkerAsync(args[1],args[0]=="--service-maintenance-check-mark");
+}
+if (args.Length == 1 && args[0] == "--service-maintenance-probe")
+{
+    if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Disposable Windows CI setup fixture only.");
+    return await ServiceProbe.MaintenanceAsync();
+}
+if (args.Length == 1 && args[0] == "--service-migration-probe") return await ServiceProbe.MigrationAsync();
+if (args.Length == 1 && args[0] == "--service-runtime-legacy-fixture")
+{
+    if(!OperatingSystem.IsWindows())throw new PlatformNotSupportedException("Disposable Windows setup fixture only.");
+    return await ServiceProbe.RuntimeLegacyFixtureAsync();
+}
+if (args.Length == 1 && args[0] == "--service-report-probe") return await ServiceProbe.ReportAsync();
+if (args.Length == 1 && args[0] == "--service-upload-probe") return await UploadProbe.RunAsync();
+if (args.Length == 2 && args[0] == "--service-source-probe") return await ServiceProbe.SourceAsync(args[1]);
+if (args.Length == 2 && args[0] == "--service-probe") return await ServiceProbe.CommandAsync(args[1]);
+if (args.Length == 2 && args[0] == "--service-child" && args[1] == "leaf") return await ServiceProbe.OwnedChildFixtureAsync(true);
+if (Environment.GetEnvironmentVariable("ONAIR_SETUP_TEST_RUNTIME")=="1" && args.SequenceEqual(new[]{"-hide_banner","-encoders"}) && Path.GetFileName(Environment.ProcessPath)=="ffmpeg.exe")
+{ Console.WriteLine("Engineering fixture only; no audio codec implementation.\n A..... libfdk_aac test-listing\n A..... flac test-listing"); return 0; }
+if (Environment.GetEnvironmentVariable("ONAIR_SETUP_TEST_RUNTIME")=="1" && args.SequenceEqual(new[]{"-version"}) && Path.GetFileName(Environment.ProcessPath)=="ffprobe.exe")
+{ Console.WriteLine("ffprobe version listing-only engineering fixture; no media analysis implementation."); return 0; }
+if (args.SequenceEqual(new[] { "-hide_banner", "-encoders" }) && Path.GetFileName(Environment.ProcessPath)=="ffmpeg.exe")
+    return await ServiceProbe.OwnedChildFixtureAsync(false);
+
 var arguments = args.Chunk(2).ToDictionary(x => x[0], x => x.Length == 2 ? x[1] : throw new ArgumentException("Arguments require values."));
 var localRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadioTEDU", "OnAirNext-Dev");
 var ffmpeg = arguments.GetValueOrDefault("--ffmpeg") ?? "ffmpeg";
+var dotnet = arguments.GetValueOrDefault("--dotnet") ?? Path.Combine(localRoot, "tools", "dotnet", "dotnet.exe");
 var icecastRoot = arguments.GetValueOrDefault("--icecast-root") ?? Path.Combine(localRoot, "tools", "icecast");
 var scenario = arguments.GetValueOrDefault("--scenario") ?? "all";
 var duration = int.Parse(arguments.GetValueOrDefault("--duration-seconds") ?? "12", System.Globalization.CultureInfo.InvariantCulture);
 if (duration is < 6 or > 259200) throw new ArgumentException("Choose 6 seconds through 72 hours.");
-if (scenario is not ("all" or "baseline" or "recovery" or "offline" or "fleet" or "live" or "soak" or "backpressure" or "corrupt" or "host")) throw new ArgumentException("Unknown lab scenario.");
+if (scenario is not ("all" or "baseline" or "recovery" or "durable" or "lifecycle" or "finite" or "offline" or "fleet" or "live" or "soak" or "backpressure" or "corrupt" or "host" or "precision" or "normalization" or "processing" or "roster18" or "queue" or "queue-durable")) throw new ArgumentException("Unknown lab scenario.");
 var runRoot = Path.Combine(localRoot, "runs", DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N")[..8]);
 Directory.CreateDirectory(runRoot);
 var fixtures = Sandbox.Fixtures(Path.Combine(runRoot, "fixtures"));
 var results = new List<CaseResult>();
-foreach (var name in scenario == "all" ? new[] { "baseline", "recovery", "offline", "fleet", "live", "backpressure", "corrupt", "host" } : new[] { scenario })
+foreach (var name in scenario == "all" ? new[] { "baseline", "precision", "normalization", "processing", "queue", "recovery", "durable", "lifecycle", "finite", "offline", "fleet", "live", "backpressure", "corrupt", "host" } : new[] { scenario })
 {
     var result = new CaseResult(name);
     Console.WriteLine($"Starting {name}; all origins and mounts are loopback test resources.");
@@ -28,12 +57,22 @@ foreach (var name in scenario == "all" ? new[] { "baseline", "recovery", "offlin
         {
             case "baseline": await BaselineAsync(result); break;
             case "recovery": await RecoveryAsync(result); break;
+            case "durable": await DurableAsync(result); break;
+            case "lifecycle": await LifecycleAsync(result); break;
+            case "finite": await FiniteAsync(result); break;
             case "offline": await OfflineAsync(result); break;
             case "fleet": case "soak": await FleetAsync(result); break;
             case "live": await LiveAsync(result); break;
             case "backpressure": await BackpressureAsync(result); break;
             case "corrupt": await CorruptAsync(result); break;
             case "host": await HostAsync(result); break;
+            case "precision": await PrecisionAsync(result); break;
+            case "processing": await ProcessingChecks.RunAsync(ffmpeg,Path.Combine(runRoot,result.Name),result); break;
+            case "roster18": await Roster18Checks.RunAsync(ffmpeg,icecastRoot,Path.Combine(runRoot,result.Name),result); break;
+            case "normalization": await NormalizationChecks.RunAsync(ffmpeg,icecastRoot,Path.Combine(runRoot,result.Name),result); break;
+            case "queue": await QueueChecks.RunAsync(ffmpeg,icecastRoot,Path.Combine(runRoot,result.Name),result); break;
+            case "queue-durable": await QueueDurableChecks.RunAsync(ffmpeg,icecastRoot,dotnet,
+                Path.Combine(localRoot,"build","bin","OnAirNext.Host","release","OnAirNext.Host.dll"),Path.Combine(runRoot,result.Name),result); break;
         }
         result.Passed = true;
     }
@@ -45,13 +84,58 @@ foreach (var name in scenario == "all" ? new[] { "baseline", "recovery", "offlin
     {
         SchemaVersion = 1, CreatedAtUtc = DateTimeOffset.UtcNow, Machine = Environment.MachineName,
         OS = RuntimeInformation.OSDescription, Runtime = RuntimeInformation.FrameworkDescription,
-        Icecast = "2.5.0", TestProfiles = new[] { "AAC-LC 192 kbps", "Ogg FLAC" },
-        HeAacTested = false, Source = "New independent implementation; no production configuration or services accessed.",
+        Icecast = "2.5.0", TestProfiles = scenario is "roster18" or "queue" or "queue-durable" ? new[] { "AAC-LC 192 kbps", "libfdk HE-AACv2 64 kbps", "24-bit Ogg FLAC" } : new[] { "AAC-LC 192 kbps", "24-bit Ogg FLAC" },
+        HeAacTested = results.Any(r=>(r.Name is "roster18" or "queue" or "queue-durable")&&r.Passed), Source = "New independent implementation; no production configuration or services accessed.",
+        ExecutionSource = Environment.GetEnvironmentVariable("GITHUB_SHA"), PcmFormat = "48k stereo float32 little-endian",
+        ExecutionBuild = typeof(StationEngine).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .Cast<System.Reflection.AssemblyInformationalVersionAttribute>().Single().InformationalVersion,
         Results = results, RemainingOwnedChildren = ChildProcess.ActiveProcesses
     }, new JsonSerializerOptions { WriteIndented = true }));
 }
 Console.WriteLine("Evidence: " + Path.Combine(runRoot, "results.json"));
 return results.All(x => x.Passed) && ChildProcess.ActiveProcesses.Count == 0 ? 0 : 1;
+
+async Task PrecisionAsync(CaseResult result)
+{
+    var root = Path.Combine(runRoot, result.Name);
+    var fixture = PrecisionProbe.Fixture(Path.Combine(root, "fixtures"));
+    await using var origin = new Sandbox(icecastRoot, root); await origin.StartAsync();
+    await using var journal = new EventJournal(Path.Combine(root, "playback.db"));
+    await using var station = new StationEngine(ffmpeg, new StationSettings("precision", [fixture.Item],
+        [origin.Output("precision", CodecProfile.OggFlac)]), journal);
+    await station.StartAsync();
+    await WaitAsync(() => station.Snapshot().Outputs[0].State == "SourceConnected", "Precision source connects.");
+    await using (var probe = new PrecisionProbe(ffmpeg, origin.Port, "/next-precision", fixture.Left, fixture.Right))
+    {
+        var measured = await probe.Result.WaitAsync(TimeSpan.FromSeconds(15)); result.Details["listener"] = measured;
+        Check(result, measured.ComparedFrames >= 2 * 48000, "Real Ogg FLAC listener decoded at least two seconds of stereo PCM.");
+        Check(result, measured.FirstFixtureFrame is not null && measured.MismatchedFrames == 0 && measured.MaximumErrorLsb24 <= 1,
+            "Decoded FLAC follows the original 24-bit sample sequence across repeated file boundaries.");
+        Check(result, measured.SubSixteenBitFrames > measured.ComparedFrames * 0.9, "Sub-16-bit sample detail survives the entire decoder/mix/encoder/listener path.");
+        Check(result, measured.StereoDifferentFrames > measured.ComparedFrames * 0.9, "Distinct left and right channels remain distinct.");
+    }
+    var ffprobe = Path.Combine(Path.GetDirectoryName(ffmpeg)!, "ffprobe.exe");
+    var info = ChildProcess.Start(ffprobe, ["-v", "error", "-rw_timeout", "5000000", "-read_intervals", "%+#1", "-show_entries",
+        "stream=codec_name,sample_rate,channels,bits_per_raw_sample", "-of", "json", $"http://127.0.0.1:{origin.Port}/next-precision"], output: true, role: "precision-format-probe");
+    try
+    {
+        var json = info.StandardOutput.ReadToEndAsync(); var errors = ChildProcess.DrainErrorAsync(info);
+        await info.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        using var metadata = JsonDocument.Parse(await json); var stream = metadata.RootElement.GetProperty("streams")[0];
+        result.Details["stream"] = stream.Clone();
+        Check(result, info.ExitCode == 0 && stream.GetProperty("codec_name").GetString() == "flac" && stream.GetProperty("sample_rate").GetString() == "48000" &&
+            stream.GetProperty("channels").GetInt32() == 2 && stream.GetProperty("bits_per_raw_sample").GetString() == "24", "Independent stream probe confirms 48 kHz stereo 24-bit FLAC.");
+        _ = await errors;
+    }
+    finally { await ChildProcess.StopAsync(info); }
+    await WaitAsync(() => station.Snapshot().Loudness?.Current?.Reading?.SampleFrames >= 48000, "Final-mix meter processes real engine PCM.");
+    var beforeStop = station.Snapshot(); result.Details["station"] = beforeStop;
+    Check(result, beforeStop.Loudness?.Continuous == true && beforeStop.Loudness.HistoryFailures == 0, "Real audio loop publishes continuous measured final-mix coverage without blocking outputs.");
+    await station.DisposeAsync();
+    var history = journal.MeasurementHistory("precision"); result.Details["measurementHistory"] = history;
+    Check(result, history.Any(w => w.Phase == "Finished" && w.Reading?.IntegratedLufs is not null && !w.HasMeasurementGap), "Measured final-mix window closes durably with real sample boundaries.");
+    result.Details["scope"] = "Synthetic pre-encoder meter and 24-bit FLAC precision only; no normalization, true-peak limiting, HE-AAC or production compliance.";
+}
 
 async Task WaitAsync(Func<bool> condition, string description, int seconds = 12)
 {
@@ -165,9 +249,22 @@ async Task RecoveryAsync(CaseResult result)
         await WaitAsync(() => station.Snapshot().Outputs[0].Connections >= 2 && station.Snapshot().Outputs.All(x => x.State == "SourceConnected"),
             "Both outputs reconnect after restarting the owned Icecast origin.", 18);
         await using var recovered = new Probe(ffmpeg, origin.Port, "/next-recovery-main");
-        await Task.Delay(4000);
-        Check(result, recovered.Snapshot().DecodedSeconds >= 1.5 && recovered.Snapshot().Error is null, "Recovered source delivers newly decoded listener audio.");
-        var final = station.Snapshot(); result.Details["station"] = final;
+        var recoveryObservation = new List<object>();
+        var recoveryObservationClock = Stopwatch.StartNew();
+        result.Details["recoveryListenerSamples"] = recoveryObservation;
+        for (var second = 1; second <= 4; second++)
+        {
+            await Task.Delay(1000);
+            var observedStation = station.Snapshot();
+            recoveryObservation.Add(new { ElapsedSeconds = recoveryObservationClock.Elapsed.TotalSeconds,
+                Listener = recovered.Snapshot(), ProgramSamples = observedStation.Samples, Outputs = observedStation.Outputs });
+        }
+        var recoveredListener = recovered.Snapshot();
+        var final = station.Snapshot();
+        result.Details["recoveredListener"] = recoveredListener;
+        result.Details["station"] = final;
+        result.Details["programSamplesBeforeOutage"] = beforeOutage;
+        Check(result, recoveredListener.DecodedSeconds >= 1.5 && recoveredListener.Error is null, "Recovered source delivers newly decoded listener audio.");
         Check(result, final.State == "Running" && final.Samples > beforeOutage + 48000, "Origin outage never restarts or rewinds the program timeline.");
     }
     ValidateHistory(result, database);
@@ -255,10 +352,10 @@ async Task LiveAsync(CaseResult result)
         for (var frame = 0; frame < 75; frame++)
         {
             var input = PcmBlock.Rent();
-            var samples = MemoryMarshal.Cast<byte, short>(input.Memory.Span);
+            var samples = MemoryMarshal.Cast<byte, float>(input.Memory.Span);
             for (var i = 0; i < 960; i++)
             {
-                var value = (short)(9000 * Math.Sin(2 * Math.PI * 1760 * position++ / 48000));
+                var value = (float)(9000 / 32768.0 * Math.Sin(2 * Math.PI * 1760 * position++ / 48000));
                 samples[i * 2] = value; samples[i * 2 + 1] = value;
             }
             station.Live.Push(input); await Task.Delay(20);
@@ -321,6 +418,287 @@ async Task CorruptAsync(CaseResult result)
     ValidateHistory(result, database);
 }
 
+async Task DurableAsync(CaseResult result)
+{
+    var root = Path.Combine(runRoot, result.Name);
+    await using var origin = new Sandbox(icecastRoot, root); await origin.StartAsync();
+    MediaItem LongFixture(string id, int initialTone, int tailTone)
+    {
+        var path = Path.Combine(root, id + ".wav"); const int count = 20 * AudioFormat.SampleRate;
+        using var file = new BinaryWriter(File.Create(path));
+        file.Write("RIFF"u8); file.Write(36 + count * 4); file.Write("WAVEfmt "u8);
+        file.Write(16); file.Write((short)1); file.Write((short)2); file.Write(48000); file.Write(192000);
+        file.Write((short)4); file.Write((short)16); file.Write("data"u8); file.Write(count * 4);
+        for (var i = 0; i < count; i++)
+        {
+            var tone = i < 4 * AudioFormat.SampleRate ? initialTone : tailTone;
+            var sample = (short)(7000 * Math.Sin(2 * Math.PI * tone * i / AudioFormat.SampleRate));
+            file.Write(sample); file.Write(sample);
+        }
+        return new(id, path, "Synthetic recovery fixture", id);
+    }
+    var songs = new[] { LongFixture("unfinished", 440, 880), LongFixture("next-song", 660, 660) };
+    var pipeName = "onair-next-dev-" + Guid.NewGuid().ToString("N");
+    var config = Path.Combine(root, "local.host.json");
+    var db = Path.Combine(root, "playback.db");
+    await File.WriteAllTextAsync(config, JsonSerializer.Serialize(new
+    {
+        Ffmpeg = ffmpeg, DataRoot = root, PipeName = pipeName,
+        Stations = new[] { new StationSettings("durable", songs, [origin.Output("durable")], Repeat: false) }
+    }));
+    var sdk = dotnet;
+    var assembly = Path.Combine(localRoot, "build", "bin", "OnAirNext.Host", "release", "OnAirNext.Host.dll");
+    var hostLogs = new List<Task>();
+    var generation = 0;
+    async Task SaveHostLogAsync(Task<string> text, string file)
+    {
+        try { await File.WriteAllTextAsync(file, await text); }
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException)
+        { await File.WriteAllTextAsync(file, "Log ended during process cleanup: " + ex.GetType().Name); }
+    }
+    Process Launch()
+    {
+        var process = ChildProcess.Start(sdk, [assembly, "--config", config], output: true, role: "durable-test-host");
+        var prefix = Path.Combine(root, "host-" + ++generation);
+        hostLogs.Add(SaveHostLogAsync(process.StandardOutput.ReadToEndAsync(), prefix + ".stdout.log"));
+        hostLogs.Add(SaveHostLogAsync(ChildProcess.DrainErrorAsync(process), prefix + ".stderr.log"));
+        return process;
+    }
+    async Task<JsonDocument> Command(string action, string? id = null, CancellationToken cancellationToken = default)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(12));
+        await using var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+        await pipe.ConnectAsync(timeout.Token);
+        using var reader = new StreamReader(pipe, leaveOpen: true);
+        await pipe.WriteAsync(System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Id = id ?? Guid.NewGuid().ToString("N"), Action = action, StationId = "durable" }) + "\n"), timeout.Token);
+        return JsonDocument.Parse(await reader.ReadLineAsync(timeout.Token) ?? throw new IOException("No command acknowledgement."));
+    }
+    async Task WaitRunning(Process activeHost)
+    {
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        IOException? lastTransportError = null;
+        try
+        {
+            while (!deadline.IsCancellationRequested)
+            {
+                if (activeHost.HasExited) throw new InvalidOperationException($"Recovered host exited with {activeHost.ExitCode}; inspect the generation's retained stderr log.");
+                try
+                {
+                    using var status = await Command("status", cancellationToken: deadline.Token);
+                    var stations = status.RootElement.GetProperty("stations");
+                    if (stations.GetArrayLength() > 0 && stations[0].GetProperty("State").GetString() == "Running") return;
+                }
+                catch (IOException ex) { lastTransportError = ex; }
+                await Task.Delay(100, deadline.Token);
+            }
+        }
+        catch (OperationCanceledException) when (deadline.IsCancellationRequested) { }
+        throw new TimeoutException("Recovered host did not reach Running within 20 seconds. Last status transport error: " + lastTransportError?.Message);
+    }
+    Process? host = null;
+    try
+    {
+        host = Launch(); await WaitRunning(host); await Task.Delay(6200);
+        using (var status = await Command("status"))
+            Check(result, status.RootElement.GetProperty("stations")[0].GetProperty("CurrentItemSamples").GetInt64() >= 5 * 48000,
+                "Crash occurs beyond the fixture's distinctive four-second opening.");
+        var originalHostPid = host.Id;
+        await ChildProcess.StopAsync(host);
+        await ChildProcess.StopAsync(host);
+        Check(result, !ChildProcess.ActiveProcesses.ContainsKey(originalHostPid),
+            "Repeated cleanup acknowledges only confirmed process exit and is safe after handle disposal.");
+        host = null;
+        host = Launch(); await WaitRunning(host);
+        await using (var listener = new Probe(ffmpeg, origin.Port, "/next-durable"))
+        {
+            await WaitAsync(() => listener.Snapshot().DecodedSeconds >= 1.2 || listener.Snapshot().Error is not null,
+                "Restart listener must decode a measurable opening window.", 12);
+            var heard = listener.Snapshot(); result.Details["restartedListener"] = heard;
+            Check(result, heard.DecodedSeconds >= 1 && heard.FirstTones.FirstOrDefault() == 440,
+                "Independent listener hears the opening tone after a hard kill, rather than checkpoint-position tail audio.");
+        }
+        var starts = EventJournal.ReadEvents(db).Where(x => x.Type == "started").ToArray();
+        Check(result, starts.Length == 2 && starts[0].OccurrenceId != starts[1].OccurrenceId &&
+            starts[1].PreviousOccurrenceId == starts[0].OccurrenceId,
+            "Actual repeated audio is recorded as a new attempt linked to the interrupted attempt.");
+        var skipId = Guid.NewGuid().ToString("N");
+        using (var accepted = await Command("skip", skipId))
+            Check(result, accepted.RootElement.GetProperty("accepted").GetBoolean(), "Skip admission is acknowledged before hard kill.");
+        await ChildProcess.StopAsync(host); host = null;
+        host = Launch(); await WaitRunning(host);
+        using (var retry = await Command("skip", skipId))
+            Check(result, retry.RootElement.GetProperty("accepted").GetBoolean(), "A lost-response Skip retry is accepted after host restart.");
+        await using (var listener = new Probe(ffmpeg, origin.Port, "/next-durable"))
+        {
+            await WaitAsync(() => listener.Snapshot().DecodedSeconds >= 1.2 || listener.Snapshot().Error is not null,
+                "Post-Skip listener must decode a measurable window.", 12);
+            var heard = listener.Snapshot(); result.Details["afterSkipListener"] = heard;
+            Check(result, heard.DecodedSeconds >= 1 && heard.FirstTones.FirstOrDefault() == 660,
+                "The consumed item stays consumed and a duplicate Skip cannot skip the next song.");
+        }
+        var events = EventJournal.ReadEvents(db);
+        Check(result, events.Count(x => x.Type == "skipped") == 1, "One durable Skip produces exactly one terminal Skip despite process death and retry.");
+        Check(result, events.Count(x => x.Type == "started" && x.ItemId == "unfinished") == 2,
+            "The already skipped song is not started a third time.");
+        Check(result, EventJournal.Verify(db), "Recovery and restarted attempts preserve the complete event hash chain.");
+        using var stopped = await Command("stop");
+        await host.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        await ChildProcess.StopAsync(host); host = null;
+        host = Launch();
+        using (var status = await Command("status"))
+            Check(result, status.RootElement.GetProperty("stations").GetArrayLength() == 1 &&
+                status.RootElement.GetProperty("stations")[0].GetProperty("State").GetString() == "Stopped" &&
+                !status.RootElement.GetProperty("stations")[0].GetProperty("RequestedRunning").GetBoolean(),
+                "An explicitly stopped station stays stopped after host restart, while the command interface remains available.");
+        using (var collision = await Command("stop", skipId))
+            Check(result, !collision.RootElement.GetProperty("accepted").GetBoolean(),
+                "Command IDs retain their original operation after restart; a rejected Stop cannot terminate the host.");
+        using (var status = await Command("status"))
+            Check(result, status.RootElement.GetProperty("stations").GetArrayLength() == 1 &&
+                status.RootElement.GetProperty("stations")[0].GetProperty("State").GetString() == "Stopped" &&
+                !status.RootElement.GetProperty("stations")[0].GetProperty("RequestedRunning").GetBoolean(),
+                "Control interface remains responsive after a cross-operation receipt collision.");
+        using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(3) })
+        using (var response = await client.GetAsync($"http://127.0.0.1:{origin.Port}/next-durable", HttpCompletionOption.ResponseHeadersRead))
+            Check(result, response.StatusCode == System.Net.HttpStatusCode.NotFound,
+                "Listener endpoint confirms that the stopped station did not silently autostart.");
+    }
+    finally
+    {
+        if (host is not null) await ChildProcess.StopAsync(host);
+        await Task.WhenAll(hostLogs);
+    }
+}
+
+async Task LifecycleAsync(CaseResult result)
+{
+    var root = Path.Combine(runRoot, result.Name);
+    await using var origin = new Sandbox(icecastRoot, root); await origin.StartAsync();
+    var pipe = "onair-next-dev-" + Guid.NewGuid().ToString("N");
+    var configuration = Path.Combine(root, "local.host.json");
+    await File.WriteAllTextAsync(configuration, JsonSerializer.Serialize(new
+    {
+        Ffmpeg = ffmpeg, DataRoot = root, PipeName = pipe,
+        Stations = new[] { new StationSettings("a", fixtures, [origin.Output("life-a")], AutoStart: false),
+            new StationSettings("b", fixtures, [origin.Output("life-b")]) }
+    }));
+    var sdk = dotnet;
+    var assembly = Path.Combine(localRoot, "build", "bin", "OnAirNext.Host", "release", "OnAirNext.Host.dll");
+    async Task Accepted(ControlHost host, string action, string station, string id)
+    {
+        using var response = await host.CommandAsync(action, station, id);
+        Check(result, response.RootElement.GetProperty("accepted").GetBoolean(), action + " is durably acknowledged for " + station + ".");
+    }
+    await using (var host = new ControlHost(sdk, assembly, configuration, pipe, Path.Combine(root, "host-1")))
+    {
+        await host.WaitForStationAsync("b", "Running");
+        using (var status = await host.CommandAsync("status"))
+        {
+            var a = status.RootElement.GetProperty("stations").EnumerateArray().Single(x => x.GetProperty("Id").GetString() == "a");
+            Check(result, a.GetProperty("State").GetString() == "Stopped" && !a.GetProperty("RequestedRunning").GetBoolean(),
+                "Stopped stations remain visible and do not acquire an output before a Start request.");
+        }
+        await using var healthy = new Probe(ffmpeg, origin.Port, "/next-life-b");
+        await WaitAsync(() => healthy.Snapshot().DecodedSeconds >= 1.2, "Sibling listener must warm up.", 12);
+        long siblingConnections, siblingStarts, siblingSamples;
+        using (var status = await host.CommandAsync("status"))
+        {
+            var b = status.RootElement.GetProperty("stations").EnumerateArray().Single(x => x.GetProperty("Id").GetString() == "b");
+            siblingConnections = b.GetProperty("Outputs")[0].GetProperty("Connections").GetInt64();
+            siblingStarts = b.GetProperty("Outputs")[0].GetProperty("EncoderStarts").GetInt64();
+            siblingSamples = b.GetProperty("Samples").GetInt64();
+        }
+        await Accepted(host, "start-station", "a", "start-a-1");
+        await Accepted(host, "start-station", "a", "start-a-1");
+        await host.WaitForStationAsync("a", "Running");
+        await using (var listener = new Probe(ffmpeg, origin.Port, "/next-life-a"))
+        {
+            await WaitAsync(() => listener.Snapshot().DecodedSeconds >= 1.2, "Started station must decode.", 12);
+            Check(result, listener.Snapshot().SilentWindows == 0, "A UI-compatible Start command produces real decoded audio.");
+        }
+        await Accepted(host, "stop-station", "a", "stop-a-1");
+        await host.WaitForStationAsync("a", "Stopped");
+        await Accepted(host, "start-station", "a", "start-a-1");
+        using (var status = await host.CommandAsync("status"))
+        {
+            var a = status.RootElement.GetProperty("stations").EnumerateArray().Single(x => x.GetProperty("Id").GetString() == "a");
+            Check(result, a.GetProperty("State").GetString() == "Stopped" && !a.GetProperty("RequestedRunning").GetBoolean(),
+                "A duplicate old Start acknowledgement does not undo a later Stop.");
+        }
+        using (var collision = await host.CommandAsync("skip", "a", "start-a-1"))
+            Check(result, !collision.RootElement.GetProperty("accepted").GetBoolean(), "Cross-operation command ID reuse is rejected while stopped.");
+        await Accepted(host, "start-station", "a", "start-a-2");
+        await host.WaitForStationAsync("a", "Running");
+        await Accepted(host, "stop-station", "a", "stop-a-2");
+        await host.WaitForStationAsync("a", "Stopped");
+        using (var status = await host.CommandAsync("status"))
+        {
+            var b = status.RootElement.GetProperty("stations").EnumerateArray().Single(x => x.GetProperty("Id").GetString() == "b");
+            Check(result, b.GetProperty("Samples").GetInt64() > siblingSamples &&
+                b.GetProperty("Outputs")[0].GetProperty("Connections").GetInt64() == siblingConnections &&
+                b.GetProperty("Outputs")[0].GetProperty("EncoderStarts").GetInt64() == siblingStarts,
+                "Starting/stopping A never resets B's programme, encoder or source connection.");
+        }
+        await WaitAsync(() => healthy.Snapshot().DecodedSeconds >= 3, "Sibling listener must provide a measurable lifecycle window.", 12);
+        var heard = healthy.Snapshot(); result.Details["healthySibling"] = heard;
+        Check(result, heard.DecodedSeconds >= 3 && heard.SilentWindows == 0 && heard.Error is null,
+            "Independent sibling listener continues through selected-station lifecycle operations.");
+    }
+    await using (var restarted = new ControlHost(sdk, assembly, configuration, pipe, Path.Combine(root, "host-2")))
+    {
+        await restarted.WaitForStationAsync("b", "Running");
+        using (var status = await restarted.CommandAsync("status"))
+        {
+            var a = status.RootElement.GetProperty("stations").EnumerateArray().Single(x => x.GetProperty("Id").GetString() == "a");
+            Check(result, a.GetProperty("State").GetString() == "Stopped" && !a.GetProperty("RequestedRunning").GetBoolean(),
+                "After process death B restarts while explicitly stopped A remains stopped and visible.");
+        }
+        using var stop = await restarted.CommandAsync("stop");
+        await restarted.Process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(20));
+        Check(result, restarted.Process.ExitCode == 0, "The lifecycle host shuts down with all owned sessions released.");
+    }
+    Check(result, EventJournal.Verify(Path.Combine(root, "playback.db")), "Independent lifecycle operations preserve the complete event hash chain.");
+}
+
+async Task FiniteAsync(CaseResult result)
+{
+    var root = Path.Combine(runRoot, result.Name);
+    await using var origin = new Sandbox(icecastRoot, root); await origin.StartAsync();
+    var pipe = "onair-next-dev-" + Guid.NewGuid().ToString("N");
+    var configuration = Path.Combine(root, "local.host.json");
+    await File.WriteAllTextAsync(configuration, JsonSerializer.Serialize(new
+    {
+        Ffmpeg = ffmpeg, DataRoot = root, PipeName = pipe,
+        Stations = new[] { new StationSettings("finite", [fixtures[0]], [origin.Output("finite")], Repeat: false) }
+    }));
+    var sdk = dotnet;
+    var assembly = Path.Combine(localRoot, "build", "bin", "OnAirNext.Host", "release", "OnAirNext.Host.dll");
+    var database = Path.Combine(root, "playback.db");
+    await using (var first = new ControlHost(sdk, assembly, configuration, pipe, Path.Combine(root, "host-1")))
+    {
+        await first.WaitForStationAsync("finite", "Completed");
+        var events = EventJournal.ReadEvents(database);
+        Check(result, events.Count(x => x.Type == "started") == 1 && events.Count(x => x.Type == "ended") == 1,
+            "Finite programme has exactly one real start and one committed completion.");
+        using var status = await first.CommandAsync("status");
+        Check(result, status.RootElement.GetProperty("stations")[0].GetProperty("Outputs")[0].GetProperty("FramesWritten").GetInt64() > 0,
+            "The finite programme reached a real encoder/source before completion.");
+    }
+    await using (var restarted = new ControlHost(sdk, assembly, configuration, pipe, Path.Combine(root, "host-2")))
+    {
+        await restarted.WaitForStationAsync("finite", "Completed");
+        Check(result, EventJournal.ReadEvents(database).Count(x => x.Type == "started") == 1,
+            "Restart at committed EOF cannot replay the completed finite playlist.");
+        using (var status = await restarted.CommandAsync("status"))
+            Check(result, status.RootElement.GetProperty("stations")[0].GetProperty("Outputs")[0].GetProperty("EncoderStarts").GetInt64() == 0,
+                "Exhausted recovery does not open a duplicate encoder/source session.");
+        using var stop = await restarted.CommandAsync("stop");
+        await restarted.Process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(20));
+    }
+    Check(result, EventJournal.Verify(database), "EOF recovery preserves the complete event hash chain.");
+}
+
 async Task HostAsync(CaseResult result)
 {
     var root = Path.Combine(runRoot, result.Name);
@@ -332,7 +710,7 @@ async Task HostAsync(CaseResult result)
         Ffmpeg = ffmpeg, DataRoot = root, PipeName = pipeName,
         Stations = new[] { new StationSettings("host", fixtures, [origin.Output("host")]) }
     }));
-    var sdk = Path.Combine(localRoot, "tools", "dotnet", "dotnet.exe");
+    var sdk = dotnet;
     var assembly = Path.Combine(localRoot, "build", "bin", "OnAirNext.Host", "release", "OnAirNext.Host.dll");
     var host = ChildProcess.Start(sdk, [assembly, "--config", config], output: true, role: "engine-host");
     var stderr = ChildProcess.DrainErrorAsync(host); var stdout = host.StandardOutput.ReadToEndAsync();

@@ -6,4 +6,24 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.1"><PrivateAssets>all</PrivateAssets></PackageReference>
     <ProjectReference Include="../../src/OnAirNext.Engine/OnAirNext.Engine.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../Signals/StereoReferenceSignals.cs" Link="Measurement/StereoReferenceSignals.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/SetupModels.cs" Link="Installation/SetupModels.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/CodecRuntimePackage.cs" Link="Installation/CodecRuntimePackage.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/RuntimeSupplement.cs" Link="Installation/RuntimeSupplement.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/RuntimeSupplementReviewProgress.cs" Link="Installation/RuntimeSupplementReviewProgress.cs" />
+    <None Include="../../src/OnAirNext.Setup/RuntimeReferences/b39ffcb9.json" Link="RuntimeReferences/b39ffcb9.json" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="../../src/OnAirNext.Setup/UpdateReviewHandoff.cs" Link="Installation/UpdateReviewHandoff.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/AppUpdateModels.cs" Link="Installation/AppUpdateModels.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/UpdateMaintenanceLock.cs" Link="Installation/UpdateMaintenanceLock.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/UpdateSwap.cs" Link="Installation/UpdateSwap.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/UpdateOperationStore.cs" Link="Installation/UpdateOperationStore.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/UpdateAdmission.cs" Link="Installation/UpdateAdmission.cs" />
+    <Compile Include="../../src/OnAirNext.Host/ServiceEndpoint.cs" Link="ServiceControl/ServiceEndpoint.cs" />
+    <Compile Include="../../src/OnAirNext.Host/ServicePipeClient.cs" Link="ServiceControl/ServicePipeClient.cs" />
+    <Compile Include="../../src/OnAirNext.Host/ServicePipePolicy.cs" Link="ServiceControl/ServicePipePolicy.cs" />
+    <Compile Include="../../src/OnAirNext.Web/ReportDownloadGrants.cs" Link="Reports/ReportDownloadGrants.cs" />
+    <Compile Include="../../src/OnAirNext.Web/EngineRpc.cs" Link="Cue/EngineRpc.cs" />
+    <Compile Include="../../src/OnAirNext.Web/PrivateCueDownload.cs" Link="Cue/PrivateCueDownload.cs" />
+  </ItemGroup>
 </Project>

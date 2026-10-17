@@ -1,0 +1,379 @@
+{
+  "kind": "scoped-synthetic-stereo-instrument-qualification",
+  "source": "6488c4391f174b18a16f455f22f6d9bee72e1e4f",
+  "runId": "38830016334",
+  "url": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38830016334",
+  "status": "completed",
+  "conclusion": "success",
+  "verifiedAt": "2026-10-16T00:37:37.180Z",
+  "unit": {
+    "total": 160,
+    "executed": 160,
+    "passed": 160,
+    "failed": 0,
+    "error": 0,
+    "timeout": 0,
+    "aborted": 0,
+    "inconclusive": 0,
+    "passedButRunAborted": 0,
+    "notRunnable": 0,
+    "notExecuted": 0,
+    "disconnected": 0,
+    "warning": 0,
+    "completed": 0,
+    "inProgress": 0,
+    "pending": 0
+  },
+  "service": {
+    "Source": "6488c4391f174b18a16f455f22f6d9bee72e1e4f",
+    "Completed": true,
+    "Passed": true,
+    "checks": 35,
+    "ProductionChanged": false
+  },
+  "setup": {
+    "Source": "6488c4391f174b18a16f455f22f6d9bee72e1e4f",
+    "Completed": true,
+    "Passed": true,
+    "checks": 20,
+    "ProductionChanged": false
+  },
+  "package": {
+    "ManifestSha256": "621EB375EB069C654359CF7128E866326F48BCFFE9DFF89B9B6D749A78D93070",
+    "Source": "6488c4391f174b18a16f455f22f6d9bee72e1e4f",
+    "UniquePayloadBytes": 112462137,
+    "Files": 733,
+    "Commissioned": false,
+    "UncompressedBytes": 274567095,
+    "Scope": "Windows x64 self-contained development package; no FFmpeg, music, credentials or production configuration"
+  },
+  "reference": {
+    "Source": "6488c4391f174b18a16f455f22f6d9bee72e1e4f",
+    "AtUtc": "2026-10-16T00:32:52.8559402+00:00",
+    "Completed": true,
+    "Passed": true,
+    "Cases": [
+      {
+        "Name": "stereo-calibration",
+        "Passed": true,
+        "SampleSha256": "0DAC73B2224CB912D4C5F22C07B40627B33C6633AF9470901ACEEF8C3D75EDF5",
+        "Reading": {
+          "SampleFrames": 960000,
+          "IntegratedFrames": 960000,
+          "MomentaryLufs": -22.99329558036168,
+          "ShortTermLufs": -22.993295580361682,
+          "IntegratedLufs": -22.993297101682888,
+          "LoudnessRangeLu": 6.750292265873005e-15,
+          "MaximumMomentaryLufs": -22.993290068425228,
+          "MaximumShortTermLufs": -22.993294845436413,
+          "SamplePeakDbfs": -23.000000432125567,
+          "TruePeakDbtp": -22.993304465401287,
+          "RangeSettled": false,
+          "Finished": true
+        },
+        "Reference": {
+          "IntegratedLufs": -23,
+          "LoudnessRangeLu": 0,
+          "TruePeakDbtp": -23
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.006702898317112016,
+          "RangeLu": null,
+          "PeakDb": 0.006695534598712527
+        }
+      },
+      {
+        "Name": "absolute-and-relative-gates",
+        "Passed": true,
+        "SampleSha256": "2B3D060134854F497A40132E2532CA0CA2884A92A444EC30EB139D69C9E15D45",
+        "Reading": {
+          "SampleFrames": 4800000,
+          "IntegratedFrames": 4800000,
+          "MomentaryLufs": -71.99329547223726,
+          "ShortTermLufs": -71.99329547289443,
+          "IntegratedLufs": -23.013868674469784,
+          "LoudnessRangeLu": 12.999999977485114,
+          "MaximumMomentaryLufs": -22.99329130982563,
+          "MaximumShortTermLufs": -22.99329501095662,
+          "SamplePeakDbfs": -23.000000432125567,
+          "TruePeakDbtp": -22.993304465401287,
+          "RangeSettled": true,
+          "Finished": true
+        },
+        "Reference": {
+          "IntegratedLufs": -23,
+          "LoudnessRangeLu": 13,
+          "TruePeakDbtp": -23
+        },
+        "RangeCompared": true,
+        "RangeComparisonNote": "At least 60 seconds measured.",
+        "Difference": {
+          "IntegratedLu": 0.01386867446978357,
+          "RangeLu": 2.2514885955615682e-8,
+          "PeakDb": 0.006695534598712527
+        }
+      },
+      {
+        "Name": "energy-gated-programme",
+        "Passed": true,
+        "SampleSha256": "589A8B6487216B180D1ABD22595E28BC1F90B85F576B501E335DE9FFBFF41FFB",
+        "Reading": {
+          "SampleFrames": 2884800,
+          "IntegratedFrames": 2884800,
+          "MomentaryLufs": -25.993295532240094,
+          "ShortTermLufs": -25.9932955322401,
+          "IntegratedLufs": -22.97865743657876,
+          "LoudnessRangeLu": 5.999999945639276,
+          "MaximumMomentaryLufs": -19.99329284786913,
+          "MaximumShortTermLufs": -19.9932952214365,
+          "SamplePeakDbfs": -19.99999987057016,
+          "TruePeakDbtp": -19.993303920245964,
+          "RangeSettled": true,
+          "Finished": true
+        },
+        "Reference": {
+          "IntegratedLufs": -23,
+          "LoudnessRangeLu": 6,
+          "TruePeakDbtp": -20
+        },
+        "RangeCompared": true,
+        "RangeComparisonNote": "At least 60 seconds measured.",
+        "Difference": {
+          "IntegratedLu": 0.02134256342123919,
+          "RangeLu": 5.4360723922286525e-8,
+          "PeakDb": 0.006696079754036077
+        }
+      },
+      {
+        "Name": "loudness-range",
+        "Passed": true,
+        "SampleSha256": "E992A30C60BC949492FEF5D8F636CCF74E5E0FC078F50FD028DD20A5162C5011",
+        "Reading": {
+          "SampleFrames": 4800000,
+          "IntegratedFrames": 4800000,
+          "MomentaryLufs": -49.99329568842328,
+          "ShortTermLufs": -49.99329568843113,
+          "IntegratedLufs": -24.491887635789624,
+          "LoudnessRangeLu": 14.999999957082206,
+          "MaximumMomentaryLufs": -19.99329106109395,
+          "MaximumShortTermLufs": -19.99329498319964,
+          "SamplePeakDbfs": -19.99999987057016,
+          "TruePeakDbtp": -19.993303920245964,
+          "RangeSettled": true,
+          "Finished": true
+        },
+        "Reference": {
+          "IntegratedLufs": -24.5,
+          "LoudnessRangeLu": 15,
+          "TruePeakDbtp": -20
+        },
+        "RangeCompared": true,
+        "RangeComparisonNote": "At least 60 seconds measured.",
+        "Difference": {
+          "IntegratedLu": 0.0081123642103762,
+          "RangeLu": 4.291779376330851e-8,
+          "PeakDb": 0.006696079754036077
+        }
+      },
+      {
+        "Name": "opposite-phase-stereo",
+        "Passed": true,
+        "SampleSha256": "22F423A9CC3BE892F9A6A3DBB1A0AC289FBE462E9B3BF3507E7C7815BBA59602",
+        "Reading": {
+          "SampleFrames": 960000,
+          "IntegratedFrames": 960000,
+          "MomentaryLufs": -22.99329558036168,
+          "ShortTermLufs": -22.993295580361682,
+          "IntegratedLufs": -22.993297101682888,
+          "LoudnessRangeLu": 6.750292265873005e-15,
+          "MaximumMomentaryLufs": -22.993290068425228,
+          "MaximumShortTermLufs": -22.993294845436413,
+          "SamplePeakDbfs": -23.000000432125567,
+          "TruePeakDbtp": -22.993304465401287,
+          "RangeSettled": false,
+          "Finished": true
+        },
+        "Reference": {
+          "IntegratedLufs": -23,
+          "LoudnessRangeLu": 0,
+          "TruePeakDbtp": -23
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.006702898317112016,
+          "RangeLu": null,
+          "PeakDb": 0.006695534598712527
+        }
+      },
+      {
+        "Name": "true-peak-phase-45",
+        "Passed": true,
+        "SampleSha256": "8EE3AFDB9A19BF6A1D0C0956B9E03E7D226A1D8FAFD38F3AD6A65EF622C51B89",
+        "Reading": {
+          "SampleFrames": 144000,
+          "IntegratedFrames": 144000,
+          "MomentaryLufs": -2.742026062965096,
+          "ShortTermLufs": -2.6883113835253676,
+          "IntegratedLufs": -2.6743094676631167,
+          "LoudnessRangeLu": 0,
+          "MaximumMomentaryLufs": -2.6689361129086335,
+          "MaximumShortTermLufs": -2.6883113835253676,
+          "SamplePeakDbfs": -9.030900018572105,
+          "TruePeakDbtp": -5.9759090337932275,
+          "RangeSettled": false,
+          "Finished": true
+        },
+        "Reference": {
+          "IntegratedLufs": -2.7,
+          "LoudnessRangeLu": 20,
+          "TruePeakDbtp": -6
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.025690532336883454,
+          "RangeLu": null,
+          "PeakDb": 0.024090966206772535
+        }
+      },
+      {
+        "Name": "true-peak-phase-60",
+        "Passed": true,
+        "SampleSha256": "BE65A2D4E4B700F2CFB0084D6B5B6B797ECD1FA7DEA33A254E57C027FDAB8689",
+        "Reading": {
+          "SampleFrames": 144000,
+          "IntegratedFrames": 144000,
+          "MomentaryLufs": -2.7451545931357884,
+          "ShortTermLufs": -2.6915633278587157,
+          "IntegratedLufs": -2.6775613959589943,
+          "LoudnessRangeLu": 0,
+          "MaximumMomentaryLufs": -2.6721880350283533,
+          "MaximumShortTermLufs": -2.6915633278587157,
+          "SamplePeakDbfs": -7.269987435258983,
+          "TruePeakDbtp": -6.3132751595923935,
+          "RangeSettled": false,
+          "Finished": true
+        },
+        "Reference": {
+          "IntegratedLufs": -2.7,
+          "LoudnessRangeLu": 20,
+          "TruePeakDbtp": -6
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.02243860404100584,
+          "RangeLu": null,
+          "PeakDb": 0.3132751595923935
+        }
+      },
+      {
+        "Name": "true-peak-phase-67.5",
+        "Passed": true,
+        "SampleSha256": "80BFB460D68143DBB00F3FE8746A6B4D1CFDCD676661195B697D4FF07937140F",
+        "Reading": {
+          "SampleFrames": 144000,
+          "IntegratedFrames": 144000,
+          "MomentaryLufs": -2.7549914295943245,
+          "ShortTermLufs": -2.7014518964216356,
+          "IntegratedLufs": -2.68744997551718,
+          "LoudnessRangeLu": 0,
+          "MaximumMomentaryLufs": -2.682076618753773,
+          "MaximumShortTermLufs": -2.7014518964216356,
+          "SamplePeakDbfs": -6.7082932609946955,
+          "TruePeakDbtp": -6.026489256977294,
+          "RangeSettled": false,
+          "Finished": true
+        },
+        "Reference": {
+          "IntegratedLufs": -2.7,
+          "LoudnessRangeLu": 20,
+          "TruePeakDbtp": -6
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.012550024482820277,
+          "RangeLu": null,
+          "PeakDb": 0.026489256977294318
+        }
+      },
+      {
+        "Name": "above-full-scale-float",
+        "Passed": true,
+        "SampleSha256": "F00FD36335EA9E6610A07A4195363E06F423B7009C928FE760A7204E3FB187AB",
+        "Reading": {
+          "SampleFrames": 144000,
+          "IntegratedFrames": 144000,
+          "MomentaryLufs": 6.262956088004012,
+          "ShortTermLufs": 6.3166707673259515,
+          "IntegratedLufs": 6.330672683157755,
+          "LoudnessRangeLu": 0,
+          "MaximumMomentaryLufs": 6.336046037900572,
+          "MaximumShortTermLufs": 6.3166707673259515,
+          "SamplePeakDbfs": -0.025917867762879594,
+          "TruePeakDbtp": 3.0290731170159995,
+          "RangeSettled": false,
+          "Finished": true
+        },
+        "Reference": {
+          "IntegratedLufs": 6.3,
+          "LoudnessRangeLu": 20,
+          "TruePeakDbtp": 3
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.030672683157755287,
+          "RangeLu": null,
+          "PeakDb": 0.02907311701599946
+        }
+      }
+    ],
+    "ReferenceVersion": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+    "SampleRate": 48000,
+    "Channels": 2,
+    "Scope": "Synthetic stereo instrument comparison only. No encoded outputs, broadcasting PC, normalization, limiter, UI or full EBU test-set acceptance."
+  },
+  "maximumReferenceDifferences": {
+    "integratedLu": 0.030672683157755287,
+    "truePeakDb": 0.3132751595923935,
+    "rangeLu": 5.4360723922286525e-8,
+    "rangeComparedSignals": 3,
+    "rangeNotAssessedSignals": 6
+  },
+  "artifacts": [
+    {
+      "name": "windows-unit-results",
+      "digest": "sha256:4c8dc159bd2f827e67c6e46171e28504821a8ad61c65b19240fe787372872fe4",
+      "bytes": 38170
+    },
+    {
+      "name": "windows-service-qualification",
+      "digest": "sha256:4aff0cd9a4b662b0889c7e35c51228a9d85952f0d5c08436ca778a228721cefe",
+      "bytes": 1153
+    },
+    {
+      "name": "windows-setup-qualification",
+      "digest": "sha256:1a61a43efa7b18311cef4385bb9b52f101c4c952c0338f88d98dda9875910b9f",
+      "bytes": 940
+    },
+    {
+      "name": "windows-runtime-package-evidence",
+      "digest": "sha256:9c057eabf989f09a8c0a48164c6c860ecb6c35c8d3cc06b7612598bf2f36564e",
+      "bytes": 4234
+    },
+    {
+      "name": "loudness-reference-qualification",
+      "digest": "sha256:cb1eef704a7761442df02b7de3dcf2bbc6c5f4a09bc1d5997378faf5ca0edd7b",
+      "bytes": 2196
+    }
+  ],
+  "firstFailure": "loudness-first-reference-20261016.json",
+  "productionChanged": false,
+  "migratedGroups": 0,
+  "scope": "Synthetic 48k stereo meter and disposable-runner software qualification only. No programme-loop integration, normalization/limiting, actual encoded-output measurements, complete EBU test-set certification, target-PC UI/hardware/boot/resource or 24/72-hour acceptance."
+}

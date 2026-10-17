@@ -1,0 +1,179 @@
+{
+  "source": "e852c2e1adddd72de6223de26f4c21f7a49cb3b3",
+  "run": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38825230914",
+  "scope": "Disposable Windows installer software fixture; runtime encoder listing is an explicit test double, no real audio or broadcasting-PC commissioning",
+  "unitCases": {
+    "total": 134,
+    "executed": 134,
+    "passed": 134,
+    "failed": 0,
+    "error": 0,
+    "timeout": 0,
+    "aborted": 0,
+    "inconclusive": 0,
+    "passedButRunAborted": 0,
+    "notRunnable": 0,
+    "notExecuted": 0,
+    "disconnected": 0,
+    "warning": 0,
+    "completed": 0,
+    "inProgress": 0,
+    "pending": 0
+  },
+  "service": {
+    "passed": true,
+    "completed": true,
+    "checks": [
+      "Automatic delayed startup is persisted",
+      "Authenticated operator crosses the service identity boundary",
+      "Service uses its separate LocalService identity",
+      "Anonymous caller is disconnected without a response",
+      "Rejected client does not restart or kill the service",
+      "No browser console is required for service readiness",
+      "Developer global stop is not a service command",
+      "Browser-visible folder cannot be assigned without service proof",
+      "Source read runs under LocalService rather than the browser operator",
+      "A source proof cannot authorize another station",
+      "A source proof cannot authorize another folder",
+      "Matching source proof permits a disarmed station folder assignment",
+      "Assigned source is read back from the service journal",
+      "Committed source assignment replay needs no transient proof",
+      "Source replay does not create a new revision",
+      "Operator can enumerate the source denied to the service",
+      "Operator-visible folder denied to LocalService is reported unavailable",
+      "Authenticated file transport crosses the LocalService boundary with matching SHA-256",
+      "Retry reuses one retained file rather than duplicating it",
+      "A stalled file transfer leaves station controls responsive",
+      "Anonymous file transport caller is rejected before execution",
+      "Service rejects browser-operator filesystem import paths",
+      "Discard removes staged copies and preserves operator originals",
+      "Cross-account transfer does not broaden source folder permissions",
+      "Start intent is durably acknowledged",
+      "Graceful service exit releases owned descendants",
+      "Graceful service exit releases owned descendants",
+      "SCM stop preserves requested-running intent",
+      "Only the verified held host handle is terminated",
+      "Kernel job releases descendants after parent-only crash",
+      "Kernel job releases descendants after parent-only crash",
+      "SCM recovers the host automatically without browser or manual start",
+      "Unexpected process death preserves requested-running intent",
+      "Explicit station stop is acknowledged",
+      "Explicit stopped intent survives service restart"
+    ]
+  },
+  "setup": {
+    "Passed": true,
+    "Scope": "Disposable Windows installer software fixture; runtime encoder listing is an explicit test double, no real audio or broadcasting-PC commissioning",
+    "Source": "e852c2e1adddd72de6223de26f4c21f7a49cb3b3",
+    "Error": null,
+    "Checks": [
+      "Preparation keeps the service and machine roots absent",
+      "Preparation preserves the invoking operator SID",
+      "Installer records the exact plan and source version",
+      "Initial installation contains eight stopped channels and no outputs",
+      "Only the isolated LocalService image is registered",
+      "Installed engine is authenticated and all eight requested states are stopped",
+      "Installed service uses its packaged runtime without global dotnet",
+      "Runtime copy preserves the selected bytes",
+      "Identical immutable runtimes share one installed file identity",
+      "Same reviewed plan retries without replacing configuration or restarting service",
+      "Packaged console starts without Codex or a global SDK",
+      "Anonymous loopback callers cannot obtain an operator session",
+      "Read-only folder browsing requires the authorized console session",
+      "Startup capability is stored without unlisted account access",
+      "Console health exposes the exact compiled build identity",
+      "Per-user shortcut targets the installed launcher with console arguments",
+      "Per-user shortcut targets the installed launcher with console arguments",
+      "Repeating shortcut creation preserves existing matching shortcut bytes",
+      "Visible console-close route releases its own web process",
+      "Closing the console preserves the same running engine service"
+    ],
+    "ProductionChanged": false,
+    "Completed": true
+  },
+  "package": {
+    "UncompressedBytes": 274556343,
+    "Scope": "Windows x64 self-contained development package; no FFmpeg, music, credentials or production configuration",
+    "UniquePayloadBytes": 112451385,
+    "ManifestSha256": "0F4F8D5C1C4DCDD89C9017E4B28A220AC079835CE3756481D5040B877AA1D55E",
+    "Source": "e852c2e1adddd72de6223de26f4c21f7a49cb3b3",
+    "Commissioned": false,
+    "Files": 733
+  },
+  "artifactDigests": [
+    {
+      "name": "windows-unit-results",
+      "digest": "sha256:a84fc324fcb8f985c7db6b1751bcc155242c24c6483ad293cecd8725eb3033bd",
+      "bytes": 31452
+    },
+    {
+      "name": "windows-service-qualification",
+      "digest": "sha256:3944e887e79ff7929bfbe8a478d64a478b74403828bfce68cdcae770dfb25764",
+      "bytes": 1151
+    },
+    {
+      "name": "windows-setup-qualification",
+      "digest": "sha256:7da9ba116cb149c9931215cad299309f2fc8aa35ea78ad88c9a5b2a468ea299a",
+      "bytes": 940
+    },
+    {
+      "name": "windows-runtime-package-evidence",
+      "digest": "sha256:7764aaa72a2564b8c8dc7b9fd5d002e2d49f1c19ba28b16d30d2a7d72c96e3f4",
+      "bytes": 4236
+    }
+  ],
+  "runtimeLocks": [
+    {
+      "name": "OnAirNext.Application-packages.lock.json",
+      "sha256": "4c9c0fa0cd93303569b342dfa4abcd9dbc88ae51351b51bd71704899c34af10e"
+    },
+    {
+      "name": "OnAirNext.Desktop-packages.lock.json",
+      "sha256": "3ea8c3864c8f23b39364f9f40beb868ce4d8ecb62c5a25188dca037417beed3b"
+    },
+    {
+      "name": "OnAirNext.Engine-packages.lock.json",
+      "sha256": "89525152d31b7095f59b30cbd65ff929256cb4249be21cb53f0bf764b84170bd"
+    },
+    {
+      "name": "OnAirNext.Host-packages.lock.json",
+      "sha256": "837182fc5ebf853fa0c586883aaf708e4abf0b7ab97bbba1a660fa8f7d057699"
+    },
+    {
+      "name": "OnAirNext.Setup-packages.lock.json",
+      "sha256": "c30b149eb0b6c271aabe8d79d7b0318ba25f0bbd2ebf6a08faa3b67056bce9b3"
+    },
+    {
+      "name": "OnAirNext.Web-packages.lock.json",
+      "sha256": "c30b149eb0b6c271aabe8d79d7b0318ba25f0bbd2ebf6a08faa3b67056bce9b3"
+    }
+  ],
+  "productionChanged": false,
+  "targetPcInstalled": false,
+  "mouseAcceptance": false,
+  "actualAudioQualified": false,
+  "remaining": "Full delivery ledger remains authoritative; Linux/macOS and target-PC/18-output/loudness/mic/events/reports/import/rollback/24-72h gates remain.",
+  "at": "2026-10-15T23:51:00.819Z",
+  "windowsGraphRestore": "Locked framework and win-x64 graph, with reviewed pinned source locks",
+  "previousQualifiedRuns": [
+    {
+      "source": "05b2d31f9c9ba77a3f24f529bfe240c93f984bc8",
+      "run": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38821160644",
+      "units": 134,
+      "serviceChecks": 35,
+      "setupChecks": 17
+    },
+    {
+      "source": "063fadaef5a067c4ad3b763a4a2a2a76303eddbd",
+      "run": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38819810890",
+      "units": 134,
+      "serviceChecks": 35,
+      "setupChecks": 17
+    }
+  ],
+  "operatorSession": "Per-console capability stored in an operator/SYSTEM/Admin-only profile directory; private lock/atomic descriptor; launcher checks PID/build; every API read/write authenticated. No Windows password stored.",
+  "sourceOnlyBootstrapChecks": {
+    "passed": 3,
+    "scope": "Source-level valid launch with storage failure, reload restoration and invalid stored capability rejection; not mouse/browser acceptance"
+  }
+}

@@ -1,3 +1,5 @@
+> **Latest user decision — browser UI:** The native prototype was rejected. Build and test the browser console; earlier native-only UI clauses are superseded. See [browser interface decision](docs/BROWSER_UI_DECISION.md). All broadcast safety and commissioning gates still apply.
+
 # RadioTEDU OnAir Next development plan
 
 Baseline dated 15 October 2026; scope approved and operating requirements refined on the same date. The [current operating and delivery plan](docs/OPERATING_PLAN.md) controls the confirmed 18-output roster, live-folder behavior, restart-from-beginning recovery, microphone-only recording trigger and English-only interface. Its delivery order supersedes the preliminary phase order below.

@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-15",
+  "source": "22cc4538208a683a9d856239f00e0af2aa6687f6",
+  "build": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38794289373",
+  "buildSucceeded": true,
+  "unitTests": {
+    "passed": 77,
+    "failed": 0
+  },
+  "artifacts": {
+    "browserArchiveDigest": "sha256:2f4bfe60c2e46e89a6226791d9979aa52eb53d8aef69d381cd511848fea6ad40",
+    "hostArchiveDigest": "sha256:19394042aaa69a9f5ab34978138a9c2e5edf03031583be6d32c83cba5c430f61",
+    "browserUnpackedBytes": 324093,
+    "hostUnpackedBytes": 2662521
+  },
+  "browserMouseChecks": [
+    "Open Library",
+    "Change selected channel",
+    "Open System",
+    "Expand channel details",
+    "Compact 911x512: transport visible and library actions accessible"
+  ],
+  "preview": "Unconnected visual preview; source matches built static UI except Git checkout newlines",
+  "connectedWorkflow": {
+    "passed": false,
+    "reason": "Resource guard stopped the owned QA job after two legacy transport-unhealthy samples; no browser/host readiness was reached.",
+    "ownedJobProcessesRemaining": 0
+  },
+  "productionChanged": false,
+  "limitations": [
+    "Real file chooser import and live-folder readback still pending",
+    "No current/next audio or start/stop graphical acceptance yet",
+    "Production migration and 24/72-hour gates remain open"
+  ]
+}

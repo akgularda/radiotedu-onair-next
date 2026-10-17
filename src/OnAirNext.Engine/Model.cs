@@ -7,7 +7,10 @@ public static class AudioFormat
 {
     public const int SampleRate = 48000;
     public const int Channels = 2;
-    public const int BytesPerSampleFrame = 4;
+    // Engine/codec-pipe contract: interleaved little-endian IEEE float32, stereo, 48 kHz.
+    public const int BytesPerSample = sizeof(float);
+    public const float MaximumSourceSample = 64;
+    public const int BytesPerSampleFrame = Channels * BytesPerSample;
     public const int SamplesPerBlock = 960;
     public const int BlockBytes = SamplesPerBlock * BytesPerSampleFrame;
     public static readonly TimeSpan BlockDuration = TimeSpan.FromMilliseconds(20);
@@ -37,9 +40,9 @@ public sealed class PcmBlock : IDisposable
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<ContentKind>))]
-public enum ContentKind { Music, Advertisement, Sweeper, Program }
+public enum ContentKind { Music, Advertisement, Sweeper, Program, Jingle }
 
-public sealed record MediaItem(string Id, string Path, string Artist, string Title, ContentKind Kind = ContentKind.Music);
+public sealed record MediaItem(string Id, string Path, string Artist, string Title, ContentKind Kind = ContentKind.Music, double? DurationSeconds = null, SourceLoudness? Loudness = null);
 
 [JsonConverter(typeof(JsonStringEnumConverter<CodecProfile>))]
 public enum CodecProfile { AacLc192, OggFlac, HeAacV2_64 }
@@ -62,19 +65,54 @@ public sealed record OutputSettings(string Id, string Host, int Port, string Mou
     }
 }
 
-public sealed record StationSettings(string Id, IReadOnlyList<MediaItem> Playlist, IReadOnlyList<OutputSettings> Outputs, bool Repeat = true);
+public sealed record StationSettings(string Id, IReadOnlyList<MediaItem> Playlist, IReadOnlyList<OutputSettings> Outputs, bool Repeat = true,
+    bool Enabled = true, bool AutoStart = true);
 public sealed record PlaybackEvent(string EventId, string OccurrenceId, string StationId, string Type, string ItemId,
-    string Artist, string Title, ContentKind Kind, DateTimeOffset AtUtc, long SamplePosition, string Detail = "", string? QueueEntryId = null);
-public sealed record PlayoutSelection(MediaItem Item, string? QueueEntryId = null);
-public interface IPlayoutPlanner { PlayoutSelection Select(int rotationIndex, string? excludeQueueEntryId = null); }
+    string Artist, string Title, ContentKind Kind, DateTimeOffset AtUtc, long SamplePosition, string Detail = "", string? QueueEntryId = null, string? PreviousOccurrenceId = null, string TimingQuality = "sample_clock",
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] SourceGain? SourceGain = null);
+public sealed record PlayoutSelection(MediaItem Item, string? QueueEntryId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool HoldsRotation = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? PreviousOccurrenceId = null)
+{
+    [JsonIgnore] public bool AdvancesRotation => QueueEntryId is null && !HoldsRotation;
+}
+public interface IPlayoutPlanner
+{
+    int? AvailableItems => null;
+    void RetainQueueReservations(IReadOnlySet<string> entries) { }
+    void ReleaseQueueReservations() { }
+    PlayoutSelection? ResolveQueueRecovery(PlayoutSelection selection) => selection;
+    PlayoutSelection Select(int rotationIndex, string? excludeQueueEntryId = null);
+    PlayoutSelection? SelectPrepared(int rotationIndex,IReadOnlySet<string> excludedQueueEntries)
+    {
+        if(excludedQueueEntries.Count>1)throw new NotSupportedException("This planner cannot exclude every in-flight queue entry.");
+        return Select(rotationIndex,excludedQueueEntries.FirstOrDefault());
+    }
+}
 public sealed record PlayoutCheckpoint(string StationId, string State, int RotationIndex, MediaItem? Item,
     string OccurrenceId, long ItemSamples, long ProgramSamples, bool Announced, DateTimeOffset SavedAtUtc,
-    string? QueueEntryId = null, string? SessionId = null);
+    string? QueueEntryId = null, string? SessionId = null, string? PreviousOccurrenceId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool HoldsRotation = false);
 public sealed record OutputSnapshot(string Id, string State, long EncoderStarts, long Connections, long FramesWritten,
     long DroppedBlocks, int QueuedBlocks, int? EncoderPid, string? LastError);
+public sealed record PlayoutItemSnapshot(string Id, string Artist, string Title, ContentKind Kind, double? DurationSeconds);
 public sealed record StationSnapshot(string Id, string State, long Samples, long CompletedItems, long SkippedItems,
     string? CurrentTitle, long LateBlocks, long AuditRejectedEvents, IReadOnlyList<OutputSnapshot> Outputs,
-    string? CurrentAssetId = null, long CurrentItemSamples = 0, bool Recovered = false);
+    string? CurrentAssetId = null, long CurrentItemSamples = 0, bool Recovered = false,
+    bool Enabled = true, bool RequestedRunning = true, string? LastError = null, DateTimeOffset? RetryAtUtc = null,
+    string? CurrentArtist = null, double? CurrentDurationSeconds = null, PlayoutItemSnapshot? NextItem = null,
+    ProgrammeLoudnessSnapshot? Loudness = null, SourceGain? SourceGain = null, LimiterSnapshot? Limiter = null, int PendingAuditCommits = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? CurrentQueueEntryId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? NextQueueEntryId = null);
+
+public interface IStationSession : IAsyncDisposable
+{
+    Task StartAsync();
+    Task Completion { get; }
+    StationSnapshot Snapshot();
+    Task SkipAsync(string commandId);
+    void RefreshNext() { }
+}
 
 public interface IProgramOutput : IAsyncDisposable
 {

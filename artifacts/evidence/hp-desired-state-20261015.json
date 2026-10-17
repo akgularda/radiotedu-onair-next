@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-15T16:52:49.520Z",
+  "platform": "HP Z220, Windows 10 Pro build 19045, 8 GiB RAM",
+  "runtime": ".NET 10.0.13",
+  "unitTests": {
+    "passed": 42,
+    "failed": 0,
+    "total": 42
+  },
+  "build": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "actualProfiles": [
+    "AAC-LC 192 kbps"
+  ],
+  "failedClientDisposalAttempt": {
+    "passed": false,
+    "completedChecks": 4,
+    "error": "System.IO.IOException: Pipe is broken.",
+    "cause": "StreamWriter disposal attempted a second flush after a successfully acknowledged peer had closed. Replaced the test request with one explicit UTF-8 pipe write."
+  },
+  "passedDesiredStateAttempt": {
+    "passed": true,
+    "durationSeconds": 36.8508041,
+    "checks": [
+      {
+        "Description": "Crash occurs beyond the fixture's distinctive four-second opening.",
+        "Passed": true
+      },
+      {
+        "Description": "Independent listener hears the opening tone after a hard kill, rather than checkpoint-position tail audio.",
+        "Passed": true
+      },
+      {
+        "Description": "Actual repeated audio is recorded as a new attempt linked to the interrupted attempt.",
+        "Passed": true
+      },
+      {
+        "Description": "Skip admission is acknowledged before hard kill.",
+        "Passed": true
+      },
+      {
+        "Description": "A lost-response Skip retry is accepted after host restart.",
+        "Passed": true
+      },
+      {
+        "Description": "The consumed item stays consumed and a duplicate Skip cannot skip the next song.",
+        "Passed": true
+      },
+      {
+        "Description": "One durable Skip produces exactly one terminal Skip despite process death and retry.",
+        "Passed": true
+      },
+      {
+        "Description": "The already skipped song is not started a third time.",
+        "Passed": true
+      },
+      {
+        "Description": "Recovery and restarted attempts preserve the complete event hash chain.",
+        "Passed": true
+      },
+      {
+        "Description": "An explicitly stopped station stays stopped after host restart, while the command interface remains available.",
+        "Passed": true
+      },
+      {
+        "Description": "Command IDs retain their original operation after restart; a rejected Stop cannot terminate the host.",
+        "Passed": true
+      },
+      {
+        "Description": "Control interface remains responsive after a cross-operation receipt collision.",
+        "Passed": true
+      },
+      {
+        "Description": "Listener endpoint confirms that the stopped station did not silently autostart.",
+        "Passed": true
+      }
+    ],
+    "details": {
+      "restartedListener": {
+        "Mount": "/next-durable",
+        "DecodedSeconds": 1.24,
+        "SilentWindows": 0,
+        "LongestSilentRun": 0,
+        "ToneTransitions": 0,
+        "UnexpectedToneTransitions": 0,
+        "LiveToneWindows": 0,
+        "FirstTones": [
+          440
+        ],
+        "Error": null
+      },
+      "afterSkipListener": {
+        "Mount": "/next-durable",
+        "DecodedSeconds": 1.62,
+        "SilentWindows": 0,
+        "LongestSilentRun": 0,
+        "ToneTransitions": 0,
+        "UnexpectedToneTransitions": 0,
+        "LiveToneWindows": 0,
+        "FirstTones": [
+          660
+        ],
+        "Error": null
+      }
+    }
+  },
+  "dedicatedJournalWriterRegression": {
+    "passed": true,
+    "checks": 17
+  },
+  "remainingOwnedChildren": {},
+  "qualification": {
+    "productionChanged": false,
+    "heAacTested": false,
+    "full18Outputs": false,
+    "loudness": false,
+    "longSoak": false,
+    "mouseUI": false
+  },
+  "note": "Real isolated one-station AAC hard-kill/restart and durable stop-intent checks. These do not qualify the complete product or production migration."
+}

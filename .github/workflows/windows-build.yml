@@ -1,0 +1,233 @@
+name: Windows build and unit tests
+on:
+  pull_request:
+  push:
+    branches: [main, broadcast-pc-recovery-20261015]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: windows-build-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  loudness-reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+      DOTNET_PROCESSOR_COUNT: '2'
+      LC_ALL: C
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 10.0.402
+      - name: Prepare independent FFmpeg meter on disposable runner
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends ffmpeg
+          fi
+          ffmpeg -version
+      - name: Restore standalone measurement fixture with locked dependencies
+        run: dotnet restore tests/OnAirNext.LoudnessReference/OnAirNext.LoudnessReference.csproj --locked-mode
+      - name: Compare synthetic reference signals with independent EBU meter
+        run: dotnet run --project tests/OnAirNext.LoudnessReference/OnAirNext.LoudnessReference.csproj -c Release --no-restore -- artifacts/loudness-reference
+      - name: Retain scoped instrument qualification
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: loudness-reference-qualification
+          path: artifacts/loudness-reference/summary.json
+          if-no-files-found: error
+  windows-codec-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Restore exact source/configuration codec cache
+        id: codec-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: artifacts/windows-codec-runtime
+          key: windows-codec-runtime-v1-${{ hashFiles('scripts/codec/windows-codec.lock.json', 'scripts/codec/build-windows-codecs.py') }}
+      - name: Prepare cross compiler on disposable runner
+        if: steps.codec-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 nasm autoconf automake libtool make pkg-config
+      - name: Build generic Windows LGPL codec runtime with pinned FDK source
+        if: steps.codec-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/windows-codec-build
+          python3 scripts/codec/build-windows-codecs.py 2>&1 | tee artifacts/windows-codec-build/build.log
+      - name: Reject incomplete or changed runtime before upload/cache
+        run: python3 scripts/codec/verify-runtime-files.py artifacts/windows-codec-runtime
+      - name: Retain codec build diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-codec-build-diagnostics
+          path: artifacts/windows-codec-build
+          if-no-files-found: ignore
+      - name: Retain runtime, complete upstream sources and notices
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-codec-runtime
+          path: artifacts/windows-codec-runtime
+          if-no-files-found: error
+  windows-codec-qualification:
+    needs: windows-codec-runtime
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Download this run's codec artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: windows-codec-runtime
+          path: artifacts/windows-codec-runtime
+      - name: Verify runtime inputs and real AAC/HE-AACv2/FLAC profiles
+        run: ./scripts/codec/Test-WindowsCodecRuntime.ps1 -RuntimeRoot ./artifacts/windows-codec-runtime
+      - name: Retain scoped Windows codec qualification
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-codec-qualification
+          path: |
+            artifacts/windows-codec-qualification/summary.json
+            artifacts/windows-codec-qualification/*.txt
+            artifacts/windows-codec-qualification/*-probe.json
+          if-no-files-found: warn
+  build:
+    needs: windows-codec-qualification
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+      DOTNET_PROCESSOR_COUNT: '2'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Parse PowerShell fixtures before compilation
+        shell: pwsh
+        run: |
+          $count=0
+          foreach($file in Get-ChildItem -LiteralPath ./scripts -Filter '*.ps1' -File -Recurse){
+            $parseTokens=$null;$parseErrors=$null
+            $null=[Management.Automation.Language.Parser]::ParseFile($file.FullName,[ref]$parseTokens,[ref]$parseErrors)
+            if($parseErrors.Count){foreach($parseError in $parseErrors){Write-Error ($file.Name+':'+$parseError.Extent.StartLineNumber+': '+$parseError.Message)};throw 'PowerShell fixture syntax failed'}
+            $count++
+          }
+          Write-Output ("Parsed "+$count+" PowerShell files without executing fixtures.")
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 10.0.402
+      - name: Restore locked dependencies
+        run: dotnet restore OnAirNext.slnx --locked-mode --disable-parallel -m:1
+      - name: Build browser console and engine
+        run: dotnet build OnAirNext.slnx -c Release --no-restore -m:1 /p:UseSharedCompilation=false /p:BuildInParallel=false
+      - name: Run focused unit tests
+        run: dotnet test tests/OnAirNext.Tests/OnAirNext.Tests.csproj -c Release --no-build --logger "trx;LogFileName=engine-tests.trx" --results-directory artifacts/test-results
+      - name: Verify meter states, private cue buffers and script syntax
+        run: |
+          node --check src/OnAirNext.Web/wwwroot/studio.js
+          if ($LASTEXITCODE -ne 0) { throw "Browser script syntax failed." }
+          node --check src/OnAirNext.Web/wwwroot/branding.js
+          if ($LASTEXITCODE -ne 0) { throw "Branding script syntax failed." }
+          node --check src/OnAirNext.Web/wwwroot/private-cue.js
+          if ($LASTEXITCODE -ne 0) { throw "Private cue script syntax failed." }
+          node --check src/OnAirNext.Web/wwwroot/cue-worklet.js
+          if ($LASTEXITCODE -ne 0) { throw "Cue worklet syntax failed." }
+          node --check src/OnAirNext.Web/wwwroot/queue.js
+          if ($LASTEXITCODE -ne 0) { throw "Queue script syntax failed." }
+          node --test tests/browser/loudness-view.test.cjs tests/browser/private-cue-worklet.test.cjs tests/browser/queue-view.test.cjs | Tee-Object -FilePath artifacts/test-results/browser-cue.tap
+          if ($LASTEXITCODE -ne 0) { throw "Browser state and cue buffer checks failed." }
+      - name: Retain unit test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-unit-results
+          path: artifacts/test-results
+          if-no-files-found: warn
+      - name: Locate compiled binaries
+        run: '"ONAIR_BUILD_BIN=$env:LOCALAPPDATA/RadioTEDU/OnAirNext-Dev/build/bin" >> $env:GITHUB_ENV'
+      - name: Download this run's verified full codec runtime
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: windows-codec-runtime
+          path: artifacts/windows-codec-runtime
+      - name: Qualify real float PCM and isolated audio codecs
+        run: ./scripts/Test-WindowsAudio.ps1 -BuildRoot "$env:ONAIR_BUILD_BIN" -CodecRuntimeRoot ./artifacts/windows-codec-runtime
+      - name: Retain real isolated audio qualification
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-real-audio-qualification
+          path: artifacts/windows-audio/summary.json
+          if-no-files-found: warn
+      - name: Qualify isolated Windows service lifecycle
+        run: ./scripts/Test-WindowsService.ps1 -BuildRoot "$env:ONAIR_BUILD_BIN"
+      - name: Retain isolated service qualification
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-service-qualification
+          path: artifacts/service-smoke/summary.json
+          if-no-files-found: warn
+      - name: Publish self-contained Windows development package
+        run: ./scripts/Package-Windows.ps1 -CodecRuntimeRoot artifacts/windows-codec-runtime
+      - name: Qualify guided Windows setup on disposable runner
+        run: ./scripts/Test-WindowsSetup.ps1 -BuildRoot "$env:ONAIR_BUILD_BIN" -PackageRoot artifacts/windows-package
+      - name: Retain setup qualification
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-setup-qualification
+          path: artifacts/setup-smoke/summary.json
+          if-no-files-found: warn
+      - name: Retain compiled development binaries
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-development-build
+          path: ${{ env.ONAIR_BUILD_BIN }}
+          retention-days: 7
+          if-no-files-found: error
+      - name: Retain browser console separately
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-browser-console
+          path: ${{ env.ONAIR_BUILD_BIN }}/OnAirNext.Web/release
+          retention-days: 7
+          if-no-files-found: error
+      - name: Retain isolated host separately
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-isolated-host
+          path: |
+            ${{ env.ONAIR_BUILD_BIN }}/OnAirNext.Host/release/*.dll
+            ${{ env.ONAIR_BUILD_BIN }}/OnAirNext.Host/release/*.exe
+            ${{ env.ONAIR_BUILD_BIN }}/OnAirNext.Host/release/*.json
+            ${{ env.ONAIR_BUILD_BIN }}/OnAirNext.Host/release/runtimes/win-x64/native/*.dll
+          retention-days: 7
+          if-no-files-found: error
+      - name: Retain Windows package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-portable-setup
+          path: artifacts/windows-package
+          retention-days: 7
+          if-no-files-found: error
+      - name: Retain runtime expansion locks and package measurements
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-runtime-package-evidence
+          path: |
+            artifacts/windows-runtime-locks
+            artifacts/windows-package-summary.json
+            artifacts/windows-real-runtime-preparation.json
+          if-no-files-found: warn

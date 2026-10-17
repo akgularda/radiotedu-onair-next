@@ -10,8 +10,8 @@ internal sealed class Resources : IAsyncDisposable
     public long HostPeakBytes { get; private set; }
     public long CodecPeakBytes { get; private set; }
     public long ListenerPeakBytes { get; private set; }
-    public double PeakCpuPercentOfMachine { get; private set; }
-    public double AverageCpuPercentOfMachine { get; private set; }
+    public double PeakCpuPercentOfRuntimeCapacity { get; private set; }
+    public double AverageCpuPercentOfRuntimeCapacity { get; private set; }
     public long FirstSteadyWorkingSetBytes { get; private set; }
     public long LastWorkingSetBytes { get; private set; }
     public Resources() => _run = Task.Run(SampleAsync);
@@ -52,16 +52,17 @@ internal sealed class Resources : IAsyncDisposable
             var elapsed = clock.Elapsed - last; last = clock.Elapsed;
             if (elapsed.TotalSeconds > 0.5)
             {
-                PeakCpuPercentOfMachine = Math.Max(PeakCpuPercentOfMachine, cpu / elapsed.TotalSeconds / Environment.ProcessorCount * 100);
+                PeakCpuPercentOfRuntimeCapacity = Math.Max(PeakCpuPercentOfRuntimeCapacity, cpu / elapsed.TotalSeconds / Environment.ProcessorCount * 100);
                 totalCpu += cpu; measuredSeconds += elapsed.TotalSeconds;
-                AverageCpuPercentOfMachine = totalCpu / measuredSeconds / Environment.ProcessorCount * 100;
+                AverageCpuPercentOfRuntimeCapacity = totalCpu / measuredSeconds / Environment.ProcessorCount * 100;
             }
             try { await Task.Delay(1000, _stop.Token); } catch (OperationCanceledException) { break; }
         }
     }
-    public object Snapshot() => new { HostPeakBytes, CodecPeakBytes, ListenerPeakBytes, PeakCpuPercentOfMachine, AverageCpuPercentOfMachine,
+    public object Snapshot() => new { HostPeakBytes, CodecPeakBytes, ListenerPeakBytes, PeakCpuPercentOfRuntimeCapacity, AverageCpuPercentOfRuntimeCapacity,
         FirstSteadyWorkingSetBytes, LastWorkingSetBytes,
-        LogicalProcessors = Environment.ProcessorCount,
-        Note = "Host includes lab instrumentation; listener processes and test Icecast are not counted as engine codecs. This is the development PC, not the HP Z220." };
+        RuntimeLogicalProcessors = Environment.ProcessorCount,
+        ProcessorCountOverride = Environment.GetEnvironmentVariable("DOTNET_PROCESSOR_COUNT"),
+        Note = "Remote lab host includes instrumentation. CPU is normalized to the reported runtime processor count, which may be overridden; it is not whole-machine or HP Z220 CPU capacity. Listener processes and test Icecast are excluded from engine codecs." };
     public async ValueTask DisposeAsync() { await _stop.CancelAsync(); await _run; _stop.Dispose(); }
 }

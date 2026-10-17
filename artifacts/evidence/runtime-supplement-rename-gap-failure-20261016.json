@@ -1,0 +1,54 @@
+{
+  "AtUtc": "2026-10-16T20:02:31.315Z",
+  "Head": "2295659bcdf33c56afc7f929b7a8b18931326746",
+  "Run": 38957374276,
+  "Url": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38957374276",
+  "Scope": "Disposable Windows synthetic legacy-layout and update integration; no actual-PC or mouse qualification",
+  "OverallPassed": false,
+  "UnitPassed": 329,
+  "SetupChecks": 58,
+  "AudioToolsReceiptPhase": "Complete",
+  "SetupError": "Setup process failed (1, --apply-update):  ",
+  "FailurePhase": "Activating reviewed application",
+  "Diagnosis": "During application activation the original directory had been renamed to its retained reviewed path. Supplemental manifest verification incorrectly required the absent fixed installation path.",
+  "Correction": "Select only the current installation or the derived retained image in the reviewed release layout; refuse file-path substitutions and continue complete image/ownership verification. Regression exercises receipt verification during that gap.",
+  "SevenOriginalEvidenceArchivesVerified": true,
+  "ArchiveChecks": [
+    {
+      "name": "windows-unit-results",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "windows-service-qualification",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "windows-setup-qualification",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "windows-runtime-package-evidence",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "loudness-reference-qualification",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "windows-real-audio-qualification",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "windows-codec-qualification",
+      "bytesMatch": true,
+      "digestMatch": true
+    }
+  ],
+  "ProductionChanged": false
+}

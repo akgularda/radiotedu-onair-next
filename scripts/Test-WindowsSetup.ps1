@@ -1,0 +1,276 @@
+param([string]$BuildRoot,[string]$PackageRoot)
+$ErrorActionPreference='Stop'
+if($env:GITHUB_ACTIONS -ne 'true'){throw 'Disposable CI fixture only. Use the guided UI on the broadcasting PC.'}
+$serviceName='RadioTEDU.OnAirNext.Development'
+$install=[IO.Path]::GetFullPath((Join-Path $env:ProgramFiles 'RadioTEDU-OnAirNext-Development'))
+$data=[IO.Path]::GetFullPath((Join-Path $env:ProgramData 'RadioTEDU-OnAirNext-Development'))
+$fixture=[IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA ('RadioTEDU/OnAirNext-Dev/setup-fixture-'+[Guid]::NewGuid().ToString('N'))))
+$expectedFixture=$fixture
+$summary=Join-Path $PSScriptRoot '../artifacts/setup-smoke/summary.json'
+$checks=[Collections.Generic.List[string]]::new();$completed=$false;$failure=$null;$owned=$false;$plan=$null;$webProcess=$null;$shortcutPaths=@();$maintenance=$null;$review=$null;$updateFailures=@();$updateIntent=$null
+$audioToolsReview=$null;$audioToolsReceipt=$null
+function Check([string]$name,[bool]$value){if(-not $value){throw ('Setup check failed: '+$name)};$checks.Add($name)}
+function Run([string]$exe,[string[]]$arguments){
+ $start=[Diagnostics.ProcessStartInfo]::new($exe);$start.UseShellExecute=$false;$start.CreateNoWindow=$true;$start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
+ foreach($argument in $arguments){$start.ArgumentList.Add($argument)}
+ $process=[Diagnostics.Process]::Start($start);$out=$process.StandardOutput.ReadToEndAsync();$err=$process.StandardError.ReadToEndAsync()
+ try{if(-not $process.WaitForExit(240000)){$process.Kill($true);$process.WaitForExit(10000)|Out-Null;throw 'Owned setup fixture process exceeded its deadline'};if($process.ExitCode -ne 0){$stdout=$out.GetAwaiter().GetResult();$stderr=$err.GetAwaiter().GetResult();throw ('Setup process failed ('+$process.ExitCode+', '+$arguments[0]+'): '+$stdout.Substring(0,[Math]::Min(2048,$stdout.Length))+' '+$stderr.Substring(0,[Math]::Min(2048,$stderr.Length)))};return $out.GetAwaiter().GetResult()}finally{$process.Dispose()}
+}
+function Open-ExternalFixtureConsole {
+ if($script:webProcess){if(-not $script:webProcess.HasExited){throw 'Close the owned fixture console before reopening it'};$script:webProcess.Dispose()}
+ $start=[Diagnostics.ProcessStartInfo]::new((Join-Path $fixture 'console/OnAirNext.Web.exe'));$start.UseShellExecute=$false;$start.CreateNoWindow=$true;$start.WorkingDirectory=Join-Path $fixture 'console'
+ $script:webProcess=[Diagnostics.Process]::Start($start);$script:session=$null;$until=[DateTime]::UtcNow.AddSeconds(30)
+ do{
+  try{
+   $descriptor=Join-Path $env:LOCALAPPDATA 'RadioTEDU/OnAirNext-Dev/browser-console/access/console.json';$capability=Get-Content -LiteralPath $descriptor -Raw|ConvertFrom-Json
+   if($capability.ProcessId -ne $script:webProcess.Id){throw 'Waiting for this fixture console identity'}
+   $script:session=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/session' -Headers @{'X-Studio-Bootstrap'=$capability.Token} -SessionVariable fixtureUiSession -TimeoutSec 2
+   $script:setupWebSession=$fixtureUiSession;$script:headers=@{'X-Studio-Token'=$script:session.token;Origin='http://127.0.0.1:18121'};break
+  }catch{};Start-Sleep -Milliseconds 200
+ }while([DateTime]::UtcNow -lt $until)
+ if(-not $script:session.token){throw 'The owned external package console did not authenticate'}
+}
+function Close-ExternalFixtureConsole {
+ $null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/console/close' -Method Post -WebSession $setupWebSession -Headers $headers -TimeoutSec 5
+ if(-not $webProcess.WaitForExit(15000)){throw 'The owned external fixture console did not exit'}
+}
+try{
+ if((Test-Path -LiteralPath $install) -or (Test-Path -LiteralPath $data) -or (Get-Service -Name $serviceName -ErrorAction SilentlyContinue)){throw 'The isolated roots or service already exist; fixture refused to overwrite them'}
+ $null=New-Item -ItemType Directory -Path $fixture
+ foreach($pair in @(@{Project='OnAirNext.Host';Folder='bin'},@{Project='OnAirNext.Web';Folder='console'},@{Project='OnAirNext.Setup';Folder='setup'})){
+  $destination=Join-Path $fixture $pair.Folder;$null=New-Item -ItemType Directory -Path $destination
+  $source=if($PackageRoot){Join-Path ([IO.Path]::GetFullPath($PackageRoot)) $pair.Folder}else{Join-Path $BuildRoot ($pair.Project+'/release')}
+  foreach($entry in Get-ChildItem -LiteralPath $source -Force){Copy-Item -LiteralPath $entry.FullName -Destination $destination -Recurse}
+ }
+ # Explicit synthetic provider for file/SCM tests; real provider preparation has a separate CI receipt.
+ $runtimePackage=Join-Path $fixture 'runtime';$runtime=Join-Path $runtimePackage 'bin';$null=New-Item -ItemType Directory -Path $runtime
+ foreach($entry in Get-ChildItem -LiteralPath (Join-Path $BuildRoot 'OnAirNext.Lab/release') -Force){Copy-Item -LiteralPath $entry.FullName -Destination $runtime -Recurse}
+ Copy-Item -LiteralPath (Join-Path $runtime 'OnAirNext.Lab.exe') -Destination (Join-Path $runtime 'ffmpeg.exe')
+ Copy-Item -LiteralPath (Join-Path $runtime 'OnAirNext.Lab.exe') -Destination (Join-Path $runtime 'ffprobe.exe')
+ Copy-Item -LiteralPath (Join-Path $runtime 'OnAirNext.Engine.dll') -Destination (Join-Path $runtime 'libfdk-aac-2.dll')
+ $providerDocuments=@('windows-codec.lock.json','Licenses/COPYING.LGPLv2.1','Licenses/FDK-AAC-NOTICE.txt','Licenses/LICENSE.md','Sources/build-configurations.json','Sources/build-windows-codecs.py','Sources/fdk-v2.0.3.tar.gz','Sources/ffmpeg-config.mak','Sources/ffmpeg-n9.0.2.tar.gz','Sources/toolchain.txt')
+ foreach($relative in $providerDocuments){$path=Join-Path $runtimePackage $relative;$null=New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force;('Software fixture only; not codec, legal or source-distribution qualification: '+$relative)|Set-Content -LiteralPath $path -Encoding utf8NoBOM}
+ $runtimeFiles=@(foreach($file in Get-ChildItem -LiteralPath $runtimePackage -Recurse -File){$relative=[IO.Path]::GetRelativePath($runtimePackage,$file.FullName).Replace('\','/');if($providerDocuments -contains $relative -or $relative -eq 'bin/ffmpeg.exe' -or $relative -eq 'bin/ffprobe.exe' -or ($relative.StartsWith('bin/') -and -not $relative.Substring(4).Contains('/') -and $file.Extension -eq '.dll')){@{path=$relative;bytes=$file.Length;sha256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash}}})
+ Check 'Synthetic codec inventory excludes nested framework DLLs' (-not @($runtimeFiles|Where-Object {$_.path.StartsWith('bin/') -and $_.path.Substring(4).Contains('/')}))
+ $providerManifest=@{schemaVersion=1;target='win-x64-listing-only-software-fixture';dependencyLockSha256=(Get-FileHash -LiteralPath (Join-Path $runtimePackage 'windows-codec.lock.json') -Algorithm SHA256).Hash;buildScriptSha256=(Get-FileHash -LiteralPath (Join-Path $runtimePackage 'Sources/build-windows-codecs.py') -Algorithm SHA256).Hash;files=$runtimeFiles}
+ $providerManifest|ConvertTo-Json -Depth 8|Set-Content -LiteralPath (Join-Path $runtimePackage 'runtime-manifest.json') -Encoding utf8NoBOM
+ Copy-Item -LiteralPath (Join-Path $runtimePackage 'runtime-manifest.json') -Destination (Join-Path $fixture 'setup/codec-runtime-reference.json') -Force
+ $files=@(foreach($folder in @('bin','console','setup')){foreach($file in Get-ChildItem -LiteralPath (Join-Path $fixture $folder) -Recurse -File){@{Path=[IO.Path]::GetRelativePath($fixture,$file.FullName).Replace('\','/');Bytes=$file.Length;Sha256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash}}})
+ @{Source=$env:GITHUB_SHA;Files=$files}|ConvertTo-Json -Depth 8|Set-Content -LiteralPath (Join-Path $fixture 'bundle.json') -Encoding utf8NoBOM
+ $request=Join-Path $fixture 'request.json';@{RuntimeFolder=$runtimePackage;StartService=$true}|ConvertTo-Json|Set-Content -LiteralPath $request -Encoding utf8NoBOM
+ $setup=Join-Path $fixture 'setup/OnAirNext.Setup.exe'
+ $env:ONAIR_SETUP_TEST_RUNTIME='1'
+ $prepared=Run $setup @('--prepare',$request,(Get-FileHash -LiteralPath $request -Algorithm SHA256).Hash)
+ $plan=$prepared|ConvertFrom-Json
+ Check 'Preparation keeps the service and machine roots absent' (-not (Test-Path -LiteralPath $data) -and -not (Test-Path -LiteralPath $install) -and -not (Get-Service -Name $serviceName -ErrorAction SilentlyContinue))
+ Check 'Preparation preserves the invoking operator SID' ($plan.OperatorSid -eq [Security.Principal.WindowsIdentity]::GetCurrent().User.Value)
+ $planPath=Join-Path $fixture 'plan.json';$prepared|Set-Content -LiteralPath $planPath -Encoding utf8NoBOM
+ $hash=(Get-FileHash -LiteralPath $planPath -Algorithm SHA256).Hash
+ $owned=$true
+ $savedProbe=Join-Path $runtime 'ffprobe.exe.saved-for-fixture';Copy-Item -LiteralPath (Join-Path $runtime 'ffprobe.exe') -Destination $savedProbe
+ try{
+  'changed after review'|Set-Content -LiteralPath (Join-Path $runtime 'ffprobe.exe') -Encoding utf8NoBOM
+  $changedProviderRejected=$false;try{$null=Run $setup @('--install',$planPath,$hash)}catch{$changedProviderRejected=$true}
+  Check 'Elevated fresh installation rejects a changed ffprobe before creating machine roots' ($changedProviderRejected -and -not (Test-Path -LiteralPath $data) -and -not (Test-Path -LiteralPath $install) -and -not (Get-Service -Name $serviceName -ErrorAction SilentlyContinue))
+ }finally{Copy-Item -LiteralPath $savedProbe -Destination (Join-Path $runtime 'ffprobe.exe') -Force}
+ $null=Run $setup @('--install',$planPath,$hash)
+ $receipt=Get-Content -LiteralPath (Join-Path $data 'setup-status.json') -Raw|ConvertFrom-Json
+ Check 'Installer records the exact plan and source version' ($receipt.Phase -eq 'Installed' -and $receipt.PlanId -eq $plan.Id -and $receipt.Source -eq $env:GITHUB_SHA)
+ $config=Get-Content -LiteralPath (Join-Path $data 'host.json') -Raw|ConvertFrom-Json
+ Check 'Initial installation contains eight stopped channels and no outputs' ($config.Stations.Count -eq 8 -and @($config.Stations|Where-Object {$_.AutoStart -or $_.Outputs.Count -ne 0}).Count -eq 0)
+ $service=Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")
+ Check 'Only the isolated LocalService image is registered' ($service.StartName -eq 'NT AUTHORITY\LocalService' -and $service.PathName.StartsWith('"'+[IO.Path]::GetFullPath((Join-Path $install 'bin/OnAirNext.Host.exe'))+'"',[StringComparison]::OrdinalIgnoreCase))
+ $lab=Join-Path $BuildRoot 'OnAirNext.Lab/release/OnAirNext.Lab.exe';$deadline=[DateTime]::UtcNow.AddSeconds(45);$state=$null
+ do{try{$state=(Run $lab @('--service-probe','status'))|ConvertFrom-Json;if($state.stations.Count -eq 8){break}}catch{};Start-Sleep -Milliseconds 200}while([DateTime]::UtcNow -lt $deadline)
+ Check 'Installed engine is authenticated and all eight requested states are stopped' ($state.stations.Count -eq 8 -and @($state.stations|Where-Object RequestedRunning).Count -eq 0)
+ $runtimeHash=(Get-FileHash -LiteralPath (Join-Path $runtime 'ffmpeg.exe') -Algorithm SHA256).Hash
+ if($PackageRoot){$hostProcess=[Diagnostics.Process]::GetProcessById($service.ProcessId);try{Check 'Installed service uses its packaged runtime without global dotnet' (@($hostProcess.Modules|Where-Object {$_.ModuleName -eq 'coreclr.dll' -and $_.FileName.StartsWith((Join-Path $install 'bin')+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)}).Count -eq 1)}finally{$hostProcess.Dispose()}}
+ Check 'Runtime copy preserves the selected bytes' ((Get-FileHash -LiteralPath (Join-Path $install 'tools/ffmpeg.exe') -Algorithm SHA256).Hash -eq $runtimeHash)
+ Check 'Installed ffprobe retains its reviewed bytes at the flat tools path' ((Get-FileHash -LiteralPath (Join-Path $install 'tools/ffprobe.exe') -Algorithm SHA256).Hash -eq (Get-FileHash -LiteralPath (Join-Path $runtime 'ffprobe.exe') -Algorithm SHA256).Hash)
+ foreach($relative in $providerDocuments){Check ('Installed codec document retains its reviewed bytes: '+$relative) ((Get-FileHash -LiteralPath (Join-Path $install ('tools/'+$relative)) -Algorithm SHA256).Hash -eq (Get-FileHash -LiteralPath (Join-Path $runtimePackage $relative) -Algorithm SHA256).Hash)}
+ Check 'Installed provider manifest retains its matching reference' ((Get-FileHash -LiteralPath (Join-Path $install 'tools/runtime-manifest.json') -Algorithm SHA256).Hash -eq (Get-FileHash -LiteralPath (Join-Path $runtimePackage 'runtime-manifest.json') -Algorithm SHA256).Hash)
+ if($PackageRoot){
+  $ids=@(foreach($folder in @('bin','console','setup')){$result=& "$env:SystemRoot/System32/fsutil.exe" file queryfileid (Join-Path $install ($folder+'/coreclr.dll'));if($LASTEXITCODE -ne 0){throw 'Runtime file identity query failed'};[regex]::Match(($result -join ' '),'0x[0-9a-fA-F]+').Value})
+  Check 'Identical immutable runtimes share one installed file identity' ($ids.Count -eq 3 -and $ids[0] -ne '' -and @($ids|Select-Object -Unique).Count -eq 1)
+ }
+ $before=(Get-FileHash -LiteralPath (Join-Path $data 'host.json') -Algorithm SHA256).Hash
+ $null=Run $setup @('--install',$planPath,$hash)
+ Check 'Same reviewed plan retries without replacing configuration or restarting service' ((Get-FileHash -LiteralPath (Join-Path $data 'host.json') -Algorithm SHA256).Hash -eq $before -and (Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")).ProcessId -eq $service.ProcessId)
+ # Exercise the actual packaged HTTP/CSRF route; this is engineering integration, not mouse acceptance.
+ $shortcutCandidates=@([Environment]::GetFolderPath('DesktopDirectory'),[Environment]::GetFolderPath('Programs'))|ForEach-Object {Join-Path $_ 'RadioTEDU OnAir Next.lnk'}
+ foreach($path in $shortcutCandidates){if(Test-Path -LiteralPath $path){throw 'Unexpected existing CI shortcut; fixture refuses to replace it'}}
+ $shortcutPaths=$shortcutCandidates
+ $webStart=[Diagnostics.ProcessStartInfo]::new((Join-Path $install 'console/OnAirNext.Web.exe'));$webStart.UseShellExecute=$false;$webStart.CreateNoWindow=$true
+ $webProcess=[Diagnostics.Process]::Start($webStart);$deadline=[DateTime]::UtcNow.AddSeconds(25);$session=$null
+ do{try{$endpointPath=Join-Path $env:LOCALAPPDATA 'RadioTEDU/OnAirNext-Dev/browser-console/access/console.json';$endpoint=Get-Content -LiteralPath $endpointPath -Raw|ConvertFrom-Json;$session=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/session' -Headers @{'X-Studio-Bootstrap'=$endpoint.Token} -SessionVariable setupWebSession -TimeoutSec 2;break}catch{};Start-Sleep -Milliseconds 200}while([DateTime]::UtcNow -lt $deadline)
+ Check 'Packaged console starts without Codex or a global SDK' ([bool]$session.token)
+ $anonymousRejected=$false;try{$null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/session' -TimeoutSec 3}catch{$anonymousRejected=([int]$_.Exception.Response.StatusCode -eq 403)}
+ Check 'Anonymous loopback callers cannot obtain an operator session' $anonymousRejected
+ $browseRejected=$false;try{$null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/folders' -TimeoutSec 3}catch{$browseRejected=([int]$_.Exception.Response.StatusCode -eq 403)}
+ Check 'Read-only folder browsing requires the authorized console session' $browseRejected
+ $allowed=@([Security.Principal.WindowsIdentity]::GetCurrent().User.Value,'S-1-5-18','S-1-5-32-544');$rules=(Get-Acl -LiteralPath $endpointPath).GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])
+ Check 'Startup capability is stored without unlisted account access' (@($rules|Where-Object {$_.AccessControlType -eq 'Allow' -and $_.IdentityReference.Value -notin $allowed}).Count -eq 0)
+
+ $updateAnonymousRejected=$false;try{$null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update' -TimeoutSec 3}catch{$updateAnonymousRejected=([int]$_.Exception.Response.StatusCode -eq 403)}
+ Check 'Application update status rejects anonymous callers' $updateAnonymousRejected
+ $health=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/health' -TimeoutSec 3
+ Check 'Console health exposes the exact compiled build identity' ($health.product -eq 'RadioTEDU-OnAirNext' -and $health.version.EndsWith($env:GITHUB_SHA))
+ $headers=@{'X-Studio-Token'=$session.token;Origin='http://127.0.0.1:18121'}
+ $toolsAnonymousRejected=$false;try{$null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/audio-tools' -TimeoutSec 3}catch{$toolsAnonymousRejected=([int]$_.Exception.Response.StatusCode -eq 403)}
+ Check 'Audio tools inventory rejects anonymous callers' $toolsAnonymousRejected
+ $toolsStatus=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/audio-tools' -WebSession $setupWebSession -Headers $headers -TimeoutSec 5
+ Check 'Fresh complete installation exposes no unnecessary audio tools addition' ($toolsStatus.complete -and -not $toolsStatus.canReview -and -not $toolsStatus.canApply)
+ $updateStatus=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update' -WebSession $setupWebSession -Headers $headers -TimeoutSec 5
+ Check 'Installed console exposes update status without enabling in-place maintenance' (-not $updateStatus.packageAvailable -and -not $updateStatus.canApply -and -not $updateStatus.canRollback)
+ $inPlaceRejected=$false;try{$null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update/review' -Method Post -WebSession $setupWebSession -Headers $headers -TimeoutSec 5}catch{$inPlaceRejected=([int]$_.Exception.Response.StatusCode -eq 400)}
+ Check 'Installed console refuses update preparation from its own locked application image' $inPlaceRejected
+ $created=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/setup/shortcuts' -Method Post -WebSession $setupWebSession -Headers $headers -TimeoutSec 10
+ $shell=New-Object -ComObject WScript.Shell
+ try{foreach($path in $shortcutPaths){$shortcut=$shell.CreateShortcut($path);try{Check 'Per-user shortcut targets the installed launcher with console arguments' ($shortcut.TargetPath -eq [IO.Path]::GetFullPath((Join-Path $install 'setup/OnAirNext.Setup.exe')) -and $shortcut.Arguments -eq '--open-console')}finally{[Runtime.InteropServices.Marshal]::FinalReleaseComObject($shortcut)|Out-Null}}}finally{[Runtime.InteropServices.Marshal]::FinalReleaseComObject($shell)|Out-Null}
+ $shortcutHash=(Get-FileHash -LiteralPath $shortcutPaths[0] -Algorithm SHA256).Hash
+ $null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/setup/shortcuts' -Method Post -WebSession $setupWebSession -Headers $headers -TimeoutSec 10
+ Check 'Repeating shortcut creation preserves existing matching shortcut bytes' ((Get-FileHash -LiteralPath $shortcutPaths[0] -Algorithm SHA256).Hash -eq $shortcutHash)
+ $null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/console/close' -Method Post -WebSession $setupWebSession -Headers $headers -TimeoutSec 10
+ Check 'Visible console-close route releases its own web process' ($webProcess.WaitForExit(15000))
+ $afterConsole=Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")
+ Check 'Closing the console preserves the same running engine service' ($afterConsole.State -eq 'Running' -and $afterConsole.ProcessId -eq $service.ProcessId)
+ # Read-only package review must not reuse the currently installed manifest.
+ $samePackageRejected=$false;try{$null=Run $setup @('--prepare-update')}catch{$samePackageRejected=$true}
+ Check 'Read-only maintenance review rejects the already installed package' $samePackageRejected
+ # Simulate the legacy flat8 layout only on this disposable, unarmed CI installation.
+ # The Lab command is not in the product and rejects a real broadcasting-PC data root.
+ $plan=(Run $lab @('--service-runtime-legacy-fixture'))|ConvertFrom-Json
+ $legacyPlanHash=(Get-FileHash -LiteralPath (Join-Path $data 'setup-plan.json') -Algorithm SHA256).Hash
+ $legacyOwnerHash=(Get-FileHash -LiteralPath (Join-Path $data 'setup-ownership.json') -Algorithm SHA256).Hash
+ Check 'Legacy fixture retains eight original tools and removes only its twelve known additions' ($plan.RuntimeFiles.Count -eq 8 -and -not (Test-Path -LiteralPath (Join-Path $install 'tools/ffprobe.exe')))
+ Open-ExternalFixtureConsole
+ $null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/audio-tools/review' -Method Post -WebSession $setupWebSession -Headers $headers -ContentType 'application/json' -Body (@{RuntimeFolder=$runtimePackage}|ConvertTo-Json) -TimeoutSec 5
+ $until=[DateTime]::UtcNow.AddSeconds(90)
+ do{$toolsStatus=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/audio-tools' -WebSession $setupWebSession -Headers $headers -TimeoutSec 5;if(-not $toolsStatus.busy){break};Start-Sleep -Milliseconds 200}while([DateTime]::UtcNow -lt $until)
+ Check ('Audio tools HTTP review prepares the twelve additions: '+$toolsStatus.detail) ($toolsStatus.phase -eq 'Review' -and $toolsStatus.canApply -and $toolsStatus.review.files.Count -eq 12 -and $toolsStatus.review.preserved -eq 8)
+ $audioToolsPath=Join-Path $env:LOCALAPPDATA ('RadioTEDU/OnAirNext-Dev/browser-console/audio-tools/'+$toolsStatus.review.id+'.json')
+ $audioToolsHash=(Get-FileHash -LiteralPath $audioToolsPath -Algorithm SHA256).Hash
+ $audioToolsReview=Get-Content -LiteralPath $audioToolsPath -Raw|ConvertFrom-Json
+ $savedToolsProbe=Join-Path $runtime 'ffprobe.exe.saved-for-supplement';Copy-Item -LiteralPath (Join-Path $runtime 'ffprobe.exe') -Destination $savedToolsProbe
+ try{
+  'changed after tools review'|Set-Content -LiteralPath (Join-Path $runtime 'ffprobe.exe') -Encoding utf8NoBOM
+  $toolsTamperRejected=$false;try{$null=Run $setup @('--complete-audio-tools',$audioToolsPath,$audioToolsHash)}catch{$toolsTamperRejected=$true}
+  Check 'Audio tools approval rejects changed provider bytes before any destination addition' ($toolsTamperRejected -and -not (Test-Path -LiteralPath (Join-Path $install 'tools/ffprobe.exe')) -and -not (Test-Path -LiteralPath (Join-Path $data 'audio-tools-supplement.json')))
+ }finally{Copy-Item -LiteralPath $savedToolsProbe -Destination (Join-Path $runtime 'ffprobe.exe') -Force}
+ $null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/audio-tools/complete' -Method Post -WebSession $setupWebSession -Headers $headers -ContentType 'application/json' -Body (@{Id=$audioToolsReview.Id}|ConvertTo-Json) -TimeoutSec 5
+ $until=[DateTime]::UtcNow.AddSeconds(90)
+ do{$toolsStatus=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/audio-tools' -WebSession $setupWebSession -Headers $headers -TimeoutSec 5;if(-not $toolsStatus.busy){break};Start-Sleep -Milliseconds 200}while([DateTime]::UtcNow -lt $until)
+ Check ('Audio tools HTTP completion reads back its protected receipt: '+$toolsStatus.detail) ($toolsStatus.complete -and $toolsStatus.receipt.phase -eq 'Complete' -and $toolsStatus.receipt.id -eq $audioToolsReview.Id)
+ $audioToolsReceipt=Get-Content -LiteralPath (Join-Path $data 'audio-tools-supplement.json') -Raw|ConvertFrom-Json
+ Check 'Audio tools completion preserves the canonical original plan and ownership bytes' ((Get-FileHash -LiteralPath (Join-Path $data 'setup-plan.json') -Algorithm SHA256).Hash -eq $legacyPlanHash -and (Get-FileHash -LiteralPath (Join-Path $data 'setup-ownership.json') -Algorithm SHA256).Hash -eq $legacyOwnerHash)
+ Check 'Audio tools completion preserves original codec bytes configuration and service process' ((Get-FileHash -LiteralPath (Join-Path $install 'tools/ffmpeg.exe') -Algorithm SHA256).Hash -eq $runtimeHash -and (Get-FileHash -LiteralPath (Join-Path $data 'host.json') -Algorithm SHA256).Hash -eq $before -and (Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")).ProcessId -eq $service.ProcessId)
+ Check 'Added analyzer bytes and original-provider source archive are installed exactly' ((Get-FileHash -LiteralPath (Join-Path $install 'tools/ffprobe.exe') -Algorithm SHA256).Hash -eq (Get-FileHash -LiteralPath (Join-Path $runtime 'ffprobe.exe') -Algorithm SHA256).Hash -and (Get-FileHash -LiteralPath (Join-Path $install 'tools/Sources/ffmpeg-n9.0.2.tar.gz') -Algorithm SHA256).Hash -eq (Get-FileHash -LiteralPath (Join-Path $runtimePackage 'Sources/ffmpeg-n9.0.2.tar.gz') -Algorithm SHA256).Hash)
+ $null=Run $setup @('--complete-audio-tools',$audioToolsPath,$audioToolsHash)
+ Check 'Repeating the exact approved audio tools operation preserves original files and live service identity' ((Get-FileHash -LiteralPath (Join-Path $data 'setup-plan.json') -Algorithm SHA256).Hash -eq $legacyPlanHash -and (Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")).ProcessId -eq $service.ProcessId)
+ Close-ExternalFixtureConsole
+ # Synthetic replacement identity only: all executable bytes remain this CI build.
+ $replacementManifest=Get-Content -LiteralPath (Join-Path $fixture 'bundle.json') -Raw|ConvertFrom-Json
+ $replacementManifest.Source=('a'*40)
+ $replacementManifest|ConvertTo-Json -Depth 8|Set-Content -LiteralPath (Join-Path $fixture 'bundle.json') -Encoding utf8NoBOM
+ Open-ExternalFixtureConsole
+ $null=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update/review' -Method Post -WebSession $setupWebSession -Headers $headers -TimeoutSec 5
+ $until=[DateTime]::UtcNow.AddSeconds(60);$uiReview=$null
+ do{$uiReview=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update' -WebSession $setupWebSession -Headers $headers -TimeoutSec 5;if(-not $uiReview.busy){break};Start-Sleep -Milliseconds 200}while([DateTime]::UtcNow -lt $until)
+ Check 'External console prepares a read-back update review through its authenticated route' ($uiReview.phase -eq 'Review' -and $uiReview.canApply -and $uiReview.review.id -match '^[a-f0-9]{32}$')
+ $savedReview=Join-Path $env:LOCALAPPDATA ('RadioTEDU/OnAirNext-Dev/browser-console/app-updates/'+$uiReview.review.id+'.json')
+ $review=Get-Content -LiteralPath $savedReview -Raw|ConvertFrom-Json
+ Check 'Application update retains the completed twenty-file inventory over an immutable legacy eight-file plan' ($review.Files.Original.RuntimeFiles.Count -eq 20 -and $review.Files.Replacement.RuntimeFiles.Count -eq 20 -and $plan.RuntimeFiles.Count -eq 8)
+ # Exercise the approved read-only helper using the already elevated disposable runner.
+ # Actual filtered-token UAC/mouse acceptance remains a target-PC requirement.
+ $approvalFolder=Join-Path $env:LOCALAPPDATA 'RadioTEDU/OnAirNext-Dev/browser-console/access/update-reviews'
+ $null=New-Item -ItemType Directory -Path $approvalFolder -Force
+ $approvalId=[Guid]::NewGuid().ToString('N');$approvalPath=Join-Path $approvalFolder ($approvalId+'.request.json');$approvalResult=Join-Path $approvalFolder ($approvalId+'.result.json')
+ $approvalRequest=@{Id=$approvalId;OperatorSid=$plan.OperatorSid;PackageSha256=(Get-FileHash -LiteralPath (Join-Path $fixture 'bundle.json') -Algorithm SHA256).Hash}
+ $approvalRequest|ConvertTo-Json|Set-Content -LiteralPath $approvalPath -Encoding utf8NoBOM
+ $approvalHash=(Get-FileHash -LiteralPath $approvalPath -Algorithm SHA256).Hash
+ $null=Run $setup @('--prepare-update-approved',$approvalPath,$approvalHash)
+ $approved=Get-Content -LiteralPath $approvalResult -Raw|ConvertFrom-Json
+ Check 'Approved read-only helper returns the original operator and exact service incarnation' ($approved.Id -eq $approvalId -and -not $approved.Error -and $approved.Review.OperatorSid -eq $plan.OperatorSid -and $approved.Review.ServiceProcessId -eq $service.ProcessId -and $approved.Review.ServiceStartedAtUtc -eq $review.ServiceStartedAtUtc)
+ Check 'Approved review binds the requested package without changing installed configuration' ($approved.Review.Files.Replacement.BundleSha256 -eq $approvalRequest.PackageSha256 -and (Get-FileHash -LiteralPath (Join-Path $data 'host.json') -Algorithm SHA256).Hash -eq $before)
+ $approvalResultHash=(Get-FileHash -LiteralPath $approvalResult -Algorithm SHA256).Hash
+ $approvalReplayRejected=$false;try{$null=Run $setup @('--prepare-update-approved',$approvalPath,$approvalHash)}catch{$approvalReplayRejected=$true}
+ Check 'Approved request replay retains its original immutable result' ($approvalReplayRejected -and (Get-FileHash -LiteralPath $approvalResult -Algorithm SHA256).Hash -eq $approvalResultHash)
+ foreach($badKind in @('foreign-operator','changed-package')){
+  $badId=[Guid]::NewGuid().ToString('N');$badPath=Join-Path $approvalFolder ($badId+'.request.json')
+  $badRequest=@{Id=$badId;OperatorSid=$plan.OperatorSid;PackageSha256=$approvalRequest.PackageSha256}
+  if($badKind -eq 'foreign-operator'){$badRequest.OperatorSid='S-1-5-19'}else{$badRequest.PackageSha256=('b'*64)}
+  $badRequest|ConvertTo-Json|Set-Content -LiteralPath $badPath -Encoding utf8NoBOM
+  $badHash=(Get-FileHash -LiteralPath $badPath -Algorithm SHA256).Hash;$badRejected=$false
+  try{$null=Run $setup @('--prepare-update-approved',$badPath,$badHash)}catch{$badRejected=$true}
+  Check ('Approved review rejects '+$badKind+' before publishing a result') ($badRejected -and -not (Test-Path -LiteralPath (Join-Path $approvalFolder ($badId+'.result.json'))))
+ }
+ $afterApproval=Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")
+ Check 'All approved-review cases leave the same running service and stopped configuration' ($afterApproval.ProcessId -eq $service.ProcessId -and $afterApproval.State -eq 'Running' -and (Get-FileHash -LiteralPath (Join-Path $data 'host.json') -Algorithm SHA256).Hash -eq $before)
+ Close-ExternalFixtureConsole
+ Check 'Read-only maintenance review binds both manifests and schema-one rollback contract' ($review.Files.Original.BundleSha256 -eq $plan.BundleSha256 -and $review.Files.Replacement.BundleSha256 -eq (Get-FileHash -LiteralPath (Join-Path $fixture 'bundle.json') -Algorithm SHA256).Hash -and $review.JournalSchemaVersion -eq 1)
+ Check 'Read-only review retains original operator configuration and exact service process' ($review.OperatorSid -eq $plan.OperatorSid -and $review.ConfigurationSha256 -eq $before -and $review.ServiceProcessId -eq $service.ProcessId -and (Get-FileHash -LiteralPath (Join-Path $data 'host.json') -Algorithm SHA256).Hash -eq $before)
+ $reviewPath=Join-Path $fixture 'update-review.json';$review|ConvertTo-Json -Depth 24|Set-Content -LiteralPath $reviewPath -Encoding utf8NoBOM
+ $reviewHash=(Get-FileHash -LiteralPath $reviewPath -Algorithm SHA256).Hash
+ $null=Run $setup @('--apply-update',$reviewPath,$reviewHash)
+ $operationFolder=Join-Path $data ('updates/'+$review.Files.Id)
+ $completion=Get-Content -LiteralPath (Join-Path $operationFolder 'apply.completed.json') -Raw|ConvertFrom-Json
+ $snapshot=Get-Content -LiteralPath (Join-Path $operationFolder 'snapshot.json') -Raw|ConvertFrom-Json
+ Check 'Completed snapshot names a retained operation-local attempt' ($snapshot.Folder -match '^snapshot-[a-f0-9]{32}$')
+ Check 'Reviewed update retains the original image and a verified metadata snapshot' ((Test-Path -LiteralPath ($install+'.previous-'+$review.Files.Id)) -and (Test-Path -LiteralPath (Join-Path $operationFolder ($snapshot.Folder+'/data/journal/playback.db'))) -and $completion.ImageSha256 -eq $review.Files.Replacement.BundleSha256)
+ $updatedService=Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")
+ $null=Run $setup @('--apply-update',$reviewPath,$reviewHash)
+ Check 'Completed update retry does not restart the verified service' ((Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")).ProcessId -eq $updatedService.ProcessId)
+ $marker=[Guid]::NewGuid().ToString('N')
+ $marked=(Run $lab @('--service-maintenance-mark',$marker))|ConvertFrom-Json
+ Check 'Real service commits a new stopped-intent receipt after the snapshot' $marked.Marked
+ # Move only this owned, verified CI fixture; the saved review retains its historical path.
+ $relocated=[IO.Path]::GetFullPath($fixture+'-relocated')
+ if([IO.Path]::GetFullPath($fixture) -ne $expectedFixture -or [IO.Path]::GetDirectoryName($relocated) -ne [IO.Path]::GetDirectoryName($expectedFixture) -or (Test-Path -LiteralPath $relocated) -or (Get-Item -LiteralPath $fixture).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Owned package relocation validation failed'}
+ Move-Item -LiteralPath $fixture -Destination $relocated
+ $fixture=$relocated;$expectedFixture=$relocated;$setup=Join-Path $fixture 'setup/OnAirNext.Setup.exe';$reviewPath=Join-Path $fixture 'update-review.json'
+ Open-ExternalFixtureConsole
+ $reopened=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update' -WebSession $setupWebSession -Headers $headers -TimeoutSec 5
+ Check 'Relocated console recovers the same review and enables rollback by package identity' ($reopened.review.id -eq $review.Files.Id -and $reopened.canRollback)
+ $heldMaintenance=[IO.File]::Open((Join-Path $data 'setup.lock'),[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+ try{
+  $busyMaintenance=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update' -WebSession $setupWebSession -Headers $headers -TimeoutSec 5
+  Check 'Recovered console disables duplicate maintenance while the installation lease is held' ($busyMaintenance.busy -and -not $busyMaintenance.canApply -and -not $busyMaintenance.canRollback)
+ }finally{$heldMaintenance.Dispose()}
+ $null=Run $setup @('--rollback-update',$reviewPath,$reviewHash)
+ $rollback=Get-Content -LiteralPath (Join-Path $operationFolder 'rollback.completed.json') -Raw|ConvertFrom-Json
+ $retained=(Run $lab @('--service-maintenance-check-mark',$marker))|ConvertFrom-Json
+ Check 'Relocated matching package rolls back original bytes while retaining later real journal receipts' ($rollback.ImageSha256 -eq $plan.BundleSha256 -and $retained.Marked -and (Get-FileHash -LiteralPath (Join-Path $install 'bundle.json') -Algorithm SHA256).Hash -eq $plan.BundleSha256)
+ $rollbackService=Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")
+ $staleApplyRejected=$false;try{$null=Run $setup @('--apply-update',$reviewPath,$reviewHash)}catch{$staleApplyRejected=$true}
+ Check 'Retained rollback rejects stale Apply without restarting the original service' ($staleApplyRejected -and (Get-CimInstance Win32_Service -Filter ("Name='"+$serviceName+"'")).ProcessId -eq $rollbackService.ProcessId)
+ $afterUiRollback=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/app-update' -WebSession $setupWebSession -Headers $headers -TimeoutSec 5
+ Check 'Recovered console reads rollback completion and keeps stale Apply disabled' ($afterUiRollback.completion.direction -eq 'Rollback' -and -not $afterUiRollback.canApply)
+ Close-ExternalFixtureConsole
+ $maintenance=(Run $lab @('--service-maintenance-probe'))|ConvertFrom-Json
+ foreach($check in $maintenance.Checks){Check $check.Description $check.Passed}
+ Check 'Maintenance fixture completed and restored its owned service' $maintenance.Passed
+ $completed=$true
+}catch{$failure=$_.Exception.Message;throw}
+finally{
+ if($review -and $review.Files.Id -match '^[a-f0-9]{32}$'){
+  try{
+   $operationFolder=Join-Path $data ('updates/'+$review.Files.Id)
+   if(Test-Path -LiteralPath $operationFolder){
+    foreach($file in @(Get-ChildItem -LiteralPath $operationFolder -Filter 'failure-*.json' -File|Select-Object -First 100)){if($file.Length -le 32768){$updateFailures+=@(Get-Content -LiteralPath $file.FullName -Raw|ConvertFrom-Json)}}
+    $intentPath=Join-Path $operationFolder ($review.Files.Id+'.intent.json');if((Test-Path -LiteralPath $intentPath) -and (Get-Item -LiteralPath $intentPath).Length -le 32768){$updateIntent=Get-Content -LiteralPath $intentPath -Raw|ConvertFrom-Json}
+   }
+  }catch{$updateFailures+=@(@{EvidenceReadError=$_.Exception.Message})}
+ }
+ if($webProcess){try{if(-not $webProcess.HasExited){$webProcess.Kill($true);$webProcess.WaitForExit(10000)|Out-Null}}finally{$webProcess.Dispose()}}
+ foreach($path in $shortcutPaths){if(Test-Path -LiteralPath $path){$full=[IO.Path]::GetFullPath($path);if([IO.Path]::GetFileName($full) -ne 'RadioTEDU OnAir Next.lnk' -or (Get-Item -LiteralPath $full).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Shortcut cleanup validation failed'};Remove-Item -LiteralPath $full -Force}}
+ $env:ONAIR_SETUP_TEST_RUNTIME=$null
+ if(-not $completed -and -not $failure){$failure='Setup fixture interrupted before completion'}
+ if($owned -and (Test-Path -LiteralPath (Join-Path $data 'setup-ownership.json'))){
+  $owner=Get-Content -LiteralPath (Join-Path $data 'setup-ownership.json') -Raw|ConvertFrom-Json
+  if($owner.PlanId -ne $plan.Id){throw 'Setup fixture ownership mismatch; cleanup refused'}
+  if(Get-Service -Name $serviceName -ErrorAction SilentlyContinue){Stop-Service -Name $serviceName -ErrorAction SilentlyContinue;& "$env:SystemRoot/System32/sc.exe" delete $serviceName|Out-Null}
+  if($completed -and -not $failure){foreach($target in @(@{Path=$install;Expected=(Join-Path $env:ProgramFiles 'RadioTEDU-OnAirNext-Development')},@{Path=$data;Expected=(Join-Path $env:ProgramData 'RadioTEDU-OnAirNext-Development')})){$full=[IO.Path]::GetFullPath($target.Path);if($full -ne [IO.Path]::GetFullPath($target.Expected) -or (Get-Item -LiteralPath $full).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Setup cleanup target validation failed'};Remove-Item -LiteralPath $full -Recurse -Force}}
+ }
+ $null=New-Item -ItemType Directory -Path (Split-Path -Parent $summary) -Force
+ @{Source=$env:GITHUB_SHA;Scope='Disposable Windows installer and synthetic legacy flat8 completion fixture; encoder/analyzer listings are explicit test doubles, no real audio, mouse or broadcasting-PC commissioning';Completed=$completed;Passed=($completed -and -not $failure);Checks=$checks.ToArray();Maintenance=$maintenance;UpdateReview=$review;AudioToolsReview=$audioToolsReview;AudioToolsReceipt=$audioToolsReceipt;UpdateFailures=$updateFailures;UpdateIntent=$updateIntent;Error=$failure;ProductionChanged=$false}|ConvertTo-Json -Depth 8|Set-Content -LiteralPath $summary -Encoding utf8NoBOM
+}

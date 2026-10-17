@@ -1,0 +1,636 @@
+{
+  "kind": "failed-real-audio-fixture-aggregation",
+  "source": "83c8ee7db5851813f954ea74f94dcaf4a0bcff26",
+  "runId": "38835231131",
+  "url": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38835231131",
+  "status": "completed",
+  "conclusion": "failure",
+  "unit": {
+    "total": 171,
+    "executed": 171,
+    "passed": 171,
+    "failed": 0,
+    "error": 0,
+    "timeout": 0,
+    "aborted": 0,
+    "inconclusive": 0,
+    "passedButRunAborted": 0,
+    "notRunnable": 0,
+    "notExecuted": 0,
+    "disconnected": 0,
+    "warning": 0,
+    "completed": 0,
+    "inProgress": 0,
+    "pending": 0
+  },
+  "reference": {
+    "Source": "83c8ee7db5851813f954ea74f94dcaf4a0bcff26",
+    "AtUtc": "2026-10-16T01:28:25.0012549+00:00",
+    "Completed": true,
+    "Passed": true,
+    "Cases": [
+      {
+        "Name": "stereo-calibration",
+        "Passed": true,
+        "SampleSha256": "0DAC73B2224CB912D4C5F22C07B40627B33C6633AF9470901ACEEF8C3D75EDF5",
+        "Reading": {
+          "SampleFrames": 960000,
+          "IntegratedFrames": 960000,
+          "MomentaryLufs": -22.99329558036168,
+          "ShortTermLufs": -22.993295580361682,
+          "IntegratedLufs": -22.993297101682888,
+          "LoudnessRangeLu": 6.750292265873005e-15,
+          "MaximumMomentaryLufs": -22.993290068425228,
+          "MaximumShortTermLufs": -22.993294845436413,
+          "SamplePeakDbfs": -23.000000432125567,
+          "TruePeakDbtp": -22.993304465401287,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 960000
+        },
+        "Reference": {
+          "IntegratedLufs": -23,
+          "LoudnessRangeLu": 0,
+          "TruePeakDbtp": -23
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.006702898317112016,
+          "RangeLu": null,
+          "PeakDb": 0.006695534598712527
+        }
+      },
+      {
+        "Name": "absolute-and-relative-gates",
+        "Passed": true,
+        "SampleSha256": "2B3D060134854F497A40132E2532CA0CA2884A92A444EC30EB139D69C9E15D45",
+        "Reading": {
+          "SampleFrames": 4800000,
+          "IntegratedFrames": 4800000,
+          "MomentaryLufs": -71.99329547223726,
+          "ShortTermLufs": -71.99329547289443,
+          "IntegratedLufs": -23.013868674469784,
+          "LoudnessRangeLu": 12.999999977485114,
+          "MaximumMomentaryLufs": -22.99329130982563,
+          "MaximumShortTermLufs": -22.99329501095662,
+          "SamplePeakDbfs": -23.000000432125567,
+          "TruePeakDbtp": -22.993304465401287,
+          "RangeSettled": true,
+          "Finished": true,
+          "StatisticsSampleFrames": 4800000
+        },
+        "Reference": {
+          "IntegratedLufs": -23,
+          "LoudnessRangeLu": 13,
+          "TruePeakDbtp": -23
+        },
+        "RangeCompared": true,
+        "RangeComparisonNote": "At least 60 seconds measured.",
+        "Difference": {
+          "IntegratedLu": 0.01386867446978357,
+          "RangeLu": 2.2514885955615682e-8,
+          "PeakDb": 0.006695534598712527
+        }
+      },
+      {
+        "Name": "energy-gated-programme",
+        "Passed": true,
+        "SampleSha256": "589A8B6487216B180D1ABD22595E28BC1F90B85F576B501E335DE9FFBFF41FFB",
+        "Reading": {
+          "SampleFrames": 2884800,
+          "IntegratedFrames": 2884800,
+          "MomentaryLufs": -25.993295532240094,
+          "ShortTermLufs": -25.9932955322401,
+          "IntegratedLufs": -22.97865743657876,
+          "LoudnessRangeLu": 5.999999945639276,
+          "MaximumMomentaryLufs": -19.99329284786913,
+          "MaximumShortTermLufs": -19.9932952214365,
+          "SamplePeakDbfs": -19.99999987057016,
+          "TruePeakDbtp": -19.993303920245964,
+          "RangeSettled": true,
+          "Finished": true,
+          "StatisticsSampleFrames": 2884800
+        },
+        "Reference": {
+          "IntegratedLufs": -23,
+          "LoudnessRangeLu": 6,
+          "TruePeakDbtp": -20
+        },
+        "RangeCompared": true,
+        "RangeComparisonNote": "At least 60 seconds measured.",
+        "Difference": {
+          "IntegratedLu": 0.02134256342123919,
+          "RangeLu": 5.4360723922286525e-8,
+          "PeakDb": 0.006696079754036077
+        }
+      },
+      {
+        "Name": "loudness-range",
+        "Passed": true,
+        "SampleSha256": "E992A30C60BC949492FEF5D8F636CCF74E5E0FC078F50FD028DD20A5162C5011",
+        "Reading": {
+          "SampleFrames": 4800000,
+          "IntegratedFrames": 4800000,
+          "MomentaryLufs": -49.99329568842328,
+          "ShortTermLufs": -49.99329568843113,
+          "IntegratedLufs": -24.491887635789624,
+          "LoudnessRangeLu": 14.999999957082206,
+          "MaximumMomentaryLufs": -19.99329106109395,
+          "MaximumShortTermLufs": -19.99329498319964,
+          "SamplePeakDbfs": -19.99999987057016,
+          "TruePeakDbtp": -19.993303920245964,
+          "RangeSettled": true,
+          "Finished": true,
+          "StatisticsSampleFrames": 4800000
+        },
+        "Reference": {
+          "IntegratedLufs": -24.5,
+          "LoudnessRangeLu": 15,
+          "TruePeakDbtp": -20
+        },
+        "RangeCompared": true,
+        "RangeComparisonNote": "At least 60 seconds measured.",
+        "Difference": {
+          "IntegratedLu": 0.0081123642103762,
+          "RangeLu": 4.291779376330851e-8,
+          "PeakDb": 0.006696079754036077
+        }
+      },
+      {
+        "Name": "opposite-phase-stereo",
+        "Passed": true,
+        "SampleSha256": "22F423A9CC3BE892F9A6A3DBB1A0AC289FBE462E9B3BF3507E7C7815BBA59602",
+        "Reading": {
+          "SampleFrames": 960000,
+          "IntegratedFrames": 960000,
+          "MomentaryLufs": -22.99329558036168,
+          "ShortTermLufs": -22.993295580361682,
+          "IntegratedLufs": -22.993297101682888,
+          "LoudnessRangeLu": 6.750292265873005e-15,
+          "MaximumMomentaryLufs": -22.993290068425228,
+          "MaximumShortTermLufs": -22.993294845436413,
+          "SamplePeakDbfs": -23.000000432125567,
+          "TruePeakDbtp": -22.993304465401287,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 960000
+        },
+        "Reference": {
+          "IntegratedLufs": -23,
+          "LoudnessRangeLu": 0,
+          "TruePeakDbtp": -23
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.006702898317112016,
+          "RangeLu": null,
+          "PeakDb": 0.006695534598712527
+        }
+      },
+      {
+        "Name": "true-peak-phase-45",
+        "Passed": true,
+        "SampleSha256": "8EE3AFDB9A19BF6A1D0C0956B9E03E7D226A1D8FAFD38F3AD6A65EF622C51B89",
+        "Reading": {
+          "SampleFrames": 144000,
+          "IntegratedFrames": 144000,
+          "MomentaryLufs": -2.742026062965096,
+          "ShortTermLufs": -2.6883113835253676,
+          "IntegratedLufs": -2.6743094676631167,
+          "LoudnessRangeLu": 0,
+          "MaximumMomentaryLufs": -2.6689361129086335,
+          "MaximumShortTermLufs": -2.6883113835253676,
+          "SamplePeakDbfs": -9.030900018572105,
+          "TruePeakDbtp": -5.9759090337932275,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 144000
+        },
+        "Reference": {
+          "IntegratedLufs": -2.7,
+          "LoudnessRangeLu": 20,
+          "TruePeakDbtp": -6
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.025690532336883454,
+          "RangeLu": null,
+          "PeakDb": 0.024090966206772535
+        }
+      },
+      {
+        "Name": "true-peak-phase-60",
+        "Passed": true,
+        "SampleSha256": "BE65A2D4E4B700F2CFB0084D6B5B6B797ECD1FA7DEA33A254E57C027FDAB8689",
+        "Reading": {
+          "SampleFrames": 144000,
+          "IntegratedFrames": 144000,
+          "MomentaryLufs": -2.7451545931357884,
+          "ShortTermLufs": -2.6915633278587157,
+          "IntegratedLufs": -2.6775613959589943,
+          "LoudnessRangeLu": 0,
+          "MaximumMomentaryLufs": -2.6721880350283533,
+          "MaximumShortTermLufs": -2.6915633278587157,
+          "SamplePeakDbfs": -7.269987435258983,
+          "TruePeakDbtp": -6.3132751595923935,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 144000
+        },
+        "Reference": {
+          "IntegratedLufs": -2.7,
+          "LoudnessRangeLu": 20,
+          "TruePeakDbtp": -6
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.02243860404100584,
+          "RangeLu": null,
+          "PeakDb": 0.3132751595923935
+        }
+      },
+      {
+        "Name": "true-peak-phase-67.5",
+        "Passed": true,
+        "SampleSha256": "80BFB460D68143DBB00F3FE8746A6B4D1CFDCD676661195B697D4FF07937140F",
+        "Reading": {
+          "SampleFrames": 144000,
+          "IntegratedFrames": 144000,
+          "MomentaryLufs": -2.7549914295943245,
+          "ShortTermLufs": -2.7014518964216356,
+          "IntegratedLufs": -2.68744997551718,
+          "LoudnessRangeLu": 0,
+          "MaximumMomentaryLufs": -2.682076618753773,
+          "MaximumShortTermLufs": -2.7014518964216356,
+          "SamplePeakDbfs": -6.7082932609946955,
+          "TruePeakDbtp": -6.026489256977294,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 144000
+        },
+        "Reference": {
+          "IntegratedLufs": -2.7,
+          "LoudnessRangeLu": 20,
+          "TruePeakDbtp": -6
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.012550024482820277,
+          "RangeLu": null,
+          "PeakDb": 0.026489256977294318
+        }
+      },
+      {
+        "Name": "above-full-scale-float",
+        "Passed": true,
+        "SampleSha256": "F00FD36335EA9E6610A07A4195363E06F423B7009C928FE760A7204E3FB187AB",
+        "Reading": {
+          "SampleFrames": 144000,
+          "IntegratedFrames": 144000,
+          "MomentaryLufs": 6.262956088004012,
+          "ShortTermLufs": 6.3166707673259515,
+          "IntegratedLufs": 6.330672683157755,
+          "LoudnessRangeLu": 0,
+          "MaximumMomentaryLufs": 6.336046037900572,
+          "MaximumShortTermLufs": 6.3166707673259515,
+          "SamplePeakDbfs": -0.025917867762879594,
+          "TruePeakDbtp": 3.0290731170159995,
+          "RangeSettled": false,
+          "Finished": true,
+          "StatisticsSampleFrames": 144000
+        },
+        "Reference": {
+          "IntegratedLufs": 6.3,
+          "LoudnessRangeLu": 20,
+          "TruePeakDbtp": 3
+        },
+        "RangeCompared": false,
+        "RangeComparisonNote": "Not assessed: LRA is not an acceptance criterion for programmes shorter than one minute.",
+        "Difference": {
+          "IntegratedLu": 0.030672683157755287,
+          "RangeLu": null,
+          "PeakDb": 0.02907311701599946
+        }
+      }
+    ],
+    "ReferenceVersion": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+    "SampleRate": 48000,
+    "Channels": 2,
+    "Scope": "Synthetic stereo instrument comparison only. No encoded outputs, broadcasting PC, normalization, limiter, UI or full EBU test-set acceptance."
+  },
+  "artifacts": [
+    {
+      "name": "windows-unit-results",
+      "digest": "sha256:55ed955ad6486ceb892304d689996a894f4c462bfef5f21c4c2c8fc8110aa913",
+      "bytes": 40880
+    },
+    {
+      "name": "loudness-reference-qualification",
+      "digest": "sha256:b14d7025332b50139a55a7dcfa5ab9d83acca1f3bf5529156bb314ba927e1bd2",
+      "bytes": 2232
+    },
+    {
+      "name": "windows-real-audio-qualification",
+      "digest": "sha256:5c44bca6727b3266d2ace6b45e6161daa6d9b31b731c98bcc5364e0251d0b701",
+      "bytes": 2882
+    }
+  ],
+  "audio": {
+    "Source": "83c8ee7db5851813f954ea74f94dcaf4a0bcff26",
+    "Completed": false,
+    "Passed": false,
+    "ProductionChanged": false,
+    "Scope": "Real isolated AAC-LC/24-bit Ogg FLAC, synthetic live mix and recovery only. No HE-AAC/18-output/normalization/limiter/actual-PC/24-72h or mouse acceptance.",
+    "HeAacTested": false,
+    "Cases": [
+      {
+        "SchemaVersion": 1,
+        "CreatedAtUtc": "2026-10-16T01:30:12.3679834+00:00",
+        "Machine": "runnervm0xl3a",
+        "OS": "Microsoft Windows 10.0.26100",
+        "Runtime": ".NET 10.0.13",
+        "Icecast": "2.5.0",
+        "TestProfiles": [
+          "AAC-LC 192 kbps",
+          "24-bit Ogg FLAC"
+        ],
+        "HeAacTested": false,
+        "Source": "New independent implementation; no production configuration or services accessed.",
+        "ExecutionSource": "83c8ee7db5851813f954ea74f94dcaf4a0bcff26",
+        "PcmFormat": "48k stereo float32 little-endian",
+        "ExecutionBuild": "1.0.0+83c8ee7db5851813f954ea74f94dcaf4a0bcff26",
+        "Results": [
+          {
+            "Name": "baseline",
+            "Passed": true,
+            "DurationSeconds": 13.4823808,
+            "Checks": [
+              {
+                "Description": "The program continues across a full song/ad/sweeper cycle.",
+                "Passed": true
+              },
+              {
+                "Description": "Both encoders and source sessions remain persistent across content boundaries.",
+                "Passed": true
+              },
+              {
+                "Description": "Healthy outputs lose no PCM blocks.",
+                "Passed": true
+              },
+              {
+                "Description": "Audit work does not overflow or fail.",
+                "Passed": true
+              },
+              {
+                "Description": "No decoder error on /next-baseline-aac",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded listener audio exceeds 8 seconds on /next-baseline-aac",
+                "Passed": true
+              },
+              {
+                "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-baseline-aac",
+                "Passed": true
+              },
+              {
+                "Description": "Listener hears multiple actual content transitions on /next-baseline-aac",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded tone order has no skips or repeats on /next-baseline-aac",
+                "Passed": true
+              },
+              {
+                "Description": "No decoder error on /next-baseline-flac",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded listener audio exceeds 8 seconds on /next-baseline-flac",
+                "Passed": true
+              },
+              {
+                "Description": "No low-RMS 20 ms windows after initial decoder priming on /next-baseline-flac",
+                "Passed": true
+              },
+              {
+                "Description": "Listener hears multiple actual content transitions on /next-baseline-flac",
+                "Passed": true
+              },
+              {
+                "Description": "Decoded tone order has no skips or repeats on /next-baseline-flac",
+                "Passed": true
+              },
+              {
+                "Description": "Playback journal hash chain is valid.",
+                "Passed": true
+              },
+              {
+                "Description": "Event acknowledgements do not duplicate journal rows.",
+                "Passed": true
+              },
+              {
+                "Description": "Music, advertisements and sweepers produce separate occurrence records.",
+                "Passed": true
+              },
+              {
+                "Description": "Orderly stop leaves a terminal record for every started occurrence.",
+                "Passed": true
+              },
+              {
+                "Description": "Completed assets retain their exact sample counts, including boundaries inside a 20 ms block.",
+                "Passed": true
+              },
+              {
+                "Description": "Program sample positions never reset during output recovery: baseline",
+                "Passed": true
+              },
+              {
+                "Description": "No track is repeated or advanced by transport recovery: baseline",
+                "Passed": true
+              },
+              {
+                "Description": "Daily local report contains one record per station occurrence, independent of output variants.",
+                "Passed": true
+              }
+            ],
+            "Details": {
+              "station": {
+                "Id": "baseline",
+                "State": "Running",
+                "Samples": 598080,
+                "CompletedItems": 8,
+                "SkippedItems": 0,
+                "CurrentTitle": "song-a",
+                "LateBlocks": 1,
+                "AuditRejectedEvents": 0,
+                "Outputs": [
+                  {
+                    "Id": "baseline-aac",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 1,
+                    "Connections": 1,
+                    "FramesWritten": 622,
+                    "DroppedBlocks": 0,
+                    "QueuedBlocks": 0,
+                    "EncoderPid": 8556,
+                    "LastError": null
+                  },
+                  {
+                    "Id": "baseline-flac",
+                    "State": "SourceConnected",
+                    "EncoderStarts": 1,
+                    "Connections": 1,
+                    "FramesWritten": 622,
+                    "DroppedBlocks": 0,
+                    "QueuedBlocks": 0,
+                    "EncoderPid": 9860,
+                    "LastError": null
+                  }
+                ],
+                "CurrentAssetId": "song-a",
+                "CurrentItemSamples": 20928,
+                "Recovered": false,
+                "Enabled": true,
+                "RequestedRunning": true,
+                "LastError": null,
+                "RetryAtUtc": null,
+                "CurrentArtist": "RadioTEDU synthetic fixture",
+                "CurrentDurationSeconds": null,
+                "NextItem": {
+                  "Id": "advert",
+                  "Artist": "RadioTEDU synthetic fixture",
+                  "Title": "advert",
+                  "Kind": "Advertisement",
+                  "DurationSeconds": null
+                },
+                "Loudness": {
+                  "State": "Measuring",
+                  "UpdatedAtUtc": "2026-10-16T01:30:12.194485+00:00",
+                  "Current": {
+                    "Id": "e71365e6a2164814ae8d8e587f6801d0",
+                    "StationId": "baseline",
+                    "SessionId": "6cf7d50e3d5d45e49427ef9ff54ecb03",
+                    "StartSample": 0,
+                    "EndSample": 595200,
+                    "StartedAtUtc": "2026-10-16T01:29:59.8104341+00:00",
+                    "Phase": "Live",
+                    "Reason": "ContinuousWindow",
+                    "MaximumFrames": 172800000,
+                    "HasMeasurementGap": false,
+                    "GapBeforeFrames": 0,
+                    "MissingTail": false,
+                    "Reading": {
+                      "SampleFrames": 595200,
+                      "IntegratedFrames": 576000,
+                      "MomentaryLufs": -14.081216793850327,
+                      "ShortTermLufs": -13.635637753108853,
+                      "IntegratedLufs": -13.616079219330977,
+                      "LoudnessRangeLu": 0.7556244727756902,
+                      "MaximumMomentaryLufs": -12.559930016892745,
+                      "MaximumShortTermLufs": -13.246895500410039,
+                      "SamplePeakDbfs": -13.407037898909222,
+                      "TruePeakDbtp": -12.441079148559389,
+                      "RangeSettled": false,
+                      "Finished": false,
+                      "StatisticsSampleFrames": 576000
+                    },
+                    "KnownEndAtUtc": "2026-10-16T01:30:12.2104341+00:00",
+                    "Scope": "pre_encoder_final_mix"
+                  },
+                  "LastClosed": null,
+                  "DroppedBlocks": 0,
+                  "DroppedFrames": 0,
+                  "InvalidBlocks": 0,
+                  "Gaps": 0,
+                  "HistoryFailures": 0,
+                  "Error": null,
+                  "HistoryError": null,
+                  "QueuedBlocks": 0,
+                  "Continuous": true
+                }
+              },
+              "decodedListeners": [
+                {
+                  "Mount": "/next-baseline-aac",
+                  "DecodedSeconds": 12.06,
+                  "SilentWindows": 0,
+                  "LongestSilentRun": 0,
+                  "ToneTransitions": 8,
+                  "UnexpectedToneTransitions": 0,
+                  "LiveToneWindows": 0,
+                  "FirstTones": [
+                    440,
+                    880,
+                    1320,
+                    660,
+                    440,
+                    880,
+                    1320,
+                    660,
+                    440
+                  ],
+                  "Error": null
+                },
+                {
+                  "Mount": "/next-baseline-flac",
+                  "DecodedSeconds": 11.94,
+                  "SilentWindows": 0,
+                  "LongestSilentRun": 0,
+                  "ToneTransitions": 7,
+                  "UnexpectedToneTransitions": 0,
+                  "LiveToneWindows": 0,
+                  "FirstTones": [
+                    440,
+                    880,
+                    1320,
+                    660,
+                    440,
+                    880,
+                    1320,
+                    660
+                  ],
+                  "Error": null
+                }
+              ],
+              "report": {
+                "SchemaVersion": 1,
+                "LocalDate": "2026-10-16",
+                "Timezone": "Europe/Istanbul",
+                "Records": 9,
+                "IncompleteRecords": 0,
+                "Sha256": "f820f0d2ea38d5e9c30885f80ae53bac61f49a7dfb3a9ddfbbaf84f8581ebd5c",
+                "FileName": "2026-10-16.csv",
+                "GeneratedAtUtc": "2026-10-16T01:30:12.348696+00:00"
+              }
+            },
+            "Error": null
+          }
+        ],
+        "RemainingOwnedChildren": {}
+      }
+    ],
+    "Tools": [
+      {
+        "Url": "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-essentials_build.7z",
+        "Name": "ffmpeg-9.0.2-essentials_build.7z",
+        "Sha256": "4705843ccaaf54257c16ad90f3e952ece33c17df964ecf7bfdbb0f49c7171077"
+      },
+      {
+        "Url": "https://downloads.xiph.org/releases/icecast/icecast_win64_2.5.0.exe",
+        "Name": "icecast_win64_2.5.0.exe",
+        "Sha256": "ad412cbe5d3d3804ea6208dfb4be8d8a25ecb94d62f46bc5a9aa8fa0f2f647c9"
+      }
+    ],
+    "Error": "Audio scenario failed or left owned children: baseline",
+    "FfmpegVersion": "ffmpeg version 9.0.2-essentials_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers"
+  },
+  "scope": "171unit/7browser-model/9reference checks passed; real baseline itself passed. The wrapper incorrectly counted the empty remaining-child dictionary as one array item, preventing later scenarios and service/setup execution. Retained failure; not full audio or production acceptance.",
+  "productionChanged": false,
+  "migratedGroups": 0
+}

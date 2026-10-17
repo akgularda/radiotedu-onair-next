@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <PropertyGroup><RuntimeIdentifiers>win-x64</RuntimeIdentifiers></PropertyGroup>
   <ItemGroup><ProjectReference Include="../OnAirNext.Engine/OnAirNext.Engine.csproj" /></ItemGroup>
 </Project>

@@ -1,0 +1,19 @@
+{
+  "AtUtc": "2026-10-16T19:41:39.269Z",
+  "Head": "c892d6bb89d656933fa3b9443f49e0caf018d949",
+  "Run": 38956200737,
+  "Url": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38956200737",
+  "Scope": "Disposable Windows build only; no broadcasting-PC changes",
+  "OverallPassed": false,
+  "FailedStep": "Build browser console and engine",
+  "Diagnostic": "CS0819 RuntimeSupplementCoordinator.cs line49: implicitly typed declaration contained two variables.",
+  "Correction": "Use an explicit bool declaration. A bounded declaration-shape scan found no remaining equivalent declarations across the11 changed C# files. This scan is not compilation; fresh CI remains required.",
+  "PassedJobs": [
+    "windows-codec-runtime",
+    "windows-codec-qualification",
+    "loudness-reference"
+  ],
+  "UnitsRun": false,
+  "InstallerRun": false,
+  "ProductionChanged": false
+}

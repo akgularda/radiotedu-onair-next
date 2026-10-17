@@ -1,0 +1,114 @@
+{
+  "AtUtc": "2026-10-16T18:13:59.947Z",
+  "Scope": "Disposable Windows CI full-codec inventory setup attempt; no broadcasting-PC installation or migration",
+  "Head": "8e891b98597b84a0443aa5c74cd3f0154e788536",
+  "ExecutedSource": "894deefab472ea6987b9372c9579a08b447ee140",
+  "Run": 38943510328,
+  "Url": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38943510328",
+  "OverallPassed": false,
+  "Units": {
+    "total": 312,
+    "executed": 312,
+    "passed": 312,
+    "failed": 0,
+    "error": 0,
+    "timeout": 0,
+    "aborted": 0,
+    "inconclusive": 0,
+    "passedButRunAborted": 0,
+    "notRunnable": 0,
+    "notExecuted": 0,
+    "disconnected": 0,
+    "warning": 0,
+    "completed": 0,
+    "inProgress": 0,
+    "pending": 0
+  },
+  "ServiceChecks": 49,
+  "ReferenceCases": 15,
+  "RealCodecProfiles": 3,
+  "RealAudioCases": 10,
+  "RealRuntimePreparation": {
+    "ServiceChanged": false,
+    "Files": 20,
+    "Passed": true,
+    "Source": "894deefab472ea6987b9372c9579a08b447ee140",
+    "ReferenceSha256": "2FF9772ED74AF0AB3A2C6B7CCED4FCAA23F09BB2D28205B5DB863AA919A629F2",
+    "Scope": "Actual CI codec-package hash and encoder-list preparation only; no service installation, target-PC, decoded-output or licensing determination"
+  },
+  "Package": {
+    "Files": 738,
+    "ManifestSha256": "7163595B3C8C991DBCBFC001899D1D813F196FB211F8353FA96E08A7483D6D4E",
+    "Source": "894deefab472ea6987b9372c9579a08b447ee140",
+    "UncompressedBytes": 275102924,
+    "UniquePayloadBytes": 112997966,
+    "Scope": "Windows x64 self-contained development package; no FFmpeg, music, credentials or production configuration",
+    "Commissioned": false
+  },
+  "Setup": {
+    "Passed": false,
+    "ChecksCompleted": 0,
+    "Error": "Setup process failed (1): "
+  },
+  "Diagnosis": "Diagnostic source9d2ded9/run38945249579 exposed Unexpected runtime file during --prepare. The synthetic fixture recursively included bin/runtimes framework DLLs, which violate the codec binary path contract. Narrow fixture inventory to direct bin DLLs, retain production validation, assert inventory shape and add nested-DLL rejection regression. Fresh full qualification pending.",
+  "SevenOriginalEvidenceArchivesVerified": true,
+  "ArchiveChecks": [
+    {
+      "name": "windows-unit-results",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "windows-service-qualification",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "windows-setup-qualification",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "windows-runtime-package-evidence",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "loudness-reference-qualification",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "windows-real-audio-qualification",
+      "bytesMatch": true,
+      "digestMatch": true
+    },
+    {
+      "name": "windows-codec-qualification",
+      "bytesMatch": true,
+      "digestMatch": true
+    }
+  ],
+  "ProductionGroupsMigrated": 0,
+  "ProductionChanged": false,
+  "DiagnosticFollowUp": {
+    "Head": "9d2ded9685c21cce40cea2ceda2e8cd6ff462be4",
+    "Run": 38945249579,
+    "OverallPassed": false,
+    "ObservedError": "Setup process failed (1, --prepare): Unexpected runtime file."
+  },
+  "SourceTreeEquivalence": {
+    "at": "2026-10-16T18:18:46.841Z",
+    "checks": [
+      {
+        "sha": "8e891b98597b84a0443aa5c74cd3f0154e788536",
+        "tree": "d1b6cf022c07971ae455b88a6fe0a6b095f2631c"
+      },
+      {
+        "sha": "894deefab472ea6987b9372c9579a08b447ee140",
+        "tree": "d1b6cf022c07971ae455b88a6fe0a6b095f2631c"
+      }
+    ],
+    "sameTree": true
+  }
+}

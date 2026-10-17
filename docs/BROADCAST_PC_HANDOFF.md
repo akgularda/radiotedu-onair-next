@@ -1,3 +1,5 @@
+> **Latest user decision — browser UI:** The native prototype was rejected. Build and test the browser console; earlier native-only UI clauses are superseded. See [browser interface decision](BROWSER_UI_DECISION.md). All broadcast safety and commissioning gates still apply.
+
 # Broadcasting PC build and staged migration handoff
 
 User-authorized handoff dated 15 October 2026. Use the **akgularda** GitHub account. Public application source: https://github.com/akgularda/radiotedu-onair-next. Private report archive: https://github.com/akgularda/radiotedu-broadcast-reports.

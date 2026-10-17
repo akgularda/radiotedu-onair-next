@@ -1,3 +1,5 @@
+> **Latest user decision — browser UI:** The native prototype was rejected. Build and test the browser console; earlier native-only UI clauses are superseded. See [browser interface decision](BROWSER_UI_DECISION.md). All broadcast safety and commissioning gates still apply.
+
 # OnAir: legacy inventory and proposed scope for approval
 
 Prepared 15 October 2026. Approval status: **recommended scope approved** by the user. The [current operating and delivery plan](OPERATING_PLAN.md) records the subsequent answers and takes precedence for the 18-output roster, English-only interface, restart-from-beginning recovery and microphone-on-air recording trigger. Durable recovery is the first implementation stage.

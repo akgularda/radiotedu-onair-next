@@ -133,11 +133,11 @@ public sealed class IcecastOutput : IProgramOutput
 
     private Process StartEncoder(string inputPath, string outputPath)
     {
-        var args = new List<string> { "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-f", "s16le", "-ar", "48000", "-ac", "2", "-i", inputPath, "-threads", "1" };
+        var args = new List<string> { "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-f", "f32le", "-ar", "48000", "-ac", "2", "-i", inputPath, "-threads", "1" };
         args.AddRange(_settings.Profile switch
         {
-            CodecProfile.AacLc192 => ["-c:a", "aac", "-b:a", "192k", "-f", "adts"],
-            CodecProfile.OggFlac => ["-c:a", "flac", "-compression_level", "3", "-f", "ogg", "-page_duration", "20000"],
+            CodecProfile.AacLc192 => ["-c:a", "libfdk_aac", "-profile:a", "aac_low", "-b:a", "192k", "-f", "adts"],
+            CodecProfile.OggFlac => ["-c:a", "flac", "-sample_fmt", "s32", "-bits_per_raw_sample", "24", "-compression_level", "3", "-f", "ogg", "-page_duration", "20000"],
             CodecProfile.HeAacV2_64 => ["-c:a", "libfdk_aac", "-profile:a", "aac_he_v2", "-b:a", "64k", "-f", "adts"],
             _ => throw new ArgumentOutOfRangeException()
         });

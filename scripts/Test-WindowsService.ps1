@@ -1,0 +1,183 @@
+param([string]$BuildRoot)
+$ErrorActionPreference='Stop'
+$serviceName='RadioTEDU.OnAirNext.Development'
+$installRoot=[IO.Path]::GetFullPath((Join-Path $env:ProgramFiles 'RadioTEDU-OnAirNext-Development'))
+$dataRoot=[IO.Path]::GetFullPath((Join-Path $env:ProgramData 'RadioTEDU-OnAirNext-Development'))
+$expectedInstall=$installRoot; $expectedData=$dataRoot
+$bin=Join-Path $installRoot 'bin'; $tools=Join-Path $installRoot 'tools'; $engineData=Join-Path $dataRoot 'data'
+$config=Join-Path $dataRoot 'host.json'; $marker=Join-Path $engineData 'owned-probe.json'
+$hostExe=Join-Path $bin 'OnAirNext.Host.exe'; $fakeExe=Join-Path $tools 'ffmpeg.exe'
+$labExe=Join-Path ([IO.Path]::GetFullPath($BuildRoot)) 'OnAirNext.Lab/release/OnAirNext.Lab.exe'
+$hostBuild=Join-Path ([IO.Path]::GetFullPath($BuildRoot)) 'OnAirNext.Host/release'
+$labBuild=Split-Path -Parent $labExe
+$checks=[Collections.Generic.List[string]]::new();$ownedInstall=$false;$ownedData=$false;$ownedService=$false;$completed=$false;$failure=$null;$diagnostics=@{}
+$operatorSid=[Security.Principal.WindowsIdentity]::GetCurrent().User
+$adminSid=[Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')
+$systemSid=[Security.Principal.SecurityIdentifier]::new('S-1-5-18')
+$localServiceSid=[Security.Principal.SecurityIdentifier]::new('S-1-5-19')
+$summary=Join-Path $PSScriptRoot '../artifacts/service-smoke/summary.json'
+function Check([string]$name,[bool]$condition){if(-not $condition){throw "Service check failed: $name"};$checks.Add($name)}
+function Protect([string]$path,[bool]$writable){
+ $full=[IO.Path]::GetFullPath($path)
+ if(-not ($full -eq $dataRoot -or $full.StartsWith($dataRoot+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase) -or $full -eq $installRoot -or $full.StartsWith($installRoot+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase))){throw 'ACL target escaped the fixture roots'}
+ $isDirectory=[IO.Directory]::Exists($full)
+ $acl=if($isDirectory){[Security.AccessControl.DirectorySecurity]::new()}else{[Security.AccessControl.FileSecurity]::new()}
+ $acl.SetAccessRuleProtection($true,$false);$acl.SetOwner($adminSid)
+ $inherit=if($isDirectory){[Security.AccessControl.InheritanceFlags]'ContainerInherit,ObjectInherit'}else{[Security.AccessControl.InheritanceFlags]::None}
+ foreach($sid in @($adminSid,$systemSid)){$acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($sid,'FullControl',$inherit,'None','Allow'))}
+ $rights=if($writable){'Modify'}else{'ReadAndExecute'}
+ $acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($localServiceSid,$rights,$inherit,'None','Allow'))
+ $acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($operatorSid,'ReadAndExecute',$inherit,'None','Allow'))
+ Set-Acl -LiteralPath $full -AclObject $acl
+}
+function Invoke-OwnedSc([string[]]$values){$output=& "$env:SystemRoot/System32/sc.exe" @values 2>&1;if($LASTEXITCODE -ne 0){throw ('Service fixture operation failed: '+($output -join ' '))}}
+function Probe([string]$action){$output=& $labExe --service-probe $action 2>&1;if($LASTEXITCODE -ne 0){throw ('Authenticated service probe failed: '+($output -join ' '))};return ($output -join [Environment]::NewLine)|ConvertFrom-Json}
+function SourceProbe([string]$action){$output=& $labExe --service-source-probe $action 2>&1;if($LASTEXITCODE -ne 0){throw ('Service source probe failed: '+($output -join ' '))};return ($output -join [Environment]::NewLine)|ConvertFrom-Json}
+function SourceReady([string]$id){
+ $deadline=[DateTime]::UtcNow.AddSeconds(25)
+ do{$result=SourceProbe ('status:'+$id);if($result.check.State -ne 'Checking'){return $result.check};Start-Sleep -Milliseconds 100}while([DateTime]::UtcNow -lt $deadline)
+ throw 'Owned source access child did not finish within its deadline'
+}
+function Ready([Nullable[bool]]$wanted){
+ $deadline=[DateTime]::UtcNow.AddSeconds(50);$last='not ready'
+ do{try{$state=Probe 'status';if($state.controller.mode -eq 'windows-service' -and $state.stations.Count -eq 2 -and ($null -eq $wanted -or ($state.stations|Where-Object Id -eq 'service-fixture').RequestedRunning -eq $wanted)){return $state}}catch{$last=$_.Exception.Message};Start-Sleep -Milliseconds 200}while([DateTime]::UtcNow -lt $deadline)
+ throw ('Service did not reach authenticated readiness: '+$last.Substring(0,[Math]::Min($last.Length,700)))
+}
+function Stopped(){
+ $deadline=[DateTime]::UtcNow.AddSeconds(55)
+ do{$service=Get-Service -Name $serviceName -ErrorAction Stop;if($service.Status -eq 'Stopped'){return};Start-Sleep -Milliseconds 200}while([DateTime]::UtcNow -lt $deadline)
+ throw 'Service did not stop within the cleanup deadline'
+}
+function OwnProcess([int]$pidValue,[string]$expected,[long]$ticks){
+ $process=[Diagnostics.Process]::GetProcessById($pidValue);$null=$process.SafeHandle
+ if(-not $process.MainModule.FileName.Equals($expected,[StringComparison]::OrdinalIgnoreCase)){throw 'Fixture process image does not match'}
+ if($ticks -gt 0 -and $process.StartTime.ToUniversalTime().Ticks -ne $ticks){throw 'Fixture process identity was reused'}
+ return $process
+}
+function Children(){
+ $deadline=[DateTime]::UtcNow.AddSeconds(25)
+ do{if(Test-Path -LiteralPath $marker){try{$m=Get-Content -LiteralPath $marker -Raw|ConvertFrom-Json;$parent=OwnProcess $m.ParentPid $fakeExe $m.ParentStartTicks;$leaf=OwnProcess $m.ChildPid $fakeExe $m.ChildStartTicks;return @($parent,$leaf)}catch{}};Start-Sleep -Milliseconds 100}while([DateTime]::UtcNow -lt $deadline)
+ throw 'Owned codec fixture descendants did not become observable'
+}
+function ClearMarker(){if(Test-Path -LiteralPath $marker){Remove-Item -LiteralPath $marker -Force}}
+try{
+ if(-not [Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'CI service fixture requires its isolated elevated runner'}
+ if(Get-Service -Name $serviceName -ErrorAction SilentlyContinue){throw 'An existing service must never be replaced by the fixture'}
+ if((Test-Path -LiteralPath $installRoot) -or (Test-Path -LiteralPath $dataRoot)){throw 'Existing fixture roots must not be overwritten'}
+ $null=New-Item -ItemType Directory -Path $installRoot;$ownedInstall=$true;Protect $installRoot $false
+ $null=New-Item -ItemType Directory -Path $dataRoot;$ownedData=$true;Protect $dataRoot $false
+ foreach($directory in @($bin,$tools,$engineData)){$null=New-Item -ItemType Directory -Path $directory;Protect $directory ($directory -eq $engineData)}
+ foreach($entry in Get-ChildItem -LiteralPath $hostBuild -Force){Copy-Item -LiteralPath $entry.FullName -Destination $bin -Recurse}
+ foreach($entry in Get-ChildItem -LiteralPath $labBuild -Force){Copy-Item -LiteralPath $entry.FullName -Destination $tools -Recurse}
+ Copy-Item -LiteralPath (Join-Path $tools 'OnAirNext.Lab.exe') -Destination $fakeExe
+ foreach($item in Get-ChildItem -LiteralPath $installRoot -Recurse -Force){Protect $item.FullName $false}
+ $readableSource=Join-Path $engineData 'probe-source';$null=New-Item -ItemType Directory -Path $readableSource;Protect $readableSource $true
+ [IO.File]::WriteAllText((Join-Path $readableSource 'fixture.wav'),'read-only access fixture; not decoded audio');Protect (Join-Path $readableSource 'fixture.wav') $true
+ $deniedSource=Join-Path $dataRoot 'operator-only-source';$null=New-Item -ItemType Directory -Path $deniedSource;Protect $deniedSource $false
+ $deniedAcl=Get-Acl -LiteralPath $deniedSource;$deniedAcl.PurgeAccessRules($localServiceSid);Set-Acl -LiteralPath $deniedSource -AclObject $deniedAcl
+ $settings=@{Ffmpeg=$fakeExe;DataRoot=$engineData;PipeName='onair-next-dev-service';OperatorSid=$operatorSid.Value;Stations=@(@{Id='service-fixture';Playlist=@();Outputs=@();Repeat=$true;Enabled=$true;AutoStart=$false},@{Id='source-fixture';Playlist=@();Outputs=@();Repeat=$true;Enabled=$true;AutoStart=$false})}
+ $settings|ConvertTo-Json -Depth 8|Set-Content -LiteralPath $config -Encoding UTF8;Protect $config $false
+ $command='"'+$hostExe+'" --windows-service --config "'+$config+'"'
+ Invoke-OwnedSc -values @('create',$serviceName,'binPath=',$command,'start=','auto','obj=','NT AUTHORITY\LocalService');$ownedService=$true
+ Invoke-OwnedSc -values @('config',$serviceName,'start=','delayed-auto')
+ Invoke-OwnedSc -values @('failure',$serviceName,'reset=','86400','actions=','restart/1000/restart/5000/restart/30000')
+ Invoke-OwnedSc -values @('failureflag',$serviceName,'1')
+ $registry=Get-ItemProperty -LiteralPath ('HKLM:\SYSTEM\CurrentControlSet\Services\'+$serviceName)
+ Check 'Automatic delayed startup is persisted' ($registry.Start -eq 2 -and $registry.DelayedAutoStart -eq 1 -and $registry.FailureActionsOnNonCrashFailures -eq 1)
+ Start-Service -Name $serviceName;$state=Ready $false
+ Check 'Authenticated operator crosses the service identity boundary' ($state.controller.mode -eq 'windows-service')
+ $service=Get-CimInstance -ClassName Win32_Service -Filter ("Name='"+$serviceName+"'")
+ Check 'Service uses its separate LocalService identity' ($service.StartName -eq 'NT AUTHORITY\LocalService')
+ $verifiedProcess=$service.ProcessId
+ Check 'Anonymous caller is disconnected without a response' ((Probe 'anonymous').rejected -eq $true)
+ $null=Ready $false;$afterRejected=Get-CimInstance -ClassName Win32_Service -Filter ("Name='"+$serviceName+"'")
+ Check 'Rejected client does not restart or kill the service' ($afterRejected.ProcessId -eq $verifiedProcess)
+ Check 'No browser console is required for service readiness' (-not (Get-Process -Name 'OnAirNext.Web' -ErrorAction SilentlyContinue))
+ Check 'Developer global stop is not a service command' ((Probe 'stop').accepted -eq $false)
+ Check 'Browser-visible folder cannot be assigned without service proof' ((SourceProbe 'assign-unchecked').accepted -eq $false)
+ $sourceRequest=SourceProbe 'readable';$sourceResult=SourceReady $sourceRequest.check.Id
+ Check 'Source read runs under LocalService rather than the browser operator' ($sourceResult.State -eq 'Accessible' -and $sourceResult.Result.IdentitySid -eq 'S-1-5-19' -and $sourceResult.Result.SampleReadable -eq $true)
+ Check 'A source proof cannot authorize another station' ((SourceProbe ('assign-wrong-station:'+$sourceResult.Id)).accepted -eq $false)
+ Check 'A source proof cannot authorize another folder' ((SourceProbe ('assign-mismatch:'+$sourceResult.Id)).accepted -eq $false)
+ Check 'Matching source proof permits a disarmed station folder assignment' ((SourceProbe ('assign:'+$sourceResult.Id)).accepted -eq $true)
+ $sourcePage=SourceProbe 'library'
+ Check 'Assigned source is read back from the service journal' ($sourcePage.page.Root.Path -eq $readableSource -and $sourcePage.page.Root.Revision -eq 1)
+ Check 'Committed source assignment replay needs no transient proof' ((SourceProbe 'replay').accepted -eq $true)
+ $sourcePage=SourceProbe 'library';Check 'Source replay does not create a new revision' ($sourcePage.page.Root.Revision -eq 1)
+ Check 'Operator can enumerate the source denied to the service' (@(Get-ChildItem -LiteralPath $deniedSource -Force).Count -eq 0)
+ $deniedRequest=SourceProbe 'denied';$deniedResult=SourceReady $deniedRequest.check.Id
+ Check 'Operator-visible folder denied to LocalService is reported unavailable' ($deniedResult.State -eq 'Unavailable' -and $deniedResult.Result.IdentitySid -eq 'S-1-5-19')
+
+ [IO.File]::WriteAllText((Join-Path $deniedSource 'selected.wav'),'operator-owned upload fixture; not decoded audio')
+ $aclBefore=(Get-Acl -LiteralPath $deniedSource).Sddl
+ $uploadOutput=& $labExe --service-upload-probe 2>&1
+ if($LASTEXITCODE -ne 0){throw ('Service upload probe failed: '+($uploadOutput -join ' '))}
+ $upload=($uploadOutput -join [Environment]::NewLine)|ConvertFrom-Json
+ Check 'Authenticated file transport crosses the LocalService boundary with matching SHA-256' $upload.verified
+ Check 'Retry reuses one retained file rather than duplicating it' $upload.retained
+ Check 'A stalled file transfer leaves station controls responsive' $upload.controlsAvailable
+ Check 'Anonymous file transport caller is rejected before execution' ((Probe 'anonymous-files').rejected -eq $true)
+ Check 'Service rejects browser-operator filesystem import paths' $upload.rawPathsRejected
+ Check 'Discard removes staged copies and preserves operator originals' ($upload.discarded -and $upload.preserved)
+ Check 'Cross-account transfer does not broaden source folder permissions' ((Get-Acl -LiteralPath $deniedSource).Sddl -eq $aclBefore)
+
+
+ $reportOutput=& $labExe --service-report-probe 2>&1
+ if($LASTEXITCODE -ne 0){throw ('Service report probe failed: '+($reportOutput -join ' '))}
+ $report=($reportOutput -join [Environment]::NewLine)|ConvertFrom-Json
+ Check 'Completed CSV crosses the LocalService boundary with its exact receipt and SHA-256' $report.verified
+ Check 'A held report download leaves station controls responsive' $report.controlsAvailable
+ Check 'A held report download leaves Library transfer transport available' $report.libraryAvailable
+ Check 'Anonymous report caller is rejected before receiving report bytes' ((Probe 'anonymous-reports').rejected -eq $true)
+
+ $migrationOutput=& $labExe --service-migration-probe 2>&1
+ if($LASTEXITCODE -ne 0){throw ('Service migration probe failed: '+($migrationOutput -join ' '))}
+ $migration=($migrationOutput -join [Environment]::NewLine)|ConvertFrom-Json
+ Check 'LocalService independently verifies a synthetic legacy recovery receipt' $migration.backupVerified
+ Check 'Mapping save and retry cross the service boundary with persisted readback' $migration.mappingReadback
+ Check 'Migration preview excludes source secrets and AI settings' $migration.secretsExcluded
+ Check 'Music assignment requires an engine-account source-access proof' ($migration.musicAccessChecked -and $migration.missingAccessRejected -and $migration.musicSupported)
+ Check 'Music folder and mapping receipt are read back through the LocalService boundary' $migration.musicReadback
+ Check 'An acknowledged music retry preserves the current running intent and library revision' $migration.musicRetryStable
+ Check 'Music import rejects a target with running intent' $migration.activeTargetRejected
+ Check 'Music assignment preserves another channel persisted intent' $migration.siblingUnchanged
+ Check 'Changed former music source is rejected before an assignment' $migration.changedSourceRejected
+ Check 'Migration preparation leaves source data and stopped output ownership unchanged' ($migration.sourceUnchanged -and $migration.unarmed)
+
+ Check 'Start intent is durably acknowledged' ((Probe 'start-station').accepted -eq $true)
+ $null=Ready $true;$oldChildren=Children
+ Stop-Service -Name $serviceName;Stopped
+ foreach($child in $oldChildren){Check 'Graceful service exit releases owned descendants' ($child.WaitForExit(10000));$child.Dispose()}
+ ClearMarker;Start-Service -Name $serviceName;$null=Ready $true
+ Check 'SCM stop preserves requested-running intent' $true
+ $children=Children;$service=Get-CimInstance -ClassName Win32_Service -Filter ("Name='"+$serviceName+"'")
+ $root=OwnProcess $service.ProcessId $hostExe 0
+ Add-Type -TypeDefinition 'using System.Runtime.InteropServices; using Microsoft.Win32.SafeHandles; public static class OnAirOwnedCrash { [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] public static extern bool TerminateProcess(SafeProcessHandle process,uint code); }'
+ if(-not [OnAirOwnedCrash]::TerminateProcess($root.SafeHandle,177)){throw 'Owned fixture host could not be terminated'}
+ Check 'Only the verified held host handle is terminated' ($root.WaitForExit(10000));$root.Dispose()
+ foreach($child in $children){Check 'Kernel job releases descendants after parent-only crash' ($child.WaitForExit(10000));$child.Dispose()}
+ $null=Ready $true
+ Check 'SCM recovers the host automatically without browser or manual start' $true
+ Check 'Unexpected process death preserves requested-running intent' $true
+ Check 'Explicit station stop is acknowledged' ((Probe 'stop-station').accepted -eq $true)
+ Stop-Service -Name $serviceName;Stopped;ClearMarker;Start-Service -Name $serviceName;$null=Ready $false
+ Check 'Explicit stopped intent survives service restart' $true
+ Stop-Service -Name $serviceName;Stopped
+ $completed=$true
+}catch{
+ $failure=$_.Exception.Message
+ try{$failedService=Get-CimInstance -ClassName Win32_Service -Filter ("Name='"+$serviceName+"'");$diagnostics.Service=@{State=$failedService.State;ExitCode=$failedService.ExitCode;SpecificExit=$failedService.ServiceSpecificExitCode;ProcessId=$failedService.ProcessId}}catch{}
+ try{$boot=Join-Path $engineData 'boot-failure.json';if((Test-Path -LiteralPath $boot) -and (Get-Item -LiteralPath $boot).Length -le 32768){$diagnostics.Boot=Get-Content -LiteralPath $boot -Raw|ConvertFrom-Json}}catch{}
+ throw
+}
+finally{
+ if(-not $completed -and -not $failure){$failure='Fixture interrupted before all checks completed.'}
+ if($ownedService){try{if((Get-Service -Name $serviceName).Status -ne 'Stopped'){Stop-Service -Name $serviceName;Stopped};Invoke-OwnedSc -values @('delete',$serviceName)}catch{if(-not $failure){$failure=$_.Exception.Message}}}
+ # Retain fixture data on CI failure for runner-local diagnosis; upload only this sanitized summary.
+ foreach($target in @(@{Path=$installRoot;Expected=$expectedInstall;Owned=$ownedInstall},@{Path=$dataRoot;Expected=$expectedData;Owned=$ownedData})){
+  if($target.Owned -and -not $failure){$full=[IO.Path]::GetFullPath($target.Path);if($full -ne $target.Expected -or (Get-Item -LiteralPath $full).Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)){throw 'Cleanup target validation failed'};Remove-Item -LiteralPath $full -Recurse -Force}
+ }
+ $null=New-Item -ItemType Directory -Path (Split-Path -Parent $summary) -Force
+ @{Source=$env:GITHUB_SHA;Scope='Isolated Windows CI fixture; no real audio or target-PC commissioning';Completed=$completed;Passed=($completed -and -not $failure);Checks=$checks.ToArray();Error=$failure;ProductionChanged=$false;Diagnostics=$diagnostics}|ConvertTo-Json -Depth 10|Set-Content -LiteralPath $summary -Encoding UTF8
+ if($failure){Write-Error $failure}
+}

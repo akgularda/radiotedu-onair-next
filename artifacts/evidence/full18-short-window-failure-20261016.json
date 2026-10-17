@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "source": "09d41ec5b887d5a5149fa6da03c5d9236d703a02",
+  "runId": "38856877499",
+  "runUrl": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38856877499",
+  "conclusion": "failure",
+  "productionChanged": false,
+  "migratedStationGroups": 0,
+  "artifact": {
+    "name": "windows-real-audio-qualification",
+    "bytes": 13605,
+    "digest": "sha256:fe71e7421bb5cca863532d7c28141ada9192bb46a56ee484a07ac34297e38b5e",
+    "connectorDownloadHashVerified": true
+  },
+  "unit": {
+    "passed": 200,
+    "total": 200,
+    "evidence": "Original GitHub job log; three group commit regression cases included."
+  },
+  "roster": {
+    "passed": false,
+    "checks": [
+      {
+        "Passed": true,
+        "Description": "The complete stereo 440 source is measured before selection."
+      },
+      {
+        "Passed": true,
+        "Description": "The complete stereo 880 source is measured before selection."
+      },
+      {
+        "Passed": true,
+        "Description": "The complete stereo 1320 source is measured before selection."
+      },
+      {
+        "Passed": true,
+        "Description": "The complete stereo 660 source is measured before selection."
+      },
+      {
+        "Passed": true,
+        "Description": "All 18 actual codec branches are concurrently source-connected."
+      },
+      {
+        "Passed": true,
+        "Description": "roster-1-aac: actual encoded stream has one audio track."
+      },
+      {
+        "Passed": true,
+        "Description": "roster-1-aac: independently probed output retains 48 kHz stereo."
+      },
+      {
+        "Passed": true,
+        "Description": "roster-1-aac: actual codec profile/FLAC depth matches the branch."
+      },
+      {
+        "Passed": true,
+        "Description": "roster-1-aac: observed ADTS bitrate is within 20% of the requested rate, including framing/VBR variance."
+      },
+      {
+        "Passed": false,
+        "Description": "roster-1-aac: exactly 192000 finite native-decoded stereo frames are measured."
+      }
+    ],
+    "error": "System.AggregateException: Full roster validation or owned cleanup failed. (roster-1-aac: exactly 192000 finite native-decoded stereo frames are measured.)\r\n ---> System.IO.InvalidDataException: roster-1-aac: exactly 192000 finite native-decoded stereo frames are measured.\r\n   at OnAirNext.Lab.Roster18Checks.Check(CaseResult result, Boolean passed, String description) in /_/tests/OnAirNext.Lab/Roster18Checks.cs:line 15\r\n   at OnAirNext.Lab.Roster18Checks.MeasureOutputAsync(String ffmpeg, Int32 port, String root, OutputSettings output, List`1 readings, CaseResult result) in /_/tests/OnAirNext.Lab/Roster18Checks.cs:line 134\r\n   at OnAirNext.Lab.Roster18Checks.RunAsync(String ffmpeg, String icecastRoot, String root, CaseResult result) in /_/tests/OnAirNext.Lab/Roster18Checks.cs:line 61\r\n   --- End of inner exception stack trace ---\r\n   at OnAirNext.Lab.Roster18Checks.RunAsync(String ffmpeg, String icecastRoot, String root, CaseResult result) in /_/tests/OnAirNext.Lab/Roster18Checks.cs:line 86\r\n   at OnAirNext.Lab.Roster18Checks.RunAsync(String ffmpeg, String icecastRoot, String root, CaseResult result) in /_/tests/OnAirNext.Lab/Roster18Checks.cs:line 89\r\n   at OnAirNext.Lab.Roster18Checks.RunAsync(String ffmpeg, String icecastRoot, String root, CaseResult result) in /_/tests/OnAirNext.Lab/Roster18Checks.cs:line 91\r\n   at OnAirNext.Lab.Roster18Checks.RunAsync(String ffmpeg, String icecastRoot, String root, CaseResult result) in /_/tests/OnAirNext.Lab/Roster18Checks.cs:line 91\r\n   at Program.<Main>$(String[] args) in /_/tests/OnAirNext.Lab/Program.cs:line 52",
+    "readings": [
+      {
+        "Id": "roster-1-aac",
+        "Profile": "AacLc192",
+        "ActualStream": {
+          "codec_name": "aac",
+          "profile": "LC",
+          "sample_rate": "48000",
+          "channels": 2,
+          "bit_rate": "167091"
+        },
+        "DecodedFrames": 190464,
+        "DistinctStereoFrames": 190464,
+        "IntegratedLufs": -23,
+        "TruePeakDbtp": -20.9,
+        "LraAcceptance": "Withheld: window shorter than one minute",
+        "Scope": "Four-second low-crest decoded window only; no worst-case codec headroom proof"
+      }
+    ],
+    "remainingOwnedChildren": {}
+  },
+  "correction": "Read native-decoded PCM directly from the live stream, rebase its sample clock before exact 192000-frame trimming, and probe the actual live profile separately. The failed remux-duration window contained only190464 frames. The exact sample-count/clock/cadence assertions are retained; no missing samples are invented or padded."
+}

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "source": "07f3548d8deec97380e2445b058ecf7cd4a85eff",
+  "runId": "38854685682",
+  "runUrl": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38854685682",
+  "conclusion": "failure",
+  "productionChanged": false,
+  "verifiedResultArchives": [
+    {
+      "name": "loudness-reference-qualification",
+      "digest": "sha256:962d57a6501d312216893e9c810de760a1f47fcc31618c16f797c167f228d281",
+      "bytes": 2656
+    },
+    {
+      "name": "windows-codec-qualification",
+      "digest": "sha256:b51cae10bf0bc000686c03a70b37ddc5188a1ef2c2cfbee8c252afc799d6fc69",
+      "bytes": 5054
+    }
+  ],
+  "codec": {
+    "Source": "07f3548d8deec97380e2445b058ecf7cd4a85eff",
+    "Completed": false,
+    "Passed": false,
+    "ProductionChanged": false,
+    "Scope": "Disposable Windows runtime dependency integrity and real AAC-LC/HE-AACv2/24-bit Ogg FLAC smoke encodes/decodes only. Not the 18-output engine, worst-case encoded headroom, actual-PC, long-run or mouse qualification.",
+    "Profiles": [],
+    "Mode": "Real profile encode/decode smoke",
+    "Error": "Missing required encoder: aac",
+    "Inputs": {
+      "BuildScriptActual": "ca9d27c4d31e912d29cf8df9d9a5fdbcd8c49a2769265cb422ee0d7c9d734de4",
+      "BuildScriptExpected": "ca9d27c4d31e912d29cf8df9d9a5fdbcd8c49a2769265cb422ee0d7c9d734de4",
+      "LockExpected": "c9fec5fd0a0b677e1901cd263c72e57634f3502d9122c03dcbb45e69127b2b46",
+      "LockActual": "c9fec5fd0a0b677e1901cd263c72e57634f3502d9122c03dcbb45e69127b2b46"
+    }
+  },
+  "cause": "PowerShell joins used literal backslash-n instead of a newline, so multiline encoder matching could not see later lines. The raw encoder artifact contains aac, libfdk_aac, flac and pcm_f32le.",
+  "correction": "Join diagnostic/JSON lines with Environment.NewLine, preserving exact encoder/profile assertions. No codec substitution. The engine job correctly remained skipped."
+}

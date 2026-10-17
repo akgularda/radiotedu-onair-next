@@ -1,3 +1,5 @@
+> **Latest user decision — browser UI:** The native prototype was rejected. Build and test the browser console; earlier native-only UI clauses are superseded. See [browser interface decision](BROWSER_UI_DECISION.md). All broadcast safety and commissioning gates still apply.
+
 # RadioTEDU OnAir Next operating and delivery plan
 
 Updated 15 October 2026 from the approved feature scope and the operator's answers. This is the controlling product plan where it refines earlier planning defaults. Implementation proceeds with durable recovery first, followed by the native interface and connected workflows. The present request produces the plan; it does not perform a production installation or cutover.

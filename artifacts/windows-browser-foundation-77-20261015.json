@@ -1,0 +1,10 @@
+{
+  "sourceBaseline": "7fd0910dcb3736bbedeb674d680b5ef8c2c60ab1",
+  "buildRun": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38792124305",
+  "tests": {
+    "passed": 77,
+    "failed": 0
+  },
+  "scope": "Unit tests and browser backend compilation only; no production qualification",
+  "archiveDigest": "sha256:65fe6acc907fcfb32680321d990e2965a76c6e91a175d2d3afa6000bfdced505"
+}

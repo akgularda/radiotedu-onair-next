@@ -1,0 +1,5 @@
+{
+  "ContractVersion": 1,
+  "JournalSchemaVersion": 1,
+  "RetainsCurrentDataOnRollback": true
+}

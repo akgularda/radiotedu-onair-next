@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading.Channels;
 
 namespace OnAirNext.Engine;
@@ -10,19 +11,42 @@ public sealed class MediaDecoder : IAsyncDisposable
         { SingleWriter = true, SingleReader = true, FullMode = BoundedChannelFullMode.Wait });
     private readonly CancellationTokenSource _stop = new();
     private readonly Process _process;
-    private readonly CodecPipe _pcm = new(System.IO.Pipes.PipeDirection.In);
+    private readonly FileStream? _sourceGuard;
+    private readonly CodecPipe _pcm;
     private readonly Task _pump;
     private readonly Task<string> _stderr;
     public Task Ready { get; }
     private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public MediaDecoder(string ffmpeg, MediaItem item, long startSample = 0)
+    public MediaDecoder(string ffmpeg, MediaItem item, long startSample = 0,string role="codec",bool fastSeek=false)
     {
-        _process = ChildProcess.Start(ffmpeg, ["-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", item.Path,
-            "-vn", "-sn", "-dn", "-threads", "1", "-af", "aresample=48000,atrim=start_sample=" + startSample.ToString(System.Globalization.CultureInfo.InvariantCulture), "-f", "s16le", "-acodec", "pcm_s16le", "-ar", "48000", "-ac", "2", _pcm.Path]);
+        FileStream? guard = null;
+        try
+        {
+        var gain = SourceNormalization.Decide(item.Loudness);
+        if (item.Loudness is { } measured)
+        {
+            guard = new FileStream(item.Path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var file = new FileInfo(item.Path);
+            if (file.Length != measured.Bytes || file.LastWriteTimeUtc.Ticks != measured.ModifiedTicks)
+                throw new InvalidDataException("The measured source changed; revalidate it in Library before playback.");
+        }
+        var seekSeconds=fastSeek?startSample/48000:0;
+        var trimSamples=fastSeek?startSample%48000:startSample;
+        var filters = SourceNormalization.DecodeFormat + ",atrim=start_sample=" + trimSamples.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (gain.AppliedDb != 0) filters += ",volume=" + gain.Linear.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ":precision=double";
+        _pcm = new(System.IO.Pipes.PipeDirection.In);
+        var arguments=new List<string>{"-hide_banner","-loglevel","error","-nostdin","-y"};
+        if(seekSeconds>0)arguments.AddRange(["-ss",seekSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+        arguments.AddRange(["-i",item.Path,"-vn","-sn","-dn","-threads","1","-af",filters,"-f","f32le","-acodec","pcm_f32le","-ar","48000","-ac","2",_pcm.Path]);
+        try { _process = ChildProcess.Start(ffmpeg,arguments,role:role); }
+        catch { _pcm.Dispose(); throw; }
         _stderr = ChildProcess.DrainErrorAsync(_process);
         Ready = _ready.Task;
+        _sourceGuard = guard;
         _pump = PumpAsync();
+        }
+        catch { guard?.Dispose(); throw; }
     }
 
     private async Task PumpAsync()
@@ -51,6 +75,7 @@ public sealed class MediaDecoder : IAsyncDisposable
                     if (count == 0) break;
                     if (count % AudioFormat.BytesPerSampleFrame != 0) throw new InvalidDataException("Unaligned decoded PCM.");
                     block.Length = count;
+                    ValidateSamples(block.Memory.Span);
                     await _blocks.Writer.WriteAsync(block, _stop.Token);
                     transferred = true;
                     _ready.TrySetResult();
@@ -71,11 +96,20 @@ public sealed class MediaDecoder : IAsyncDisposable
         }
     }
 
+    private static void ValidateSamples(ReadOnlySpan<byte> pcm)
+    {
+        foreach (var value in MemoryMarshal.Cast<byte, float>(pcm))
+            if (!float.IsFinite(value) || Math.Abs(value) > AudioFormat.MaximumSourceSample) throw new InvalidDataException("The asset contains nonfinite or out-of-domain PCM samples.");
+    }
+
     public async ValueTask<PcmBlock?> ReadAsync(CancellationToken token)
     {
         if (await _blocks.Reader.WaitToReadAsync(token)) return await _blocks.Reader.ReadAsync(token);
         return null;
     }
+
+    public void PreferBackgroundScheduling()
+    {if(OperatingSystem.IsWindows())_process.PriorityClass=ProcessPriorityClass.BelowNormal;}
 
     public async ValueTask DisposeAsync()
     {
@@ -84,6 +118,7 @@ public sealed class MediaDecoder : IAsyncDisposable
         try { await _pump; } catch (OperationCanceledException) { }
         while (_blocks.Reader.TryRead(out var block)) block.Dispose();
         _pcm.Dispose();
+        _sourceGuard?.Dispose();
         _stop.Dispose();
     }
 }

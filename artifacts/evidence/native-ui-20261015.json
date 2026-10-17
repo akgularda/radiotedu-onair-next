@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-15T16:55:49.244Z",
+  "project": "OnAirNext.Desktop",
+  "platform": "Windows 10 build 19045",
+  "visualDirection": "Original solid dark charcoal/navy WPF, inspired by Palantir workflow density; no copied assets or browser framework.",
+  "build": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "at": "2026-10-15T16:54:12.756Z"
+  },
+  "nativeLaunch": true,
+  "accessibilityReadback": true,
+  "keyboard": {
+    "openSystemViaAltS": true,
+    "closePreviousBuildViaAltF4": true
+  },
+  "screenshotQualified": false,
+  "mouseQualified": false,
+  "failures": [
+    "FrameArrived timed out: timed out waiting on channel",
+    "window capture timed out: timed out waiting on channel",
+    "coordinate input geometry is unavailable"
+  ],
+  "implementedSource": [
+    "Isolated local engine discovery",
+    "On air/System native panes",
+    "Bounded status client and selected-station Skip command",
+    "Working-area initial sizing and compact current-item panel",
+    "Status-age and minimize/restore command gate",
+    "Stable output row containers"
+  ],
+  "notQualified": [
+    "Connected engine status and Skip through the UI",
+    "Mouse interactions",
+    "Visual theme and 150% DPI layout",
+    "High Contrast theme",
+    "Complete service, installer, tray and seven operator workflows"
+  ],
+  "productionChanged": false
+}

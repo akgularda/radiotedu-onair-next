@@ -1,0 +1,31 @@
+{
+  "source": "3b0c6aad1fe4a6d96a237be098bfff170fd18da1",
+  "run": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/39007091725",
+  "passed": false,
+  "checksPassedBeforeException": 51,
+  "exception": "The final Ogg FLAC HTTP observation failed with a transport reset (Socket10054). It is not evidence of HTTP404 or source absence.",
+  "verifiedStoppedState": {
+    "requestedRunning": false,
+    "state": "Stopped",
+    "activeQueueItems": 0,
+    "configuredProfiles": 3,
+    "allProfilesStopped": true,
+    "allEncoderPidsNull": true,
+    "allEncoderConnectionFrameQueueCountersZero": true,
+    "aacAndHeListenerEndpointsReturned404": true,
+    "flacListenerEndpointEstablishedAbsent": false
+  },
+  "correction": "Use a separate non-proxied HTTP1.0 Connection-close request for each mount. Require an actual HTTP404; transport errors still fail. Retain every observed status/error. This removes connection reuse as a dependency without assuming it was the proven cause of the reset.",
+  "originalAudioArtifact": {
+    "id": 12091242869,
+    "bytes": 58067,
+    "sha256": "b58f1934f4088f920de63744410c01e0e1d10aeddab0714d812d952fc976bb0e",
+    "originalBytesAndDigestVerified": true
+  },
+  "newCaseDurationSeconds": 58.5804732,
+  "newCaseOwnedChildrenAtEnd": 0,
+  "remainingAudioAndSetupChecksCompleted": false,
+  "targetPcUpdated": false,
+  "stationGroupsMigrated": 0,
+  "scope": "Synthetic disposable-CI process/commit recovery. Intentional source gaps; no actual-PC mouse, devices, production or24/72h acceptance. Fresh complete qualification pending."
+}

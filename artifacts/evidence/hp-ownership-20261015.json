@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-15T17:19:54.003Z",
+  "platform": "Windows 10 build 19045, HP Z220, 8 GiB RAM",
+  "unitTests": {
+    "passed": 49,
+    "failed": 0,
+    "total": 49
+  },
+  "build": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "changes": [
+    "Exclusive playback-journal writer handle released by the OS after process death",
+    "Existing unknown, ambiguous, unversioned or corrupt database rejected before schema/WAL mutation",
+    "Child cleanup retains ownership on unconfirmed exit, rejects unowned objects and is idempotent after release"
+  ],
+  "failedAttempts": [
+    {
+      "stage": "build before tests",
+      "error": "MSB3027/MSB3021: open development desktop apphost locked its executable; closed through observed native keyboard input before retry."
+    },
+    {
+      "stage": "durable IPC startup status",
+      "passedChecks": 5,
+      "error": "System.IO.IOException: Pipe is broken.",
+      "change": "Bounded read-only status reconnect during startup, plus retained per-generation host logs. Acceptance checks were not reduced."
+    }
+  ],
+  "passedAttempt": {
+    "durationSeconds": 24.0973953,
+    "checks": [
+      {
+        "Description": "Crash occurs beyond the fixture's distinctive four-second opening.",
+        "Passed": true
+      },
+      {
+        "Description": "Repeated cleanup acknowledges only confirmed process exit and is safe after handle disposal.",
+        "Passed": true
+      },
+      {
+        "Description": "Independent listener hears the opening tone after a hard kill, rather than checkpoint-position tail audio.",
+        "Passed": true
+      },
+      {
+        "Description": "Actual repeated audio is recorded as a new attempt linked to the interrupted attempt.",
+        "Passed": true
+      },
+      {
+        "Description": "Skip admission is acknowledged before hard kill.",
+        "Passed": true
+      },
+      {
+        "Description": "A lost-response Skip retry is accepted after host restart.",
+        "Passed": true
+      },
+      {
+        "Description": "The consumed item stays consumed and a duplicate Skip cannot skip the next song.",
+        "Passed": true
+      },
+      {
+        "Description": "One durable Skip produces exactly one terminal Skip despite process death and retry.",
+        "Passed": true
+      },
+      {
+        "Description": "The already skipped song is not started a third time.",
+        "Passed": true
+      },
+      {
+        "Description": "Recovery and restarted attempts preserve the complete event hash chain.",
+        "Passed": true
+      },
+      {
+        "Description": "An explicitly stopped station stays stopped after host restart, while the command interface remains available.",
+        "Passed": true
+      },
+      {
+        "Description": "Command IDs retain their original operation after restart; a rejected Stop cannot terminate the host.",
+        "Passed": true
+      },
+      {
+        "Description": "Control interface remains responsive after a cross-operation receipt collision.",
+        "Passed": true
+      },
+      {
+        "Description": "Listener endpoint confirms that the stopped station did not silently autostart.",
+        "Passed": true
+      }
+    ],
+    "details": {
+      "restartedListener": {
+        "Mount": "/next-durable",
+        "DecodedSeconds": 1.2,
+        "SilentWindows": 0,
+        "LongestSilentRun": 0,
+        "ToneTransitions": 0,
+        "UnexpectedToneTransitions": 0,
+        "LiveToneWindows": 0,
+        "FirstTones": [
+          440
+        ],
+        "Error": null
+      },
+      "afterSkipListener": {
+        "Mount": "/next-durable",
+        "DecodedSeconds": 1.32,
+        "SilentWindows": 0,
+        "LongestSilentRun": 0,
+        "ToneTransitions": 0,
+        "UnexpectedToneTransitions": 0,
+        "LiveToneWindows": 0,
+        "FirstTones": [
+          660
+        ],
+        "Error": null
+      }
+    }
+  },
+  "diskPreflight": {
+    "queue": {
+      "0 C:": 0.060412,
+      "1 H:": 0.001724,
+      "2 E:": 0,
+      "_Total": 0.062136
+    },
+    "read_seconds": {
+      "0 C:": 0.00751,
+      "1 H:": 0,
+      "2 E:": 0,
+      "_Total": 0.00751
+    },
+    "write_seconds": {
+      "0 C:": 0.000699,
+      "1 H:": 0.000123,
+      "2 E:": 0,
+      "_Total": 0.000475
+    }
+  },
+  "remainingOwnedChildren": {},
+  "qualification": {
+    "profile": "AAC-LC 192 kbps, one synthetic isolated station",
+    "productionChanged": false,
+    "parentOnlyCrash": false,
+    "all18Outputs": false,
+    "longSoak": false,
+    "mouseUI": false
+  }
+}

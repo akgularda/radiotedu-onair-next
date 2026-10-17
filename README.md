@@ -1,87 +1,87 @@
 # RadioTEDU OnAir Next
 
-Independent Windows broadcast application under development. The first engine milestone implements continuous program audio, isolated Icecast outputs, an audio-agent input boundary, local play history, and reproducible loopback tests. The operator interface, installer, production migration, and full automation features follow the [development plan](DEVELOPMENT_PLAN.md).
+> Calendar report controls and a separate streaming download lane are under fresh qualification. See [report workflow](docs/REPORT_EXPORTS.md). Prior evidence below applies to its stated exact source.
 
-**Broadcasting-PC handoff:** read [the handoff instructions](docs/BROADCAST_PC_HANDOFF.md), [approved operating plan](docs/OPERATING_PLAN.md) and [current handoff status](docs/HANDOFF_STATUS.md) before continuing. This snapshot includes unfinished recovery/application source, not a production-ready installer. Its partial recovery code still attempts checkpoint-position resume, which must be changed to the approved restart-from-beginning policy. The new required roster is eight AAC-LC + eight libfdk_aac HE-AACv2 + two FLAC outputs. Configure/operate through the native UI and migrate one station group at a time; retire the old service only after the verified handover gates pass.
+Independent radio broadcasting engine and local browser console under development. The current RadioTEDU installation continues broadcasting. **No production migration has occurred.**
 
-This repository does not launch, modify, import, or replace the current RadioTEDU installation. The development host rejects production destinations: only literal loopback IPs, unprivileged test ports, `/next-` mounts, a private development data root, and new named-pipe identities are accepted.
+The user rejected the WPF prototype and requested a browser app. [The browser interface decision](docs/BROWSER_UI_DECISION.md) supersedes earlier native-only UI clauses. The rejected prototype remains historical source and is no longer part of the active solution.
 
-## Implemented engine
+Exact functional source `384cc67a` passed 205 unit cases, 9 browser-model cases, 357 real audio checks across ten scenarios, 35 SCM checks, 20 setup checks, 15 independent synthetic signals and three real codec profile checks in [run 38861221700](https://github.com/akgularda/radiotedu-onair-next/actions/runs/38861221700). Seven result archive digests and execution source identities were verified. The synthetic full roster includes eight FDK AAC-LC 192, eight FDK HE-AACv2 64 and two 24-bit Ogg FLAC outputs. All 18 live decoded windows retained exactly 192000 stereo frames; all eight meters retained continuous coverage with zero history failures; Stop confirmed all audit work and the immutable attempt hash chain. These are remote low-crest fixtures, not worst-case codec headroom, actual-PC or connected operator acceptance. See [scoped evidence](artifacts/evidence/fdk-full18-205-20261016.json).
 
-- C#/.NET 10 engine with a separate executable host and current-user command pipe.
-- Continuous 48 kHz stereo program timeline, 20 ms PCM blocks, shared pooled buffers, and exact boundaries inside a block.
-- Independent current and prebuffered successor decoders; no whole-track PCM cache.
-- Persistent AAC-LC 192 kbps and Ogg FLAC encoders over asynchronous Windows named pipes.
-- Independent bounded output queues, transport write deadlines, owned-process cleanup, and reconnection.
-- Explicit HE-AACv2 configuration fails when `libfdk_aac` is unavailable; no quality substitution.
-- Bounded live PCM input, smooth music ducking, sample limiting, and automatic gain recovery after input loss. Hardware microphone capture belongs to the later user audio agent.
-- Append-only SQLite event journal, hash verification, immutable artist/title snapshots, occurrence IDs, start/end/skip/interruption events.
-- Istanbul daily CSV, all 24 hourly count rows, checksums, incomplete-play flags, and streamed arbitrary-period export without a 10,000-row cap.
-- Independent host status/skip/stop commands; retrying a recent Skip command ID does not execute it twice.
+Source normalization, final-mix limiting, dedicated measurement/history workers and durable journal group commits are implemented. Full official corpus, worst-case decoded codec headroom, physical devices, connected UI, target-PC and 24/72-hour qualification remain open. Zero station groups have migrated.
 
-The current playlist is a developer-provided immutable sequence. Persisted queue editing, crash checkpoint resume, schedules, campaign ownership, native UI workflows, and production credentials are not implemented in this milestone.
+## Current interface
 
-The public source repository is [akgularda/radiotedu-onair-next](https://github.com/akgularda/radiotedu-onair-next). Synthetic report fixtures are archived separately in [akgularda/radiotedu-broadcast-reports](https://github.com/akgularda/radiotedu-broadcast-reports). The development publisher verifies remote commits and repeat publication; the scheduled application publisher remains a later milestone.
+The new dark browser console has a channel strip, broadcast desk, searchable/paged Library, calendar Reports, folder picker, file-upload controls and System connection screen. It uses local HTML/CSS/JavaScript, without a frontend framework, CDN, external fonts or AI calls. Browser navigation and channel selection have been exercised with actual mouse input in the separate unconnected visual preview.
 
-## Build and test
+- Unconnected visual preview: loopback port 18120, clearly labelled UI PREVIEW.
+- ASP.NET Core console under qualification: literal loopback port 18121. It bridges only isolated onair-next-dev-* engine pipes.
+- Local mutations require a same-origin session cookie and request token. Production engine identities are not accepted.
+- The broadcasting engine owns playback; closing or disconnecting the browser does not stop it. The guided Windows installer and self-contained package passed disposable-runner software qualification; actual Windows 10 installation, before-logon media/device access and connected mouse acceptance remain incomplete.
 
-On a Windows development PC with FFmpeg and 7-Zip available:
+The active solution now builds OnAirNext.Web. On Air, Library and System are the initial screens; unfinished screens and unavailable controls are explicitly disabled. A visible screen is not proof of connected operation. Real browser upload/folder readback, remaining workflows, installation and Codex-free operator acceptance are still open.
 
-```powershell
-.\scripts\Test-Engine.ps1
-```
+## Windows setup under qualification
 
-The bootstrap downloads pinned official .NET and Icecast archives into `%LOCALAPPDATA%\RadioTEDU\OnAirNext-Dev\tools`, verifies the pinned hashes, and extracts them without running an installer. The SDK checksum is from Microsoft's release metadata; the Icecast checksum pins the official download used for this milestone. No machine PATH, production service, or existing program is changed. NuGet dependencies are locked.
+Exact source e852c2e1adddd72de6223de26f4c21f7a49cb3b3 compiled and passed **134/134 unit cases, 35 real service checks and 20 installer/console checks** in Windows run 38825230914. The actual self-contained package was installed on a disposable runner, with eight stopped channels and zero outputs. Packaged runtime loading, immutable-file hard links, repeated install/shortcut commands and console close without stopping the engine were verified. See [scoped setup evidence](artifacts/evidence/windows-setup-134-20261016.json) and [operator setup instructions](docs/WINDOWS_GUIDED_SETUP.md). The runtime encoder listing in this fixture is a test double: no real codec/audio/loudness acceptance is implied.
 
-Build outputs, databases, generated test credentials, fixtures, and test-origin logs remain on the local SSD under `%LOCALAPPDATA%\RadioTEDU\OnAirNext-Dev`. Source and public evidence summaries can live in this synchronized repository.
+The launcher opens an operator-private console session. Anonymous session creation and API reads/writes are rejected; the startup capability stays in the operator profile and is removed from the address bar by the UI. This does not store a Windows password. Connected mouse/UAC acceptance on the broadcasting PC remains incomplete.
 
-Integration scenarios:
+The measured package payload is 274,556,343 bytes logically extracted, with 112,451,385 unique file bytes; .NET is included, FFmpeg/music/credentials are excluded. These are package content measurements, not download size or target-PC RAM usage. Its [Windows runtime dependency graph is pinned](src/OnAirNext.Setup/packages.lock.json); the fully locked package passed the same complete qualification. No service has been installed on the broadcasting PC and no station has migrated.
 
-| Scenario | Real behavior exercised |
+## Loudness instrument foundation
+
+Newer source adds a [float programme pipeline and bounded measurement worker](docs/PCM_AND_METER_WORKER.md), with final-mix browser readouts, immutable prefix history and scoped real Windows loopback qualification. Exact source `e3b19c5b` passed 171 unit cases, 7 browser-model cases, 95 real audio checks, 35 SCM checks, 20 setup checks and nine independent synthetic signals in run 38835930561. The decoded 24-bit stereo FLAC precision case compared 135,808 frames with zero error. These are not all-18-output, HE-AAC, normalization/limiter, actual-PC or connected mouse acceptance. Earlier foundation evidence below is scoped to its stated source.
+
+A bounded stereo 48 kHz BS.1770-5/EBU-mode measurement core has scoped synthetic qualification: exact source `6488c439` passed 160 unit cases, 35 service checks, 20 installer/console checks and nine independent FFmpeg signal comparisons in run 38830016334. It provides K-weighted gated I, rectangular M/S, LRA and four-times oversampled true peak. That foundation did not alter audio or attach to the programme loop. See [measurement scope and evidence](docs/LOUDNESS_MEASUREMENT.md); normalization, limiting, full UI and all 18 real decoded-output measurements remain unfinished.
+
+## Engine and library foundation
+
+- Continuous 48 kHz stereo programme timeline, pooled 20 ms blocks and bounded decoders.
+- Independent persistent outputs and owned-child cleanup. A failed output must not rewind healthy siblings.
+- Explicit HE-AACv2 configuration requires libfdk_aac; no quality substitution.
+- Dedicated FULL-WAL SQLite writer, exclusive database ownership, immutable attempt metadata and hash-chain verification.
+- Unfinished items restart from the beginning as linked attempts; completed items remain consumed.
+- Durable enabled/run/stop intent, per-station lifecycle workers and ID/payload deduplication.
+- Distinct durable jingle/sweeper counters and a bounded asset-selection/collision policy; programme integration and operator controls remain incomplete. See [branding implementation and remaining acceptance](docs/BRANDING_AUTOMATION.md).
+- Per-station live-root revisions, stable recursive discovery, complete decode validation outside the programme loop, bounded import jobs and paged catalog reads.
+- Interrupted copy jobs resume without overwriting originals. Missing-drive history is retained. External folders are watched read-only in the isolated build; copying is confined to private managed storage.
+- Published in-memory library rotation uses bounded selection work. Versioned metadata editing, reset-to-file-tags and reversible removal/restore are implemented, with catalog/worker tests. Connected mouse acceptance remains pending; playlists, queue editing and resource-budgeted analysis remain unfinished.
+- [Station-scoped queues](docs/STATION_QUEUE_STORAGE.md) connect library selections, host playback and browser append/order/remove controls, with bounded revisions, payload-bound command receipts and atomic playback/recovery ownership. Live reservations protect current/ready audio; queued music follows branding cadence. Integration, real-audio and actual mouse acceptance remain under qualification.
+
+## Evidence and release limits
+
+A new [queue process-crash scenario](docs/QUEUE_CRASH_QUALIFICATION.md) is under qualification. It runs real host kills and an intentional SQLite writer stall across decoded EOF, with three independently decoded codec profiles. Prior source results do not establish this scenario passed. No operational update or migration on the broadcasting PC is implied.
+
+Exact source 10862c903e4154596878fb03fa638cd995073500 compiled in Windows CI and passed **123/123 unit cases**, plus all 35 real Windows-service lifecycle/source/file-transfer checks (run 38814727175). Digest-verified [file-transfer evidence](artifacts/evidence/file-transfer-123-20261016.json) covers cross-account byte integrity, retained-file retry, a stalled transfer alongside responsive station controls, anonymous-client rejection, unchanged source ACLs and cleanup preserving original files. See the [file-transfer workflow](docs/LIBRARY_FILE_TRANSFERS.md). These are disposable-runner software checks; target-PC setup, connected mouse workflows and audio commissioning remain incomplete. The earlier 107-case source-access evidence is retained in the [delivery ledger](docs/BROADCAST_PC_DELIVERY_LEDGER.md).
+
+A protected local build was stopped after an existing Classic transport-health flag changed. No legacy PID/generation changed, the guardian verified zero remaining test processes, and later snapshots recovered. That observation is not proof of a listener outage or its cause. Remote builds reduce load on the broadcasting PC.
+
+Read the [delivery ledger](docs/BROADCAST_PC_DELIVERY_LEDGER.md), [operating plan](docs/OPERATING_PLAN.md) and [broadcast-PC handoff](docs/BROADCAST_PC_HANDOFF.md). The following remain mandatory before release:
+
+- All eight AAC-LC192 + eight libfdk_aac HE-AACv2 64 + two Ogg FLAC outputs: eighteen total.
+- Genuine BS.1770-5 / EBU R128 loudness and oversampled true peak, with independently decoded output measurements. Sample limiting is not compliance.
+- Complete browser workflows, installed service, microphone/cue, mic-only recording, soft-boundary events, branding, reports and migration/rollback.
+- Target-PC resource/device verification and real full-roster 24-hour and 72-hour qualification.
+- UI-driven migration of one station codec group at a time. Retire the old service only after every required group and gate passes; retain rollback files and media.
+
+No production readiness, completed installer or full operator application is claimed. All AI functionality is deferred.
+
+## Development
+
+Use the pinned private SDK and local SSD build root from scripts/Setup-Dev.ps1. Dependencies are locked. Check broadcast health and resource headroom before any target-PC build or audio test; do not launch a duplicate full fleet on this PC. GitHub Windows CI builds the solution and retains test results/binaries without using production credentials or media.
+
+The developer verification entry point is scripts/Test-Engine.ps1. Loopback scenarios include baseline, recovery, durable, lifecycle, finite, offline, live and controlled failure cases. They do not substitute for browser mouse acceptance or the final eighteen-output/long-duration gates.
+
+| Component | Purpose |
 |---|---|
-| baseline | Songs, advertisement and sweeper through persistent AAC and FLAC sessions |
-| recovery | Kill an owned encoder, then restart the owned Icecast origin |
-| offline | Begin with no origin, then bring it online without resetting the program |
-| fleet | Eight synthetic stations, sixteen AAC/FLAC outputs, sixteen continuously decoded listeners |
-| live | Synthetic audio-agent input, ducking, loss and return |
-| backpressure | A real loopback source socket accepts headers and stops reading audio |
-| corrupt | Reject a malformed future media file and continue with its approved successor |
-| host | Separate engine process, disconnected controller, idempotent Skip, explicit Stop |
+| src/OnAirNext.Engine | Programme audio, output recovery, durable journal, library and reports |
+| src/OnAirNext.Host | Isolated developer engine and bounded local command pipe |
+| src/OnAirNext.Web | Local browser console and protected HTTP-to-engine bridge |
+| tests/OnAirNext.Tests | Focused domain/ownership/recovery/library tests |
+| tests/OnAirNext.Lab | Owned loopback fixtures and independent listener analysis |
+| artifacts/evidence | Sanitized summaries; no credentials, database or media |
 
-Run one scenario or a longer bounded fleet test:
+Public source: [akgularda/radiotedu-onair-next](https://github.com/akgularda/radiotedu-onair-next). Report archive remains private. Never commit credentials, real databases, recordings or music.
 
-```powershell
-.\scripts\Test-Engine.ps1 -Scenario fleet -DurationSeconds 60 -SkipBootstrap
-.\scripts\Test-Engine.ps1 -Scenario soak -DurationSeconds 86400 -SkipBootstrap
-```
-
-The soak command supports up to 72 hours and streams analysis without retaining full audio recordings. A supported command is not evidence that a 24/72-hour run has already passed. Each run prints the path to `results.json`, preserving success and failure evidence. Every test-created process and socket is cleaned up when the run ends.
-
-## Audio and reporting semantics
-
-`SourceConnected` means that Icecast accepted a source handshake. It is not a listener-delivery or on-air guarantee. Lab probes independently decode the listener streams and inspect synthetic tone order and 20 ms RMS windows. The first 200 ms of decoded audio is excluded from the continuing-stream RMS checks to allow codec priming. This analysis does not prove every listener's wall-clock playback continuity.
-
-The PCM timeline advances independently of network recovery. When an output exhausts its bounded queue, it discards stale queued blocks and rejoins the current program; it does not hold other outputs or replay a completed item. Outage time and discarded blocks remain observable. No finite buffer can retain an unlimited outage.
-
-Events refer to samples entering the program timeline, not an assertion that a remote listener heard them. Quality outputs share one occurrence per station play. The first reporting schema provides hourly occurrence counts; duration apportionment across hours/dates and authoritative annual submission templates are later work.
-
-The journal has a bounded 4,096-event in-memory handoff followed by a dedicated SQLite writer using FULL synchronous WAL commits. Rejection and writer failure are visible in host status. A hard process/power failure can lose events still in the handoff; a committed start without an end is reported incomplete. Durable admission/checkpoint recovery and reporting completeness across hard failures are required before production commissioning. The hash chain detects accidental or unauthorized row modification; it is not an externally signed attestation.
-
-## Current verification scope
-
-See [engine verification](docs/ENGINE_VERIFICATION.md) and the checked-in machine-readable evidence. Tests use generated tone assets and loopback Icecast 2.5.0 on this Windows 11 development PC. The fleet represents eight stations and sixteen test outputs, with eight AAC-LC and eight Ogg FLAC outputs. It does not reproduce the commissioned HE-AAC branches or establish HP Z220 capacity.
-
-Production release still requires Windows 10 Pro and device testing, the exact persisted station/output roster, approved HE-AAC capabilities, real audio listening QA, long-duration soaks, full UI workflows, durable recovery, and migration/rollback rehearsals. No production cutover or service installation has occurred.
-
-## Project map
-
-| Location | Responsibility |
-|---|---|
-| `src/OnAirNext.Engine` | Audio, output recovery, local event journal and reports |
-| `src/OnAirNext.Host` | Independent headless host and local command boundary |
-| `tests/OnAirNext.Tests` | Settings isolation, PCM ownership, live mixing, history and reporting tests |
-| `tests/OnAirNext.Lab` | Owned Icecast fixtures, fault injection, listener decoding and resource evidence |
-| `scripts` | Reproducible developer setup and checks |
-| `artifacts/evidence` | Sanitized test summaries; no credentials, database or audio files |
-
-Windows audio I/O and WPF are intentional platform choices. The runtime and decoder dependencies require a documented update path. This project does not change the existing application's licensing or publish its media.
+The new source adds an isolated pinned FFmpeg/FDK runtime build, actual codec smoke qualification and a synthetic 8-station/18-output scenario. The first run exposed measurement-history storage blocking and a build pipeline/DLL-audit failure; fixes and fresh qualification are pending. See [codec runtime scope](docs/CODEC_RUNTIME.md) and the retained failure evidence. Production ownership is unchanged; prior engine evidence applies to its exact recorded source only.

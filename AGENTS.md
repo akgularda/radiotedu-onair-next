@@ -14,3 +14,5 @@ Read `README.md` and `DEVELOPMENT_PLAN.md` before changes. This is a new standal
 - Start and terminal event positions must retain exact PCM sample counts. Do not label queued/programmed content as confirmed listener delivery.
 - Run focused tests and real loopback scenarios for an engine change; use `scripts/Test-Engine.ps1`. Record failures as well as successful evidence.
 - Do not claim production readiness from a short development run. Keep implementation limitations and commissioning gates current.
+
+- Latest UI decision: the user rejected WPF and explicitly chose a browser application. Build OnAirNext.Web; do not continue the native prototype. Read docs/BROWSER_UI_DECISION.md. Routine operations and mouse acceptance now belong in the browser.

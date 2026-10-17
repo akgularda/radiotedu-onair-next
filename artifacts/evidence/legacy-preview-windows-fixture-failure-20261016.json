@@ -1,0 +1,13 @@
+{
+  "run": 38873796418,
+  "head": "f805a06728a5588559be968b4a85e06e1a56d8e1",
+  "phase": "Run focused unit tests",
+  "failedTest": "PreviewVerifiesBackupWithoutChangingSourceOrCopyingCredentialsAndAi",
+  "kind": "Disposable SQLite fixture pooled a native writer handle; File.ReadAllBytes opened with incompatible Windows sharing before product preview ran.",
+  "productionChanged": false,
+  "fix": "Disable fixture connection pooling before checking closed source bytes. Product preview already uses Mode=ReadOnly, Pooling=false.",
+  "resultLines": [
+    "2026-10-16T08:30:12.1044021Z Failed!  - Failed:     1, Passed:   219, Skipped:     0, Total:   220, Duration: 49 s - OnAirNext.Tests.dll (net10.0)\r"
+  ],
+  "at": "2026-10-16T08:32:59.434Z"
+}

@@ -23,7 +23,7 @@ foreach ($packageForNext in $packagesForNext) {
 }
 $ffmpegForNext = Get-Command ffmpeg -ErrorAction Stop
 $dotnetForNext = Join-Path $toolsRootForNext 'dotnet\dotnet.exe'
-& $dotnetForNext --version
+& $dotnetForNext --version | Out-Host
 if ($LASTEXITCODE -ne 0) { throw 'Private SDK failed to start.' }
 Write-Output "Private development tools ready in $toolsRootForNext. FFmpeg: $($ffmpegForNext.Source)"
 Write-Output 'No system service, machine PATH, production configuration, or existing installation was changed.'

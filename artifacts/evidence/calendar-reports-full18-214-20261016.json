@@ -1,0 +1,222 @@
+{
+  "head": "470a8facf7f9d575172f82175b95996df379e62c",
+  "run": "38871149758",
+  "url": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/38871149758",
+  "conclusion": "success",
+  "scope": "Disposable remote Windows synthetic audio and authenticated service/setup lab only. Not production, actual-PC, full loudness corpus, worst-case headroom or long observation.",
+  "unit": {
+    "total": 214,
+    "executed": 214,
+    "passed": 214,
+    "failed": 0,
+    "error": 0,
+    "timeout": 0,
+    "aborted": 0,
+    "inconclusive": 0,
+    "passedButRunAborted": 0,
+    "notRunnable": 0,
+    "notExecuted": 0,
+    "disconnected": 0,
+    "warning": 0,
+    "completed": 0,
+    "inProgress": 0,
+    "pending": 0
+  },
+  "archives": [
+    {
+      "name": "windows-unit-results",
+      "digest": "sha256:d9dd90fbb7eaf3920c410ecd3a011401846f222c341eaf58fc274d389ba6709a",
+      "bytes": 52800
+    },
+    {
+      "name": "windows-service-qualification",
+      "digest": "sha256:5ae87343abe3026d6976248772c3156c08fbd85e4058a73e377314196fe414b8",
+      "bytes": 1230
+    },
+    {
+      "name": "windows-setup-qualification",
+      "digest": "sha256:3ce7e09fe34dc4cd061b6bb456b0de20334e716a5d0ae4d3131b896894d350ae",
+      "bytes": 939
+    },
+    {
+      "name": "windows-runtime-package-evidence",
+      "digest": "sha256:95afe0d29fe98ca3ddb3a7cce958579d6ce1a0bfa2cc7c57cf0139fdf1ad49dd",
+      "bytes": 4236
+    },
+    {
+      "name": "loudness-reference-qualification",
+      "digest": "sha256:6c14228fcd7ab05b1f158bb7d307bc85b841d47e02652fec6135fe4a733c354c",
+      "bytes": 2654
+    },
+    {
+      "name": "windows-real-audio-qualification",
+      "digest": "sha256:813467f485099d77e1756377ed9a46e3a8244c6e215305afcf6d2f67773fbecb",
+      "bytes": 47979
+    },
+    {
+      "name": "windows-codec-qualification",
+      "digest": "sha256:0731d6d3088f7c5e16a8cbd695b7de1834b118c32244ae54ce0aee3ebf1837c4",
+      "bytes": 15679
+    }
+  ],
+  "audio": {
+    "passed": true,
+    "checks": 361,
+    "failed": [],
+    "rosterChecks": 193,
+    "executionSource": "11210d20e51d9cff50385d937e55e08bf19a2caa",
+    "outputs": [
+      {
+        "station": "roster-1",
+        "id": "roster-1-aac",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      },
+      {
+        "station": "roster-1",
+        "id": "roster-1-he",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      },
+      {
+        "station": "roster-2",
+        "id": "roster-2-aac",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      },
+      {
+        "station": "roster-2",
+        "id": "roster-2-he",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      },
+      {
+        "station": "roster-3",
+        "id": "roster-3-aac",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      },
+      {
+        "station": "roster-3",
+        "id": "roster-3-he",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      },
+      {
+        "station": "roster-4",
+        "id": "roster-4-aac",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      },
+      {
+        "station": "roster-4",
+        "id": "roster-4-he",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      },
+      {
+        "station": "roster-5",
+        "id": "roster-5-aac",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      },
+      {
+        "station": "roster-5",
+        "id": "roster-5-he",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      },
+      {
+        "station": "roster-6",
+        "id": "roster-6-aac",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      },
+      {
+        "station": "roster-6",
+        "id": "roster-6-he",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      },
+      {
+        "station": "roster-7",
+        "id": "roster-7-aac",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      },
+      {
+        "station": "roster-7",
+        "id": "roster-7-he",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      },
+      {
+        "station": "roster-7",
+        "id": "roster-7-flac",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      },
+      {
+        "station": "roster-8",
+        "id": "roster-8-aac",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      },
+      {
+        "station": "roster-8",
+        "id": "roster-8-he",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      },
+      {
+        "station": "roster-8",
+        "id": "roster-8-flac",
+        "starts": 1,
+        "connections": 1,
+        "dropped": 0
+      }
+    ],
+    "report": {
+      "Id": "9472ffa34bd9481d81ab47c40e381c76",
+      "Period": "year",
+      "Selection": "2026",
+      "StationId": null,
+      "RequestedAtUtc": "2026-10-16T08:07:12.3367088+00:00",
+      "State": "Completed",
+      "Attempt": 1,
+      "Records": 10033,
+      "IncompleteRecords": 10033,
+      "Bytes": 2395699,
+      "Sha256": "dec002c1144f0b5130b611ea94c1fb3921afe0ffb62453eb361bff812a0d99fc",
+      "FinishedAtUtc": "2026-10-16T08:07:15.0162022+00:00",
+      "Error": null,
+      "CancelRequested": false,
+      "SnapshotSequence": 10033,
+      "SnapshotAtUtc": "2026-10-16T08:07:12.4686099+00:00",
+      "Timezone": "Europe/Istanbul",
+      "FileName": "radiotedu-2026-9472ffa34bd9481d81ab47c40e381c76-1.csv",
+      "FromUtc": "2025-12-31T21:00:00+00:00",
+      "ToUtc": "2026-12-31T21:00:00+00:00"
+    },
+    "observations": 102
+  },
+  "serviceChecks": 39,
+  "setupChecks": 20
+}
