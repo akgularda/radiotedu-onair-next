@@ -210,12 +210,25 @@ internal static class QueueDurableChecks
                 stopped.Outputs.All(o=>o.State=="Stopped"&&o.EncoderPid is null&&o.EncoderStarts==0&&o.Connections==0&&o.FramesWritten==0&&o.QueuedBlocks==0)&&
                 stoppedQueue.Items.Count==0,
                 "Explicit Stop and the consumed queue survive host restart without opening any codec/source branch.");
-            using(var client=new HttpClient{Timeout=TimeSpan.FromSeconds(3)})
-                foreach(var output in outputs)
+            var mountChecks=new List<object>();result.Details["stoppedMountChecks"]=mountChecks;
+            foreach(var output in outputs)
+            {
+                // Isolate each observation from stale keep-alive/proxy state.
+                // A transport failure remains a failure, never proof of absence.
+                using var handler=new SocketsHttpHandler{UseProxy=false,AllowAutoRedirect=false,ConnectTimeout=TimeSpan.FromSeconds(3)};
+                using var client=new HttpClient(handler){Timeout=TimeSpan.FromSeconds(3)};
+                using var request=new HttpRequestMessage(HttpMethod.Get,$"http://127.0.0.1:{origin.Port}{output.Mount}")
+                    {Version=System.Net.HttpVersion.Version10,VersionPolicy=HttpVersionPolicy.RequestVersionExact};
+                request.Headers.ConnectionClose=true;
+                try
                 {
-                    using var response=await client.GetAsync($"http://127.0.0.1:{origin.Port}{output.Mount}",HttpCompletionOption.ResponseHeadersRead);
+                    using var response=await client.SendAsync(request,HttpCompletionOption.ResponseHeadersRead);
+                    mountChecks.Add(new{output.Mount,Status=(int)response.StatusCode,Version=response.Version.ToString()});
                     Check(result,response.StatusCode==System.Net.HttpStatusCode.NotFound,output.Mount+": the isolated listener endpoint confirms there is no automatically restarted source.");
                 }
+                catch(HttpRequestException error)
+                {mountChecks.Add(new{output.Mount,Error=error.GetType().Name,InnerError=error.InnerException?.GetType().Name});throw;}
+            }
             Check(result,Events().Count(e=>e.Type=="started")==final.Count(e=>e.Type=="started"),"Stopped recovery manufactures no additional audio attempt.");
             Check(result,EventJournal.Verify(database),"All crash/restart/Skip/cadence attempts retain a valid immutable journal chain.");
             result.Details["hostGenerations"]=generation;
