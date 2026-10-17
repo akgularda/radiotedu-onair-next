@@ -21,6 +21,21 @@ internal static class EngineHost
         var json = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
         var config = JsonSerializer.Deserialize<HostSettings>(await File.ReadAllTextAsync(configPath, externalStop), json)
             ?? throw new InvalidDataException("Missing engine configuration.");
+        ProductionOutputConfiguration? storedOutputProfile = null;
+        if (serviceMode && OperatingSystem.IsWindows())
+        {
+            storedOutputProfile = CommissioningOutputStore.Load(config.DataRoot, config.Stations.Select(station => station.Id), json);
+            if (storedOutputProfile is not null)
+            {
+                if (config.Commissioning) throw new ArgumentException("Keep the protected output profile separate from the base service configuration.");
+                var groups = storedOutputProfile.Stations.ToDictionary(group => group.StationId, group => group.Outputs, StringComparer.Ordinal);
+                config = config with
+                {
+                    Commissioning = true,
+                    Stations = config.Stations.Select(station => station with { Outputs = groups[station.Id] }).ToList()
+                };
+            }
+        }
         if (config.Commissioning && !serviceMode)
             throw new ArgumentException("Production destinations are available only through the protected installed Windows service.");
         if (!config.Commissioning && config.Stations.SelectMany(station => station.Outputs).Any(output => output.Commissioned))
@@ -132,7 +147,31 @@ internal static class EngineHost
                                 await journal.RequireRecoveryReaderAsync(request.JournalFeatures);
                                 result = JsonSerializer.Serialize(new { stations = coordinator.Snapshot(),
                                     audit = new { journal.PendingEvents, journal.RejectedEvents, journal.Error },
-                                    children = ChildProcess.ActiveProcesses, privateCue=privateCue.Snapshot(), controller = new { mode = serviceMode ? "windows-service" : "developer", service = serviceMode ? ServiceEndpoint.Name : null, capabilities = new[] { "legacy-music-assignment-v1", RecoveryCompatibility.HeldRotationFeature, "branding-library-v1","private-cue-v1",RecoveryCompatibility.StationQueueFeature } } });
+                                    children = ChildProcess.ActiveProcesses, privateCue=privateCue.Snapshot(), commissioning = config.Commissioning ? new
+                                    {
+                                        enabled = true,
+                                        outputs = config.Stations.SelectMany(station => station.Outputs.Select(output => new
+                                        {
+                                            stationId = station.Id, output.Id, output.Host, output.Port, output.Mount, output.Profile, output.Information
+                                        })).ToArray()
+                                    } : null,
+                                    controller = new { mode = serviceMode ? "windows-service" : "developer", service = serviceMode ? ServiceEndpoint.Name : null,
+                                        capabilities = new[] { "legacy-music-assignment-v1", RecoveryCompatibility.HeldRotationFeature, "branding-library-v1", "private-cue-v1", RecoveryCompatibility.StationQueueFeature, "commissioning-output-profile-v1" } } });
+                                break;
+                            case "commission-output-profile" when serviceMode && OperatingSystem.IsWindows() && request.OutputProfile is { } outputProfile:
+                                CommissioningOutputStore.RequireAllDisarmed(coordinator.Snapshot());
+                                var validProfile = outputProfile.Validate(config.Stations.Select(station => station.Id));
+                                await CommissioningOutputStore.WriteAsync(config.DataRoot, validProfile, config.Stations.Select(station => station.Id), json, stop.Token);
+                                shutdown = true;
+                                result = JsonSerializer.Serialize(new { accepted = true, restartRequired = true, outputCount = validProfile.Stations.Sum(station => station.Outputs.Count) });
+                                break;
+                            case "commission-output-profile-clear" when serviceMode && OperatingSystem.IsWindows():
+                                if (config.Commissioning && storedOutputProfile is null)
+                                    throw new InvalidOperationException("This service profile was not loaded from the protected commissioning store.");
+                                CommissioningOutputStore.RequireAllDisarmed(coordinator.Snapshot());
+                                var profileCleared = CommissioningOutputStore.Clear(config.DataRoot, config.Stations.Select(station => station.Id), json);
+                                shutdown = profileCleared;
+                                result = JsonSerializer.Serialize(new { accepted = true, cleared = profileCleared, restartRequired = profileCleared });
                                 break;
                             case "queue-status" when request.StationId is { } queueStation:
                                 result=JsonSerializer.Serialize(new{queue=await queues.SnapshotAsync(queueStation)});break;
@@ -244,7 +283,8 @@ internal static class EngineHost
                                 result = "{\"accepted\":false,\"error\":\"Unknown command or station.\"}"; break;
                         }
                     }
-                    catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
+                    catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or IOException or UnauthorizedAccessException or
+                        System.Security.Cryptography.CryptographicException or FormatException or Microsoft.Data.Sqlite.SqliteException)
                     {
                         result = JsonSerializer.Serialize(new { accepted = false, error = ex.Message });
                     }
@@ -282,4 +322,5 @@ internal sealed record HostSettings(string Ffmpeg, string DataRoot, string PipeN
 internal sealed record EngineCommand(string Id, string Action, string? StationId, string? Path = null,
     string[]? Paths = null, string? Query = null, int Offset = 0, string? AssetId = null,string? SessionId=null,
     long Revision = 0, long ExpectedVersion = 0, string? Artist = null, string? Title = null, string? SourceCheckId = null, string? ReportPeriod = null, string? ReportSelection = null, string? ReportId = null, string? PreviewId = null, LegacyStationMapping[]? Mappings = null, int? MappingRevision = null, string[]? JournalFeatures = null, BrandingRules? BrandingRules = null,
-    QueueLibraryReference? QueueSource = null,long QueueRevision = 0,string? QueueEntryId = null);
+    QueueLibraryReference? QueueSource = null,long QueueRevision = 0,string? QueueEntryId = null,
+    ProductionOutputConfiguration? OutputProfile = null);

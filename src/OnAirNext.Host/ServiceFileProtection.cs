@@ -22,12 +22,21 @@ internal static class ServiceFileProtection
         ServiceEndpoint.RequirePath(ffmpeg, ServiceEndpoint.Ffmpeg);
     }
     internal static void AssertProtected(FileSystemSecurity security)
+        => AssertProtected(security, allowLocalServiceOwner: false);
+
+    internal static void AssertServiceDataProtected(FileSystemSecurity security)
+        => AssertProtected(security, allowLocalServiceOwner: true);
+
+    private static void AssertProtected(FileSystemSecurity security, bool allowLocalServiceOwner)
     {
         var administrators = new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null).Value;
         var system = new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null).Value;
-        var trusted = new[] { administrators, system };
+        var localService = new SecurityIdentifier(WellKnownSidType.LocalServiceSid, null).Value;
+        var trusted = allowLocalServiceOwner ? new[] { administrators, system, localService } : new[] { administrators, system };
         if (security.GetOwner(typeof(SecurityIdentifier)) is not SecurityIdentifier owner || !trusted.Contains(owner.Value))
-            throw new UnauthorizedAccessException("Service configuration and binaries must be owned by Administrators or SYSTEM. Use the guided installer.");
+            throw new UnauthorizedAccessException(allowLocalServiceOwner
+                ? "Protected service data must be owned by Administrators, SYSTEM or LocalService."
+                : "Service configuration and binaries must be owned by Administrators or SYSTEM. Use the guided installer.");
         const FileSystemRights writes = FileSystemRights.Write | FileSystemRights.Delete | FileSystemRights.DeleteSubdirectoriesAndFiles |
             FileSystemRights.ChangePermissions | FileSystemRights.TakeOwnership;
         foreach (FileSystemAccessRule rule in security.GetAccessRules(true, true, typeof(SecurityIdentifier)))

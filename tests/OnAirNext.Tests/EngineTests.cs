@@ -59,6 +59,57 @@ public sealed class EngineTests
         Assert.Throws<ArgumentException>(output.ValidateCommissioned);
     }
 
+    private static ProductionOutputConfiguration ValidProductionProfile()
+    {
+        var definitions = new (string Id, string Primary)[]
+        [
+            ("1", "/classic"), ("2", "/lofi"), ("4", "/radio"), ("5", "/cazz"),
+            ("8", "/rock"), ("9", "/energize"), ("10", "/situation"), ("11", "/maincharacter")
+        ];
+        var stations = definitions.Select(station =>
+        {
+            var information = new IcecastStationInformation($"RadioTEDU {station.Id}", "Continuous music", "Music", "https://radiotedu.com", true);
+            OutputSettings Create(string suffix, CodecProfile profile) => new(
+                $"station-{station.Id}-{suffix}", "stream.radiotedu.com", 11154,
+                suffix == "main" ? station.Primary : station.Primary + (suffix == "flac" ? "-flac" : "-low"),
+                "fixture-secret", profile, Commissioned: true, Information: information);
+            var outputs = new List<OutputSettings>
+            {
+                Create("main", CodecProfile.AacLc192), Create("low", CodecProfile.HeAacV2_64)
+            };
+            if (station.Id is "1" or "5") outputs.Add(Create("flac", CodecProfile.OggFlac));
+            return new StationOutputConfiguration(station.Id, outputs);
+        }).ToArray();
+        return new ProductionOutputConfiguration(1, stations);
+    }
+
+    [Fact]
+    public void ProductionOutputProfileRequiresTheCompleteEighteenMountRoster()
+    {
+        var profile = ValidProductionProfile();
+        profile.Validate(["1", "2", "4", "5", "8", "9", "10", "11"]);
+        var incomplete = profile with
+        {
+            Stations = profile.Stations.Select(station => station.StationId == "10"
+                ? station with { Outputs = station.Outputs.Take(1).ToArray() } : station).ToArray()
+        };
+        Assert.Throws<ArgumentException>(() => incomplete.Validate(["1", "2", "4", "5", "8", "9", "10", "11"]));
+        Assert.Throws<ArgumentException>(() => profile.Validate(["1", "2", "4", "5", "8", "9", "10", "11", "12"]));
+    }
+
+    [Fact]
+    public void ProductionOutputProfileRejectsUnapprovedIcecastOrigins()
+    {
+        var profile = ValidProductionProfile();
+        var altered = profile with
+        {
+            Stations = profile.Stations.Select(station => station.StationId == "9"
+                ? station with { Outputs = station.Outputs.Select((output, index) => index == 0 ? output with { Host = "elsewhere.example" } : output).ToArray() }
+                : station).ToArray()
+        };
+        Assert.Throws<ArgumentException>(() => altered.Validate(["1", "2", "4", "5", "8", "9", "10", "11"]));
+    }
+
     [Fact]
     public void LegacySourceFenceRequiresStoppedProcessAndDisabledStartup()
     {

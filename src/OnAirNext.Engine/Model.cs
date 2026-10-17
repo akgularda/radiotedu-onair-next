@@ -100,6 +100,65 @@ public sealed record IcecastStationInformation(string Name, string Description, 
     }
 }
 
+public sealed record StationOutputConfiguration(string StationId, IReadOnlyList<OutputSettings> Outputs);
+
+// A complete fixed RadioTEDU commissioning roster is committed at once, while every
+// station remains disarmed. The service applies it only after validating its full map.
+public sealed record ProductionOutputConfiguration(int SchemaVersion, IReadOnlyList<StationOutputConfiguration> Stations)
+{
+    private static readonly string[] StationIds = ["1", "2", "4", "5", "8", "9", "10", "11"];
+    private const string OriginHost = "stream.radiotedu.com";
+    private const int OriginPort = 11154;
+    private static readonly Dictionary<string, string> PrimaryMounts = new(StringComparer.Ordinal)
+    {
+        ["1"] = "/classic", ["2"] = "/lofi", ["4"] = "/radio", ["5"] = "/cazz",
+        ["8"] = "/rock", ["9"] = "/energize", ["10"] = "/situation", ["11"] = "/maincharacter"
+    };
+
+    public ProductionOutputConfiguration Validate(IEnumerable<string> installedStations)
+    {
+        if (SchemaVersion != 1) throw new ArgumentException("Unsupported production-output configuration version.");
+        if (Stations is null) throw new ArgumentException("Provide all eight RadioTEDU output groups.");
+        var installed = installedStations.Order(StringComparer.Ordinal).ToArray();
+        if (!installed.SequenceEqual(StationIds.Order(StringComparer.Ordinal), StringComparer.Ordinal))
+            throw new ArgumentException("Commission only the eight owned RadioTEDU stations; leave external stations alone.");
+        if (Stations.Count != StationIds.Length || Stations.Select(x => x.StationId).Distinct(StringComparer.Ordinal).Count() != StationIds.Length ||
+            !Stations.Select(x => x.StationId).Order(StringComparer.Ordinal).SequenceEqual(StationIds.Order(StringComparer.Ordinal), StringComparer.Ordinal))
+            throw new ArgumentException("Provide an output group for every one of the eight RadioTEDU stations.");
+        if (Stations.Any(station => station is null || station.Outputs is null))
+            throw new ArgumentException("Each RadioTEDU channel needs a complete output group.");
+        var outputs = Stations.SelectMany(station => station.Outputs.Select(output => (station.StationId, Output: output))).ToArray();
+        if (outputs.Length != 18) throw new ArgumentException("The production roster must contain all eighteen codec outputs.");
+        foreach (var (stationId, output) in outputs)
+        {
+            output.ValidateCommissioned();
+            if (!output.Host.Equals(OriginHost, StringComparison.OrdinalIgnoreCase) || output.Port != OriginPort)
+                throw new ArgumentException("All production outputs must use the configured RadioTEDU Icecast origin.");
+        }
+        if (outputs.Select(x => x.Output.Id).Distinct(StringComparer.Ordinal).Count() != outputs.Length ||
+            outputs.Select(x => (x.Output.Host.ToLowerInvariant(), x.Output.Port, x.Output.Mount.ToLowerInvariant())).Distinct().Count() != outputs.Length)
+            throw new ArgumentException("Each output ID and destination must have exactly one owner.");
+        foreach (var id in StationIds)
+        {
+            var group = Stations.Single(x => x.StationId == id).Outputs;
+            var primary = PrimaryMounts[id];
+            var expected = new Dictionary<string, CodecProfile>(StringComparer.Ordinal)
+            {
+                [primary] = CodecProfile.AacLc192,
+                [primary + "-low"] = CodecProfile.HeAacV2_64
+            };
+            if (id is "1" or "5") expected[primary + "-flac"] = CodecProfile.OggFlac;
+            if (group.Count != expected.Count || group.Any(output => !expected.TryGetValue(output.Mount, out var profile) || output.Profile != profile))
+                throw new ArgumentException("A station output group does not match its approved AAC-LC, HE-AACv2 and FLAC mount roster.");
+            if (group.Select(x => x.Host.ToLowerInvariant() + ":" + x.Port).Distinct(StringComparer.Ordinal).Count() != 1)
+                throw new ArgumentException("A station's codec variants must share its verified Icecast origin.");
+            if (group.Select(x => x.Information).Distinct().Count() != 1)
+                throw new ArgumentException("A station's codec variants must share its Icecast station information.");
+        }
+        return this;
+    }
+}
+
 public sealed record StationSettings(string Id, IReadOnlyList<MediaItem> Playlist, IReadOnlyList<OutputSettings> Outputs, bool Repeat = true,
     bool Enabled = true, bool AutoStart = true);
 public sealed record PlaybackEvent(string EventId, string OccurrenceId, string StationId, string Type, string ItemId,
