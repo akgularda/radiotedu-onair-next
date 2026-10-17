@@ -1,5 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
   <PropertyGroup><RuntimeIdentifiers>win-x64</RuntimeIdentifiers></PropertyGroup>
-  <ItemGroup><ProjectReference Include="../OnAirNext.Engine/OnAirNext.Engine.csproj" /></ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../OnAirNext.Engine/OnAirNext.Engine.csproj" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.13" />
+  </ItemGroup>
 </Project>

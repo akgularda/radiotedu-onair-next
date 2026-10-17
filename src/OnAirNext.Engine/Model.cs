@@ -48,10 +48,12 @@ public sealed record MediaItem(string Id, string Path, string Artist, string Tit
 public enum CodecProfile { AacLc192, OggFlac, HeAacV2_64 }
 
 public sealed record OutputSettings(string Id, string Host, int Port, string Mount, string SourcePassword,
-    CodecProfile Profile = CodecProfile.AacLc192, int QueueBlocks = 100, int WriteTimeoutMs = 2000)
+    CodecProfile Profile = CodecProfile.AacLc192, int QueueBlocks = 100, int WriteTimeoutMs = 2000,
+    bool Commissioned = false, IcecastStationInformation? Information = null, string SourceUsername = "source")
 {
     public void Validate(bool loopbackOnly = true)
     {
+        if (Commissioned) throw new ArgumentException("Commissioned outputs require the protected service commissioning path.");
         if (string.IsNullOrWhiteSpace(Id)) throw new ArgumentException("Output ID is required.");
         if (loopbackOnly && Host != "127.0.0.1" && Host != "::1")
             throw new ArgumentException("This engine milestone permits literal loopback destinations only.");
@@ -62,6 +64,98 @@ public sealed record OutputSettings(string Id, string Host, int Port, string Mou
             throw new ArgumentException("A generated test source credential is required.");
         if (QueueBlocks is < 2 or > 500 || WriteTimeoutMs is < 100 or > 10000)
             throw new ArgumentException("Output buffering and timeout must be bounded.");
+    }
+
+    public void ValidateCommissioned()
+    {
+        if (!Commissioned) { Validate(); return; }
+        if (string.IsNullOrWhiteSpace(Id) || Id.Length > 128 || Id.Any(char.IsControl))
+            throw new ArgumentException("Choose a bounded output ID.");
+        if (string.IsNullOrWhiteSpace(Host) || Host.Length > 253 ||
+            Uri.CheckHostName(Host) == UriHostNameType.Unknown || Host.Any(c => char.IsControl(c) || char.IsWhiteSpace(c)))
+            throw new ArgumentException("Use a host name or literal address without a URL scheme.");
+        if (Port is < 1 or > 65535) throw new ArgumentException("Choose a valid Icecast port.");
+        if (string.IsNullOrWhiteSpace(Mount) || Mount.Length > 128 || Mount[0] != '/' || Mount.Length == 1 ||
+            Mount[1..].Contains('/') || Mount.Any(c => !char.IsAsciiLetterOrDigit(c) && c is not '/' and not '-' and not '_' and not '.') ||
+            Mount.Equals("/en", StringComparison.OrdinalIgnoreCase) || Mount.Equals("/fr", StringComparison.OrdinalIgnoreCase) ||
+            Mount.StartsWith("/en-", StringComparison.OrdinalIgnoreCase) || Mount.StartsWith("/fr-", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Choose an explicitly owned RadioTEDU mount; external EN/FR outputs are protected.");
+        if (string.IsNullOrEmpty(SourcePassword) || SourcePassword.Length > 1024 || SourcePassword.Any(char.IsControl) ||
+            string.IsNullOrWhiteSpace(SourceUsername) || SourceUsername.Length > 128 || SourceUsername.Any(c => char.IsControl(c) || c == ':'))
+            throw new ArgumentException("A valid source credential is required.");
+        if (!Enum.IsDefined(Profile) || QueueBlocks is < 2 or > 500 || WriteTimeoutMs is < 100 or > 10000)
+            throw new ArgumentException("Choose a supported codec and bounded output buffering.");
+        (Information ?? throw new ArgumentException("Import the station's Icecast information before commissioning.")).Validate();
+    }
+}
+
+public sealed record IcecastStationInformation(string Name, string Description, string Genre, string Url, bool Public)
+{
+    public void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(Name) || new[] { Name, Description, Genre, Url }.Any(value => value is null || value.Length > 1024 || value.Any(char.IsControl)))
+            throw new ArgumentException("Icecast station information must contain bounded text without control characters.");
+        if (Url.Length > 0 && (!Uri.TryCreate(Url, UriKind.Absolute, out var uri) || uri.Scheme is not "http" and not "https"))
+            throw new ArgumentException("The station website must be an HTTP or HTTPS URL.");
+    }
+}
+
+public sealed record StationOutputConfiguration(string StationId, IReadOnlyList<OutputSettings> Outputs);
+
+// A complete fixed RadioTEDU commissioning roster is committed at once, while every
+// station remains disarmed. The service applies it only after validating its full map.
+public sealed record ProductionOutputConfiguration(int SchemaVersion, IReadOnlyList<StationOutputConfiguration> Stations)
+{
+    private static readonly string[] StationIds = ["1", "2", "4", "5", "8", "9", "10", "11"];
+    private const string OriginHost = "stream.radiotedu.com";
+    private const int OriginPort = 11154;
+    private static readonly Dictionary<string, string> PrimaryMounts = new(StringComparer.Ordinal)
+    {
+        ["1"] = "/classic", ["2"] = "/lofi", ["4"] = "/radio", ["5"] = "/cazz",
+        ["8"] = "/rock", ["9"] = "/energize", ["10"] = "/situation", ["11"] = "/maincharacter"
+    };
+
+    public ProductionOutputConfiguration Validate(IEnumerable<string> installedStations)
+    {
+        if (SchemaVersion != 1) throw new ArgumentException("Unsupported production-output configuration version.");
+        if (Stations is null) throw new ArgumentException("Provide all eight RadioTEDU output groups.");
+        var installed = installedStations.Order(StringComparer.Ordinal).ToArray();
+        if (!installed.SequenceEqual(StationIds.Order(StringComparer.Ordinal), StringComparer.Ordinal))
+            throw new ArgumentException("Commission only the eight owned RadioTEDU stations; leave external stations alone.");
+        if (Stations.Count != StationIds.Length || Stations.Select(x => x.StationId).Distinct(StringComparer.Ordinal).Count() != StationIds.Length ||
+            !Stations.Select(x => x.StationId).Order(StringComparer.Ordinal).SequenceEqual(StationIds.Order(StringComparer.Ordinal), StringComparer.Ordinal))
+            throw new ArgumentException("Provide an output group for every one of the eight RadioTEDU stations.");
+        if (Stations.Any(station => station is null || station.Outputs is null))
+            throw new ArgumentException("Each RadioTEDU channel needs a complete output group.");
+        var outputs = Stations.SelectMany(station => station.Outputs.Select(output => (station.StationId, Output: output))).ToArray();
+        if (outputs.Length != 18) throw new ArgumentException("The production roster must contain all eighteen codec outputs.");
+        foreach (var (stationId, output) in outputs)
+        {
+            output.ValidateCommissioned();
+            if (!output.Host.Equals(OriginHost, StringComparison.OrdinalIgnoreCase) || output.Port != OriginPort)
+                throw new ArgumentException("All production outputs must use the configured RadioTEDU Icecast origin.");
+        }
+        if (outputs.Select(x => x.Output.Id).Distinct(StringComparer.Ordinal).Count() != outputs.Length ||
+            outputs.Select(x => (x.Output.Host.ToLowerInvariant(), x.Output.Port, x.Output.Mount.ToLowerInvariant())).Distinct().Count() != outputs.Length)
+            throw new ArgumentException("Each output ID and destination must have exactly one owner.");
+        foreach (var id in StationIds)
+        {
+            var group = Stations.Single(x => x.StationId == id).Outputs;
+            var primary = PrimaryMounts[id];
+            var expected = new Dictionary<string, CodecProfile>(StringComparer.Ordinal)
+            {
+                [primary] = CodecProfile.AacLc192,
+                [primary + "-low"] = CodecProfile.HeAacV2_64
+            };
+            if (id is "1" or "5") expected[primary + "-flac"] = CodecProfile.OggFlac;
+            if (group.Count != expected.Count || group.Any(output => !expected.TryGetValue(output.Mount, out var profile) || output.Profile != profile))
+                throw new ArgumentException("A station output group does not match its approved AAC-LC, HE-AACv2 and FLAC mount roster.");
+            if (group.Select(x => x.Host.ToLowerInvariant() + ":" + x.Port).Distinct(StringComparer.Ordinal).Count() != 1)
+                throw new ArgumentException("A station's codec variants must share its verified Icecast origin.");
+            if (group.Select(x => x.Information).Distinct().Count() != 1)
+                throw new ArgumentException("A station's codec variants must share its Icecast station information.");
+        }
+        return this;
     }
 }
 

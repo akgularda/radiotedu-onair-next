@@ -34,15 +34,16 @@ public sealed class StationCoordinator : IAsyncDisposable
     private volatile bool _disposed;
 
     public StationCoordinator(string ffmpeg, IEnumerable<StationSettings> settings, EventJournal journal,
-        Func<StationSettings, IStationSession>? factory = null)
+        Func<StationSettings, IStationSession>? factory = null, bool commissionedService = false)
     {
         var stations = settings.ToArray();
         if (stations.Length == 0 || stations.Any(x => string.IsNullOrWhiteSpace(x.Id)) ||
             stations.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != stations.Length)
             throw new ArgumentException("Configure distinct stations.");
         var outputs = stations.SelectMany(x => x.Outputs).ToArray();
-        foreach (var output in outputs) output.Validate();
-        if (outputs.Select(x => (x.Host, x.Port, x.Mount)).Distinct().Count() != outputs.Length)
+        foreach (var output in outputs)
+            if (commissionedService) output.ValidateCommissioned(); else output.Validate();
+        if (outputs.Select(x => (x.Host.ToLowerInvariant(), x.Port, x.Mount)).Distinct().Count() != outputs.Length)
             throw new ArgumentException("Each destination must have exactly one source owner.");
         _slots = stations.ToDictionary(x => x.Id, x => new Slot(x), StringComparer.Ordinal);
         _journal = journal;
