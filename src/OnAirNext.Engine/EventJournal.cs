@@ -103,6 +103,10 @@ public sealed partial class EventJournal : IAsyncDisposable
                 CREATE TABLE IF NOT EXISTS report_exports(id TEXT PRIMARY KEY,state TEXT NOT NULL,
                   requested_utc TEXT NOT NULL,payload TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS report_exports_requested ON report_exports(requested_utc DESC,id);
+                CREATE TABLE IF NOT EXISTS station_queue_state(station_id TEXT PRIMARY KEY,revision INTEGER NOT NULL);
+                CREATE TABLE IF NOT EXISTS station_queue(id TEXT PRIMARY KEY,station_id TEXT NOT NULL,
+                  position INTEGER NOT NULL,payload TEXT NOT NULL,state TEXT NOT NULL,occurrence_id TEXT);
+                CREATE INDEX IF NOT EXISTS station_queue_active ON station_queue(station_id,state,position,id);
                 """;
             command.ExecuteNonQuery();
             using var version = _connection.CreateCommand();
@@ -153,11 +157,14 @@ public sealed partial class EventJournal : IAsyncDisposable
 
     // An acknowledgement follows FULL-WAL commit. Queue ownership and checkpoint changes
     // share the event transaction; a process kill cannot acknowledge an in-memory-only event.
-    public Task AppendAsync(PlaybackEvent entry, PlayoutCheckpoint? checkpoint = null)
-        => TransactionAsync((connection, transaction) =>
+    public async Task AppendAsync(PlaybackEvent entry, PlayoutCheckpoint? checkpoint = null)
+    {
+        var queue = await TransactionAsync<StationQueueSnapshot?>((connection, transaction) =>
         {
-            if (!WriteEvent(connection, transaction, entry)) return false;
+            if (!WriteEvent(connection, transaction, entry))
+                return entry.QueueEntryId is null ? null : ReadQueue(connection, transaction, entry.StationId);
             if (checkpoint is not null) WriteCheckpoint(connection, transaction, checkpoint);
+            var queueView = RecordQueueAttempt(connection, transaction, entry);
             RecordBrandingAttempt(connection, transaction, entry);
             if (entry.Type == "ended") CompleteCadence(connection, transaction, entry);
             if (entry.Type is "skipped" or "ended" or "failed" or "decode_failed")
@@ -175,8 +182,10 @@ public sealed partial class EventJournal : IAsyncDisposable
                     update.ExecuteNonQuery();
                 }
             }
-            return true;
+            return queueView;
         });
+        if (queue is not null) PublishQueue(queue);
+    }
 
     public Task<T> TransactionAsync<T>(Func<SqliteConnection, SqliteTransaction, T> action)
     {

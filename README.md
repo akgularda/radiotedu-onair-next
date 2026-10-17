@@ -47,6 +47,7 @@ A bounded stereo 48 kHz BS.1770-5/EBU-mode measurement core has scoped synthetic
 - Per-station live-root revisions, stable recursive discovery, complete decode validation outside the programme loop, bounded import jobs and paged catalog reads.
 - Interrupted copy jobs resume without overwriting originals. Missing-drive history is retained. External folders are watched read-only in the isolated build; copying is confined to private managed storage.
 - Published in-memory library rotation uses bounded selection work. Versioned metadata editing, reset-to-file-tags and reversible removal/restore are implemented, with catalog/worker tests. Connected mouse acceptance remains pending; playlists, queue editing and resource-budgeted analysis remain unfinished.
+- [Station-scoped queue storage](docs/STATION_QUEUE_STORAGE.md) now has bounded revisions, payload-bound command receipts and atomic playback/recovery ownership. It is not connected to host selection or browser controls yet; integrated queue audio and mouse acceptance remain open.
 
 ## Evidence and release limits
 

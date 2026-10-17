@@ -6,6 +6,9 @@ public sealed partial class EventJournal
 {
     public async Task RequireRecoveryReaderAsync(IReadOnlyCollection<string>? features)
     {
+        if (features?.Contains(RecoveryCompatibility.StationQueueFeature, StringComparer.Ordinal) != true &&
+            await TransactionAsync((c,t) => HasUnfinishedStationQueue(c,t)))
+            throw new InvalidOperationException("This journal has unfinished station queues. Use a compatible console before application maintenance; the service was not changed.");
         // New consoles declare their recovery semantics. Original maintenance
         // clients cannot declare this capability, so their existing status
         // admission fails before they can stop a service with a held checkpoint.
@@ -52,7 +55,14 @@ public sealed partial class EventJournal
 
     // Recovery is one FULL-WAL transaction. Reopening the same checkpoint cannot
     // manufacture another interruption or mark an unfinished queue item completed.
-    public Task<PlayoutCheckpoint?> PrepareRecoveryAsync(string stationId) => TransactionAsync((connection, transaction) =>
+    public async Task<PlayoutCheckpoint?> PrepareRecoveryAsync(string stationId)
+    {
+        var checkpoint = await PrepareRecoveryCoreAsync(stationId);
+        PublishQueue(await TransactionAsync((c,t) => ReadQueue(c,t,stationId)));
+        return checkpoint;
+    }
+
+    private Task<PlayoutCheckpoint?> PrepareRecoveryCoreAsync(string stationId) => TransactionAsync((connection, transaction) =>
     {
         using var query = connection.CreateCommand();
         query.Transaction = transaction;
@@ -75,6 +85,7 @@ public sealed partial class EventJournal
                 "A durably accepted Skip was recovered. Playback after the last checkpoint is unknown.",
                 saved.QueueEntryId, saved.PreviousOccurrenceId, "last_committed_checkpoint");
             if (WriteEvent(connection, transaction, recoveredSkip)) RecordBrandingAttempt(connection, transaction, recoveredSkip);
+            RecordQueueAttempt(connection, transaction, recoveredSkip);
             ConsumeSkips(connection, transaction, stationId, saved.OccurrenceId);
             if (saved.QueueEntryId is not null)
             {
@@ -96,11 +107,13 @@ public sealed partial class EventJournal
         if (saved.Announced && saved.Item is not null)
         {
             var item = saved.Item;
-            WriteEvent(connection, transaction, new PlaybackEvent(
+            var interrupted = new PlaybackEvent(
                 Guid.NewGuid().ToString("N"), saved.OccurrenceId, stationId, "interrupted", item.Id,
                 item.Artist, item.Title, item.Kind, saved.SavedAtUtc, saved.ProgramSamples,
                 "Process interruption detected on restart. Duration is a lower bound from the last committed checkpoint; the uncommitted tail is unknown.",
-                saved.QueueEntryId, saved.PreviousOccurrenceId, "last_committed_checkpoint"));
+                saved.QueueEntryId, saved.PreviousOccurrenceId, "last_committed_checkpoint");
+            WriteEvent(connection, transaction, interrupted);
+            RecordQueueAttempt(connection, transaction, interrupted);
         }
         var prepared = saved with { State = "RestartPending" };
         WriteCheckpoint(connection, transaction, prepared);
