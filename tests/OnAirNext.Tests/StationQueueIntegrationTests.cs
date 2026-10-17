@@ -202,4 +202,18 @@ public sealed class StationQueueIntegrationTests
         await Assert.ThrowsAsync<ArgumentException>(()=>f.Queues.SnapshotAsync("unknown"));
         await Assert.ThrowsAsync<ArgumentException>(()=>f.Queues.EnqueueAsync("unknown",f.Source(),0,Guid.NewGuid().ToString("N")));
     }
+
+    [Fact]
+    public async Task AStoppedRecoveryEditIsRejectedBeforeItCanDisturbPlayoutPreparation()
+    {
+        await using var f=await Fixture.Create();var id=await f.Add();var entry=Assert.Single(f.Journal.PublishedQueue("a")!.Entries);
+        await f.Journal.SaveCheckpointAsync(new("a","Stopped",0,entry.Item,"held",960,960,true,DateTimeOffset.UtcNow,id));
+        var notifications=0;
+        void Changed(string station,bool available){if(station=="a")Interlocked.Increment(ref notifications);}
+        f.Queues.Changed+=Changed;
+        try{await Assert.ThrowsAsync<InvalidOperationException>(()=>f.Queues.EditAsync("a",id,1,QueueEdit.Remove,"reject-held"));}
+        finally{f.Queues.Changed-=Changed;}
+        Assert.Equal(0,notifications);
+        Assert.Equal(id,Assert.Single(f.Journal.PublishedQueue("a")!.Entries).Id);
+    }
 }

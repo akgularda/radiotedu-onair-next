@@ -160,6 +160,9 @@ public sealed class StationQueues : IDisposable
         var other=edit==QueueEdit.MoveUp?index-1:index+1;
         if (edit!=QueueEdit.Remove&&(other<0||other>=entries.Count)) throw new InvalidOperationException("This item is already at the end of the queue.");
         string[] ids=edit==QueueEdit.Remove?[entryId]:[entryId,entries[other].Id];
+        var held=(await _journal.CheckpointAsync(station))?.QueueEntryId;
+        if (held is not null && ids.Contains(held,StringComparer.Ordinal))
+            throw new InvalidOperationException("The unfinished item is retained for recovery. It cannot be moved or removed.");
         var lease=gate.Edit(ids);
         try { await _journal.EditReservedStationQueueAsync(station,entryId,revision,edit,commandId,lease.Require); }
         finally
