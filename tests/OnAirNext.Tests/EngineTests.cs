@@ -62,10 +62,10 @@ public sealed class EngineTests
     private static ProductionOutputConfiguration ValidProductionProfile()
     {
         var definitions = new (string Id, string Primary)[]
-        [
+        {
             ("1", "/classic"), ("2", "/lofi"), ("4", "/radio"), ("5", "/cazz"),
             ("8", "/rock"), ("9", "/energize"), ("10", "/situation"), ("11", "/maincharacter")
-        ];
+        };
         var stations = definitions.Select(station =>
         {
             var information = new IcecastStationInformation($"RadioTEDU {station.Id}", "Continuous music", "Music", "https://radiotedu.com", true);
