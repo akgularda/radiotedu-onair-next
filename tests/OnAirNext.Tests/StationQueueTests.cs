@@ -43,7 +43,7 @@ public sealed class StationQueueTests
         await using var journal = new EventJournal(Database()); await Init(journal);
         async Task<bool> Add(string id)
         { try { await journal.AppendStationQueueAsync("a", Item(id), 0, id); return true; } catch (InvalidOperationException) { return false; } }
-        var results = await Task.WhenAll(Add("one"), Add("two")); Assert.Single(results.Where(x => x));
+        var results = await Task.WhenAll(Add("one"), Add("two")); Assert.Single(results, x => x);
         var view = await journal.ReadStationQueueAsync("a"); var loser = view.Entries[0].Id == "one" ? "two" : "one";
         view = await journal.AppendStationQueueAsync("a", Item(loser), view.Revision, loser);
         Assert.Equal(2, view.Entries.Count); Assert.Equal(2, view.Revision);
@@ -120,7 +120,7 @@ public sealed class StationQueueTests
         Assert.Equal("RestartPending", saved!.State); Assert.Equal("q", saved.QueueEntryId);
         Assert.Equal("Pending", Assert.Single(recovered.PublishedQueue("a")!.Entries).State);
         await recovered.PrepareRecoveryAsync("a");
-        Assert.Single(EventJournal.ReadEvents(database).Where(e => e.Type == "interrupted"));
+        Assert.Single(EventJournal.ReadEvents(database), e => e.Type == "interrupted");
         // The engine creates a fresh occurrence at zero; the old checkpoint is evidence only.
         var restarted = Event("started", "q", occurrence: "new-attempt") with { PreviousOccurrenceId = "attempt", SamplePosition = 1920 };
         await recovered.AppendAsync(restarted, saved with { State = "Playing", OccurrenceId = "new-attempt", ItemSamples = 0 });
@@ -141,7 +141,7 @@ public sealed class StationQueueTests
         Assert.Equal("BetweenItems", saved!.State); Assert.Null(saved.QueueEntryId); Assert.Equal(7, saved.RotationIndex);
         Assert.Equal("later", Assert.Single(journal.PublishedQueue("a")!.Entries).Id);
         await journal.PrepareRecoveryAsync("a");
-        Assert.Single(EventJournal.ReadEvents(journal.DatabasePath).Where(e => e.Type == "skipped"));
+        Assert.Single(EventJournal.ReadEvents(journal.DatabasePath), e => e.Type == "skipped");
     }
 
     [Fact]

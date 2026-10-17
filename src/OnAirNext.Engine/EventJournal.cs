@@ -107,6 +107,7 @@ public sealed partial class EventJournal : IAsyncDisposable
                 CREATE TABLE IF NOT EXISTS station_queue(id TEXT PRIMARY KEY,station_id TEXT NOT NULL,
                   position INTEGER NOT NULL,payload TEXT NOT NULL,state TEXT NOT NULL,occurrence_id TEXT);
                 CREATE INDEX IF NOT EXISTS station_queue_active ON station_queue(station_id,state,position,id);
+                CREATE INDEX IF NOT EXISTS station_queue_order ON station_queue(station_id,position);
                 """;
             command.ExecuteNonQuery();
             using var version = _connection.CreateCommand();
