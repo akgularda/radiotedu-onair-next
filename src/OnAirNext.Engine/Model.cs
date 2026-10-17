@@ -77,7 +77,8 @@ public sealed record OutputSettings(string Id, string Host, int Port, string Mou
         if (Port is < 1 or > 65535) throw new ArgumentException("Choose a valid Icecast port.");
         if (string.IsNullOrWhiteSpace(Mount) || Mount.Length > 128 || Mount[0] != '/' || Mount.Length == 1 ||
             Mount[1..].Contains('/') || Mount.Any(c => !char.IsAsciiLetterOrDigit(c) && c is not '/' and not '-' and not '_' and not '.') ||
-            Mount is "/en" or "/fr" || Mount.StartsWith("/en-", StringComparison.OrdinalIgnoreCase) || Mount.StartsWith("/fr-", StringComparison.OrdinalIgnoreCase))
+            Mount.Equals("/en", StringComparison.OrdinalIgnoreCase) || Mount.Equals("/fr", StringComparison.OrdinalIgnoreCase) ||
+            Mount.StartsWith("/en-", StringComparison.OrdinalIgnoreCase) || Mount.StartsWith("/fr-", StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("Choose an explicitly owned RadioTEDU mount; external EN/FR outputs are protected.");
         if (string.IsNullOrEmpty(SourcePassword) || SourcePassword.Length > 1024 || SourcePassword.Any(char.IsControl) ||
             string.IsNullOrWhiteSpace(SourceUsername) || SourceUsername.Length > 128 || SourceUsername.Any(c => char.IsControl(c) || c == ':'))
