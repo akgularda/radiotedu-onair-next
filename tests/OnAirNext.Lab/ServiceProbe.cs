@@ -238,13 +238,32 @@ internal static partial class ServiceProbe
             connection.Open(); using var command = connection.CreateCommand();
             command.CommandText = "UPDATE station_settings SET value='changed-by-fixture' WHERE station_id=4 AND key='music_library_folder'"; command.ExecuteNonQuery();
         }
+        var changedSourceCheckId = Guid.NewGuid().ToString("N");
+        await RequestAsync(new { Id = changedSourceCheckId, Action = "library-source-check", StationId = musicTarget, Path = chosenMusic });
+        string? changedSourceAccessState = null;
+        using (var changedSourceDeadline = new CancellationTokenSource(TimeSpan.FromSeconds(20)))
+        {
+            while (changedSourceAccessState is null or "Checking")
+            {
+                changedSourceDeadline.Token.ThrowIfCancellationRequested();
+                var access = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "library-source-status", StationId = musicTarget, SourceCheckId = changedSourceCheckId });
+                changedSourceAccessState = access.GetProperty("check").GetProperty("State").GetString();
+                if (changedSourceAccessState is null or "Checking") await Task.Delay(25, changedSourceDeadline.Token);
+            }
+        }
         var changedSource = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "library-legacy-root", StationId = musicTarget, Path = chosenMusic,
-            PreviewId = id, MappingRevision = saved.Revision, Revision = assignedRevision, SourceCheckId = musicAccessId });
+            PreviewId = id, MappingRevision = saved.Revision, Revision = assignedRevision, SourceCheckId = changedSourceCheckId });
         var changedSourceRejected = !changedSource.GetProperty("accepted").GetBoolean() && changedSource.GetProperty("error").GetString()!.Contains("changed", StringComparison.OrdinalIgnoreCase);
         var status = await RequestAsync(new { Id = Guid.NewGuid().ToString("N"), Action = "status" });
-        var unarmed = status.GetProperty("stations").EnumerateArray().All(station => station.GetProperty("State").GetString() == "Stopped" && station.GetProperty("Outputs").GetArrayLength() == 0);
-        Console.WriteLine(JsonSerializer.Serialize(new { backupVerified, mappingReadback, secretsExcluded, sourceUnchanged = unchanged, unarmed, previewId = id, musicAccessChecked, missingAccessRejected, musicSupported, siblingUnchanged, musicReadback, musicRetryStable, activeTargetRejected, changedSourceRejected }));
-        return backupVerified && mappingReadback && secretsExcluded && unchanged && unarmed && musicAccessChecked && missingAccessRejected && musicSupported && siblingUnchanged && musicReadback && musicRetryStable && activeTargetRejected && changedSourceRejected ? 0 : 1;
+        var stationStates = status.GetProperty("stations").EnumerateArray().Select(station => new
+        {
+            Id = station.GetProperty("Id").GetString(), State = station.GetProperty("State").GetString(),
+            RequestedRunning = station.GetProperty("RequestedRunning").GetBoolean(), Outputs = station.GetProperty("Outputs").GetArrayLength()
+        }).ToArray();
+        var unarmed = stationStates.All(station => station.State == "Stopped" && station.Outputs == 0);
+        var changedSourceAccessChecked = changedSourceAccessState == "Accessible";
+        Console.WriteLine(JsonSerializer.Serialize(new { backupVerified, mappingReadback, secretsExcluded, sourceUnchanged = unchanged, unarmed, stationStates, previewId = id, musicAccessChecked, missingAccessRejected, musicSupported, siblingUnchanged, musicReadback, musicRetryStable, activeTargetRejected, changedSourceAccessChecked, changedSourceRejected, changedSourceError = changedSource.TryGetProperty("error", out var changedError) ? changedError.GetString() : null }));
+        return backupVerified && mappingReadback && secretsExcluded && unchanged && unarmed && musicAccessChecked && missingAccessRejected && musicSupported && siblingUnchanged && musicReadback && musicRetryStable && activeTargetRejected && changedSourceAccessChecked && changedSourceRejected ? 0 : 1;
     }
 
     public static async Task<int> OwnedChildFixtureAsync(bool leaf)
