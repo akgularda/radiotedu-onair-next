@@ -21,6 +21,12 @@ internal static class EngineHost
         var json = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
         var config = JsonSerializer.Deserialize<HostSettings>(await File.ReadAllTextAsync(configPath, externalStop), json)
             ?? throw new InvalidDataException("Missing engine configuration.");
+        if (config.Commissioning && !serviceMode)
+            throw new ArgumentException("Production destinations are available only through the protected installed Windows service.");
+        if (!config.Commissioning && config.Stations.SelectMany(station => station.Outputs).Any(output => output.Commissioned))
+            throw new ArgumentException("Production destinations require an explicit commissioning configuration.");
+        if (config.Commissioning && config.Stations.SelectMany(station => station.Outputs).Any(output => !output.Commissioned))
+            throw new ArgumentException("Keep commissioned and development output configurations separate.");
         if (!config.PipeName.StartsWith("onair-next-dev-", StringComparison.Ordinal) || config.PipeName.Length > 100 ||
             config.PipeName.Any(c => !char.IsAsciiLetterOrDigit(c) && c != '-')) throw new ArgumentException("Use an isolated development pipe name.");
         if (serviceMode)
@@ -56,8 +62,10 @@ internal static class EngineHost
         using var branding = new StationBranding(journal,library,brandingStations);
         using var queues = new StationQueues(journal,library,brandingStations);
         await using var coordinator = new StationCoordinator(config.Ffmpeg, config.Stations, journal,
-            settings => new StationEngine(config.Ffmpeg, settings, journal, planner: queues.Planner(settings),
-                branding:settings.Repeat?branding.Source(settings.Id):null));
+            settings => new StationEngine(config.Ffmpeg, settings, journal,
+                outputs: config.Commissioning ? settings.Outputs.Select(output => (IProgramOutput)new IcecastOutput(config.Ffmpeg, output, LegacyServiceFence.RequireReleased)).ToArray() : null,
+                planner: queues.Planner(settings), branding:settings.Repeat?branding.Source(settings.Id):null),
+            commissionedService: config.Commissioning);
         await using var sourceChecks = new SourceAccessChecks(async path =>
         {
             if (ChildProcess.ActiveProcesses.Values.Any(role => role.Contains("cleanup pending", StringComparison.Ordinal)))
@@ -99,7 +107,7 @@ internal static class EngineHost
             }
             if (serviceMode) WindowsServiceDiagnostics.Stage("controller ready");
             ready();
-            Console.WriteLine(JsonSerializer.Serialize(new { state = "controller-ready", config.PipeName, stations = config.Stations.Count, loopbackOnly = true, mode = serviceMode ? "windows-service" : "developer" }));
+            Console.WriteLine(JsonSerializer.Serialize(new { state = "controller-ready", config.PipeName, stations = config.Stations.Count, loopbackOnly = !config.Commissioning, mode = config.Commissioning ? "commissioned-service" : serviceMode ? "windows-service" : "developer" }));
             while (!stop.IsCancellationRequested)
             {
                 var connected = false;
@@ -270,7 +278,7 @@ internal static class EngineHost
     }
 }
 
-internal sealed record HostSettings(string Ffmpeg, string DataRoot, string PipeName, List<StationSettings> Stations, string? OperatorSid = null);
+internal sealed record HostSettings(string Ffmpeg, string DataRoot, string PipeName, List<StationSettings> Stations, string? OperatorSid = null, bool Commissioning = false);
 internal sealed record EngineCommand(string Id, string Action, string? StationId, string? Path = null,
     string[]? Paths = null, string? Query = null, int Offset = 0, string? AssetId = null,string? SessionId=null,
     long Revision = 0, long ExpectedVersion = 0, string? Artist = null, string? Title = null, string? SourceCheckId = null, string? ReportPeriod = null, string? ReportSelection = null, string? ReportId = null, string? PreviewId = null, LegacyStationMapping[]? Mappings = null, int? MappingRevision = null, string[]? JournalFeatures = null, BrandingRules? BrandingRules = null,

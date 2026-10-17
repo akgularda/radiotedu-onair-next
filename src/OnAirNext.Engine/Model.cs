@@ -48,10 +48,12 @@ public sealed record MediaItem(string Id, string Path, string Artist, string Tit
 public enum CodecProfile { AacLc192, OggFlac, HeAacV2_64 }
 
 public sealed record OutputSettings(string Id, string Host, int Port, string Mount, string SourcePassword,
-    CodecProfile Profile = CodecProfile.AacLc192, int QueueBlocks = 100, int WriteTimeoutMs = 2000)
+    CodecProfile Profile = CodecProfile.AacLc192, int QueueBlocks = 100, int WriteTimeoutMs = 2000,
+    bool Commissioned = false, IcecastStationInformation? Information = null, string SourceUsername = "source")
 {
     public void Validate(bool loopbackOnly = true)
     {
+        if (Commissioned) throw new ArgumentException("Commissioned outputs require the protected service commissioning path.");
         if (string.IsNullOrWhiteSpace(Id)) throw new ArgumentException("Output ID is required.");
         if (loopbackOnly && Host != "127.0.0.1" && Host != "::1")
             throw new ArgumentException("This engine milestone permits literal loopback destinations only.");
@@ -62,6 +64,38 @@ public sealed record OutputSettings(string Id, string Host, int Port, string Mou
             throw new ArgumentException("A generated test source credential is required.");
         if (QueueBlocks is < 2 or > 500 || WriteTimeoutMs is < 100 or > 10000)
             throw new ArgumentException("Output buffering and timeout must be bounded.");
+    }
+
+    public void ValidateCommissioned()
+    {
+        if (!Commissioned) { Validate(); return; }
+        if (string.IsNullOrWhiteSpace(Id) || Id.Length > 128 || Id.Any(char.IsControl))
+            throw new ArgumentException("Choose a bounded output ID.");
+        if (string.IsNullOrWhiteSpace(Host) || Host.Length > 253 ||
+            Uri.CheckHostName(Host) == UriHostNameType.Unknown || Host.Any(c => char.IsControl(c) || char.IsWhiteSpace(c)))
+            throw new ArgumentException("Use a host name or literal address without a URL scheme.");
+        if (Port is < 1 or > 65535) throw new ArgumentException("Choose a valid Icecast port.");
+        if (string.IsNullOrWhiteSpace(Mount) || Mount.Length > 128 || Mount[0] != '/' || Mount.Length == 1 ||
+            Mount[1..].Contains('/') || Mount.Any(c => !char.IsAsciiLetterOrDigit(c) && c is not '/' and not '-' and not '_' and not '.') ||
+            Mount is "/en" or "/fr" || Mount.StartsWith("/en-", StringComparison.OrdinalIgnoreCase) || Mount.StartsWith("/fr-", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Choose an explicitly owned RadioTEDU mount; external EN/FR outputs are protected.");
+        if (string.IsNullOrEmpty(SourcePassword) || SourcePassword.Length > 1024 || SourcePassword.Any(char.IsControl) ||
+            string.IsNullOrWhiteSpace(SourceUsername) || SourceUsername.Length > 128 || SourceUsername.Any(c => char.IsControl(c) || c == ':'))
+            throw new ArgumentException("A valid source credential is required.");
+        if (!Enum.IsDefined(Profile) || QueueBlocks is < 2 or > 500 || WriteTimeoutMs is < 100 or > 10000)
+            throw new ArgumentException("Choose a supported codec and bounded output buffering.");
+        (Information ?? throw new ArgumentException("Import the station's Icecast information before commissioning.")).Validate();
+    }
+}
+
+public sealed record IcecastStationInformation(string Name, string Description, string Genre, string Url, bool Public)
+{
+    public void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(Name) || new[] { Name, Description, Genre, Url }.Any(value => value is null || value.Length > 1024 || value.Any(char.IsControl)))
+            throw new ArgumentException("Icecast station information must contain bounded text without control characters.");
+        if (Url.Length > 0 && (!Uri.TryCreate(Url, UriKind.Absolute, out var uri) || uri.Scheme is not "http" and not "https"))
+            throw new ArgumentException("The station website must be an HTTP or HTTPS URL.");
     }
 }
 

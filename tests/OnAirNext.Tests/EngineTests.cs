@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using OnAirNext.Engine;
+using OnAirNext.ServiceControl;
 using Xunit;
 
 namespace OnAirNext.Tests;
@@ -34,6 +35,38 @@ public sealed class EngineTests
     [InlineData("/next-a/b")]
     public void ProtectedAndMalformedMountsAreRejected(string mount)
         => Assert.Throws<ArgumentException>(() => new OutputSettings("x", "127.0.0.1", 18980, mount, new string('x', 32)).Validate());
+
+    [Fact]
+    public void ProductionOutputRequiresTheProtectedCommissioningValidator()
+    {
+        var information = new IcecastStationInformation("RadioTEDU Test", "Live test stream", "Test", "https://radiotedu.com", true);
+        var output = new OutputSettings("energize-main", "stream.radiotedu.com", 11154, "/energize", "fixture-secret",
+            CodecProfile.AacLc192, Commissioned: true, Information: information);
+        Assert.Throws<ArgumentException>(() => output.Validate());
+        output.ValidateCommissioned();
+        Assert.Throws<ArgumentException>(() => new IcecastOutput("ffmpeg", output));
+    }
+
+    [Theory]
+    [InlineData("/en")]
+    [InlineData("/FR")]
+    [InlineData("/energize\r\nIce-Public: 1")]
+    [InlineData("/energize/extra")]
+    public void CommissionedOutputRejectsExternalAndInjectedMounts(string mount)
+    {
+        var output = new OutputSettings("station", "stream.radiotedu.com", 11154, mount, "fixture-secret",
+            Commissioned: true, Information: new IcecastStationInformation("Name", "", "", "", false));
+        Assert.Throws<ArgumentException>(output.ValidateCommissioned);
+    }
+
+    [Fact]
+    public void LegacySourceFenceRequiresStoppedProcessAndDisabledStartup()
+    {
+        LegacyServiceFence.RequireReleasedState(1, 0, 4);
+        Assert.Throws<InvalidOperationException>(() => LegacyServiceFence.RequireReleasedState(4, 1234, 4));
+        Assert.Throws<InvalidOperationException>(() => LegacyServiceFence.RequireReleasedState(1, 0, 2));
+        Assert.Throws<InvalidOperationException>(() => LegacyServiceFence.RequireReleasedState(1, 0, 3));
+    }
 
     [Fact]
     public void SharedPcmRemainsAliveUntilTheLastConsumerReleasesIt()

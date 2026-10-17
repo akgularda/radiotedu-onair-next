@@ -10,6 +10,7 @@ public sealed class IcecastOutput : IProgramOutput
 {
     private readonly string _ffmpeg;
     private readonly OutputSettings _settings;
+    private readonly Action? _requireExclusiveOwnership;
     private readonly Channel<PcmBlock> _queue;
     private readonly CancellationTokenSource _stop = new();
     private CancellationTokenSource? _session;
@@ -19,9 +20,15 @@ public sealed class IcecastOutput : IProgramOutput
     private long _starts, _connections, _written, _drops;
     private int _pid;
 
-    public IcecastOutput(string ffmpeg, OutputSettings settings)
+    public IcecastOutput(string ffmpeg, OutputSettings settings, Action? requireExclusiveOwnership = null)
     {
-        settings.Validate();
+        if (settings.Commissioned)
+        {
+            if (requireExclusiveOwnership is null) throw new ArgumentException("A commissioned output requires an exclusive source ownership guard.");
+            settings.ValidateCommissioned();
+        }
+        else settings.Validate();
+        _requireExclusiveOwnership = requireExclusiveOwnership;
         _ffmpeg = ffmpeg; _settings = settings;
         _queue = Channel.CreateBounded<PcmBlock>(new BoundedChannelOptions(settings.QueueBlocks)
         { SingleReader = true, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait });
@@ -64,6 +71,7 @@ public sealed class IcecastOutput : IProgramOutput
             using var encoded = new CodecPipe(System.IO.Pipes.PipeDirection.In);
             try
             {
+                _requireExclusiveOwnership?.Invoke();
                 _state = "Connecting";
                 using (var deadline = CancellationTokenSource.CreateLinkedTokenSource(session.Token))
                 {
@@ -112,12 +120,15 @@ public sealed class IcecastOutput : IProgramOutput
 
     private async Task HandshakeAsync(NetworkStream stream, CancellationToken token)
     {
-        var auth = Convert.ToBase64String(Encoding.UTF8.GetBytes("source:" + _settings.SourcePassword));
+        var auth = Convert.ToBase64String(Encoding.UTF8.GetBytes(_settings.SourceUsername + ":" + _settings.SourcePassword));
         var contentType = _settings.Profile == CodecProfile.OggFlac ? "application/ogg" : "audio/aac";
         // Icecast waits for source bytes before its final 200 response. Negotiate the
         // interim 100 response so header acceptance cannot deadlock encoder startup.
-        var request = $"PUT {_settings.Mount} HTTP/1.1\r\nHost: localhost:{_settings.Port}\r\nAuthorization: Basic {auth}\r\nContent-Type: {contentType}\r\nExpect: 100-continue\r\nIce-Name: OnAir Next isolated test\r\nIce-Public: 0\r\n\r\n";
-        await stream.WriteAsync(Encoding.ASCII.GetBytes(request), token);
+        var information = _settings.Information ?? new IcecastStationInformation("OnAir Next isolated test", "", "", "", false);
+        information.Validate();
+        var host = _settings.Host.Contains(':') ? $"[{_settings.Host}]" : _settings.Host;
+        var request = $"PUT {_settings.Mount} HTTP/1.1\r\nHost: {host}:{_settings.Port}\r\nAuthorization: Basic {auth}\r\nContent-Type: {contentType}\r\nExpect: 100-continue\r\nIce-Name: {information.Name}\r\nIce-Description: {information.Description}\r\nIce-Genre: {information.Genre}\r\nIce-Url: {information.Url}\r\nIce-Public: {(information.Public ? 1 : 0)}\r\n\r\n";
+        await stream.WriteAsync(Encoding.UTF8.GetBytes(request), token);
         var header = new List<byte>(512);
         var one = new byte[1];
         while (header.Count < 8192)
