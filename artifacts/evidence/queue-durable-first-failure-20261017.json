@@ -1,0 +1,23 @@
+{
+  "source": "5545f9b42f46e50cfbe5c559112cd18af611c018",
+  "run": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/39006351315",
+  "passed": false,
+  "checksPassedBeforeFailure": 48,
+  "checksFailed": 1,
+  "failure": "The fixture required Outputs.Count==0 after an explicitly stopped host restart. StationCoordinator deliberately preserves configured profiles as Stopped snapshots with zero counters and no encoder PID. The failed run did not retain that final status snapshot; its actual no-source state was not independently established.",
+  "correction": "Check all three configured identities, stopped state, null encoder PID and zero encoder/connection/frame/queue counters. Retain the stopped status and queue snapshots, and independently require HTTP404 from all three isolated mounts. No product Stop/recovery change or relaxed admission.",
+  "originalAudioArtifact": {
+    "id": 12090593786,
+    "bytes": 57783,
+    "sha256": "515c529ec5863d39542a5879a463e7a6b5b7a81f64f5ef78f0d35137c0719e28",
+    "originalBytesAndDigestVerified": true
+  },
+  "newCaseDurationSeconds": 60.5588252,
+  "newCaseOwnedChildrenAtEnd": 0,
+  "precedingCompletedAudioCases": ["baseline", "precision", "normalization", "processing", "roster18", "queue"],
+  "remainingAudioCasesCompleted": false,
+  "serviceAndSetupQualificationCompleted": false,
+  "targetPcUpdated": false,
+  "stationGroupsMigrated": 0,
+  "scope": "Synthetic disposable-CI host crashes and a writer stall. Intentional source gaps; no actual-PC, mouse, physical device, full-roster worst-case or24/72h acceptance. Fresh complete qualification is pending."
+}

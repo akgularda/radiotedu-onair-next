@@ -203,9 +203,19 @@ internal static class QueueDurableChecks
                 "Each completed queue entry has one terminal despite the injected crash/commit boundaries.");
             await Crash("explicitly stopped host");
             host=new(sdk,assembly,configuration,pipe,Path.Combine(root,"host-"+ ++generation));await host.WaitForStationAsync(Station,"Stopped");
-            var stopped=await Status();
-            Check(result,!stopped.RequestedRunning&&stopped.Outputs.Count==0&&(await Read<StationQueueView>("queue-status","queue")).Items.Count==0,
+            var stopped=await Status();var stoppedQueue=await Read<StationQueueView>("queue-status","queue");
+            result.Details["stoppedAfterRestart"]=stopped;result.Details["queueAfterStoppedRestart"]=stoppedQueue;
+            Check(result,!stopped.RequestedRunning&&stopped.State=="Stopped"&&stopped.Outputs.Count==outputs.Length&&
+                stopped.Outputs.Select(o=>o.Id).SequenceEqual(outputs.Select(o=>o.Id))&&
+                stopped.Outputs.All(o=>o.State=="Stopped"&&o.EncoderPid is null&&o.EncoderStarts==0&&o.Connections==0&&o.FramesWritten==0&&o.QueuedBlocks==0)&&
+                stoppedQueue.Items.Count==0,
                 "Explicit Stop and the consumed queue survive host restart without opening any codec/source branch.");
+            using(var client=new HttpClient{Timeout=TimeSpan.FromSeconds(3)})
+                foreach(var output in outputs)
+                {
+                    using var response=await client.GetAsync($"http://127.0.0.1:{origin.Port}{output.Mount}",HttpCompletionOption.ResponseHeadersRead);
+                    Check(result,response.StatusCode==System.Net.HttpStatusCode.NotFound,output.Mount+": the isolated listener endpoint confirms there is no automatically restarted source.");
+                }
             Check(result,Events().Count(e=>e.Type=="started")==final.Count(e=>e.Type=="started"),"Stopped recovery manufactures no additional audio attempt.");
             Check(result,EventJournal.Verify(database),"All crash/restart/Skip/cadence attempts retain a valid immutable journal chain.");
             result.Details["hostGenerations"]=generation;
