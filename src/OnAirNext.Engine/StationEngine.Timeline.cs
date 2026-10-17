@@ -12,7 +12,6 @@ public sealed partial class StationEngine
     private readonly Queue<AuditTicket> _audits=new();
     private readonly HashSet<string> _inflightQueue=new(StringComparer.Ordinal);
     private Cursor? _audible;
-    private MediaItem? _visibleNext;
     private PlayoutSelection? _visibleNextSelection;
     private PlayoutCheckpoint? _lastCheckpoint;
     private int _pendingAudit;
@@ -91,7 +90,7 @@ public sealed partial class StationEngine
         var next=_slices.FirstOrDefault(x=>x.Cursor.Occurrence!=occurrence)?.Cursor.Selection;
         if(next is null&&_selection is not null&&_occurrence!=occurrence)next=_selection;
         next??=_nextSource?.Selection;
-        Volatile.Write(ref _visibleNextSelection,next);Volatile.Write(ref _visibleNext,next?.Item);
+        Volatile.Write(ref _visibleNextSelection,next);
     }
     private PlayoutCheckpoint AudibleCheckpoint(string state)
     {

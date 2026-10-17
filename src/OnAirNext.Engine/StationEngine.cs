@@ -72,13 +72,14 @@ public sealed partial class StationEngine : IStationSession
     public void RefreshNext()=>Interlocked.Exchange(ref _refreshNext,1);
     public StationSnapshot Snapshot()
     {
-        var cursor=Volatile.Read(ref _audible);var current=cursor?.Selection.Item;var next=Volatile.Read(ref _visibleNext);
+        var cursor=Volatile.Read(ref _audible);var current=cursor?.Selection.Item;
+        var nextSelection=Volatile.Read(ref _visibleNextSelection);var next=nextSelection?.Item;
         return new(_settings.Id,_state,Interlocked.Read(ref _samples),Interlocked.Read(ref _completed),Interlocked.Read(ref _skipped),
             current?.Title,Interlocked.Read(ref _late),Interlocked.Read(ref _auditRejected),_outputs.Select(x=>x.Snapshot()).ToArray(),
             current?.Id,cursor?.ItemSamples??0,_recovered,CurrentArtist:current?.Artist,CurrentDurationSeconds:current?.DurationSeconds,
             NextItem:next is null?null:new(next.Id,next.Artist,next.Title,next.Kind,next.DurationSeconds),Loudness:_loudness?.Snapshot(),
             SourceGain:SourceNormalization.Decide(current?.Loudness),Limiter:Volatile.Read(ref _publishedLimiter),PendingAuditCommits:Volatile.Read(ref _pendingAudit),
-            CurrentQueueEntryId:cursor?.Selection.QueueEntryId,NextQueueEntryId:Volatile.Read(ref _visibleNextSelection)?.QueueEntryId);
+            CurrentQueueEntryId:cursor?.Selection.QueueEntryId,NextQueueEntryId:nextSelection?.QueueEntryId);
     }
     private async Task RunAsync()
     {
