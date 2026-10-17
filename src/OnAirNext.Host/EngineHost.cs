@@ -85,6 +85,7 @@ internal static class EngineHost
             await using var reports = new ReportExports(journal, config.Stations.Select(station => station.Id));
             await reports.InitializeAsync();
             await using var reportServer = new ReportPipeServer(config.PipeName, serviceMode, servicePolicy, reports, stop.Token);
+            await using var privateCue=new PrivateCuePipeServer(config.PipeName,serviceMode,servicePolicy,library,config.Ffmpeg,stop.Token);
             await using var legacyPreviews = new LegacyImportPreviews(config.DataRoot, config.Stations.Select(station => station.Id),
                 () => coordinator.Snapshot().All(station => station.State == "Stopped" && station.Outputs.Count == 0));
             legacyPreviews.Initialize();
@@ -121,8 +122,11 @@ internal static class EngineHost
                                 await journal.RequireRecoveryReaderAsync(request.JournalFeatures);
                                 result = JsonSerializer.Serialize(new { stations = coordinator.Snapshot(),
                                     audit = new { journal.PendingEvents, journal.RejectedEvents, journal.Error },
-                                    children = ChildProcess.ActiveProcesses, controller = new { mode = serviceMode ? "windows-service" : "developer", service = serviceMode ? ServiceEndpoint.Name : null, capabilities = new[] { "legacy-music-assignment-v1", RecoveryCompatibility.HeldRotationFeature, "branding-library-v1" } } });
+                                    children = ChildProcess.ActiveProcesses, privateCue=privateCue.Snapshot(), controller = new { mode = serviceMode ? "windows-service" : "developer", service = serviceMode ? ServiceEndpoint.Name : null, capabilities = new[] { "legacy-music-assignment-v1", RecoveryCompatibility.HeldRotationFeature, "branding-library-v1","private-cue-v1" } } });
                                 break;
+                            case "private-cue-status":result=JsonSerializer.Serialize(new{cue=privateCue.Snapshot()});break;
+                            case "private-cue-stop" when request.SessionId is { } cueSession:
+                                privateCue.RequestStop(cueSession);result=JsonSerializer.Serialize(new{accepted=true,cue=privateCue.Snapshot()});break;
                             case "branding-status" when request.StationId is { } brandingStation:
                                 result=JsonSerializer.Serialize(new{branding=await branding.SnapshotAsync(brandingStation)});break;
                             case "branding-save" when request.StationId is { } saveBrandingStation && request.BrandingRules is { } brandingRules:
@@ -257,5 +261,5 @@ internal static class EngineHost
 
 internal sealed record HostSettings(string Ffmpeg, string DataRoot, string PipeName, List<StationSettings> Stations, string? OperatorSid = null);
 internal sealed record EngineCommand(string Id, string Action, string? StationId, string? Path = null,
-    string[]? Paths = null, string? Query = null, int Offset = 0, string? AssetId = null,
+    string[]? Paths = null, string? Query = null, int Offset = 0, string? AssetId = null,string? SessionId=null,
     long Revision = 0, long ExpectedVersion = 0, string? Artist = null, string? Title = null, string? SourceCheckId = null, string? ReportPeriod = null, string? ReportSelection = null, string? ReportId = null, string? PreviewId = null, LegacyStationMapping[]? Mappings = null, int? MappingRevision = null, string[]? JournalFeatures = null, BrandingRules? BrandingRules = null);

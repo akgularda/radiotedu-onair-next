@@ -6,13 +6,17 @@ internal static class ServiceEndpoint
     public const string Pipe = "onair-next-dev-service";
     public const string FilePipe = Pipe + "-files";
     public const string ReportPipe = Pipe + "-reports";
+    public const string CuePipe = Pipe + "-cue";
+    public static string Cue(string control)=>IsIsolated(control)&&control.Length<=96&&
+        !control.EndsWith("-files",StringComparison.Ordinal)&&!control.EndsWith("-reports",StringComparison.Ordinal)&&!control.EndsWith("-cue",StringComparison.Ordinal)
+        ?control+"-cue":throw new ArgumentException("Choose an isolated control engine.");
     public static string Reports(string control) => IsIsolated(control) && control.Length <= 92 &&
-        !control.EndsWith("-files", StringComparison.Ordinal) && !control.EndsWith("-reports", StringComparison.Ordinal)
+        !control.EndsWith("-files", StringComparison.Ordinal) && !control.EndsWith("-reports", StringComparison.Ordinal)&&!control.EndsWith("-cue",StringComparison.Ordinal)
         ? control + "-reports" : throw new ArgumentException("Choose an isolated control engine.");
     public static string Files(string control) => IsIsolated(control) && !control.EndsWith("-files", StringComparison.Ordinal)
         ? control + "-files" : throw new ArgumentException("Choose an isolated control engine.");
     public static bool IsAllowedPipe(string name) => IsIsolated(name) || name.EndsWith("-files", StringComparison.Ordinal) && IsIsolated(name[..^6]);
-    public static bool IsReserved(string name) => name is Pipe or FilePipe or ReportPipe;
+    public static bool IsReserved(string name) => name is Pipe or FilePipe or ReportPipe or CuePipe;
     public static string DataRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "RadioTEDU-OnAirNext-Development");
     public static string ConfigPath => Path.Combine(DataRoot, "host.json");
     public static string EngineData => Path.Combine(DataRoot, "data");

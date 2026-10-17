@@ -1,0 +1,17 @@
+# Private cue
+
+This source adds an operator-only preview bus to the browser console. Select **Preview** on a Ready music, jingle or sweeper row. The persistent cue strip provides Play/Resume, Pause, Stop, seek, volume and an output selector where the browser supports it. The On Air headphones button opens that strip. These controls require a connected engine advertising `private-cue-v1`; older engines retain disabled cue controls.
+
+The selected inventory, root revision, metadata version and exact size/time source stamp are checked before the file is opened. The stamp is a decimal string, preserving Windows timestamp precision through JavaScript. Changed, missing, removed and linked sources are rejected; a source read lease is held until decoder cleanup. This is a current-library capability, not an arbitrary-path playback API.
+
+One ephemeral background FFmpeg decoder supplies 48 kHz stereo float PCM through the existing asynchronous codec pipe. Source normalization and an independent limiter apply to this private bus. PCM is paced, framed and backpressured; the browser renders from a fixed two-second AudioWorklet ring, with at most one second of unconsumed credits. No complete-track decoding buffer or preview audio file is created. Programme codecs, transports and clocks are independent.
+
+Pause captures a consumed audio boundary, stops the decoder and resumes through a fresh seek request. Stale generation messages cannot enter a replacement preview. Stop, disconnect and page closure cancel transport; a new cue cannot start until its prior owned decoder is reaped. Cleanup failures remain visible and block another private decoder. A final frame-count receipt distinguishes real EOF from a truncated or failed stream.
+
+Cue has no programme sink, queue mutation, play-event writer or recording target. It cannot consume programme rotation or jingle/sweeper counters. Private listening is not entered as an on-air song attempt. This bus is not an encoded-output loudness verification or microphone recording facility.
+
+Output selection uses the browser's explicit speaker-selection prompt, without requesting microphone access. It is available only when both output selection and AudioContext routing are supported. Other browsers clearly identify the operating-system default output; use headphones. A previously selected output is retained within the console, and an unavailable selected output stops cue rather than deliberately falling back. Physical routing and device-loss behavior still require actual-PC acceptance.
+
+Verification consists of cue lease/catalog/pipe boundary tests, browser ring-buffer generation/pause/underrun/wrap tests, and a real FFmpeg processing scenario covering cue EOF, seek, Stop/cleanup and absence of cue PCM/history/cadence in a simultaneously running programme. Run these through the Windows qualification workflow and retain the original result archives. No new cue code has been installed or auditioned on the broadcasting PC. Rendered UI/mouse, physical headphone routing and full-roster resource acceptance remain required.
+
+API references: [AudioWorklet processing](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletProcessor/process), [AudioContext output routing](https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/setSinkId), [explicit output selection](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/selectAudioOutput). Output-selection support varies by browser; controls use capability detection.

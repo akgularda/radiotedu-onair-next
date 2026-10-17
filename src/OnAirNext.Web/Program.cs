@@ -53,7 +53,7 @@ app.Use(async (context, next) =>
         { context.Response.StatusCode = 403; await context.Response.WriteAsJsonAsync(new { error = "Reload this local console before making changes." }); return; }
     }
     try { await next(); }
-    catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested) { }
+    catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested||app.Lifetime.ApplicationStopping.IsCancellationRequested) { }
     catch (Exception ex) when (ex is IOException or TimeoutException or OperationCanceledException or UnauthorizedAccessException or JsonException or ArgumentException or InvalidOperationException or BadHttpRequestException or System.ComponentModel.Win32Exception)
     {
         if (context.Response.HasStarted) throw;
@@ -64,6 +64,16 @@ app.Use(async (context, next) =>
 app.UseDefaultFiles(); app.UseStaticFiles();
 app.MapPost("/api/console/close", (HttpResponse response) => { response.OnCompleted(() => { app.Lifetime.StopApplication(); return Task.CompletedTask; }); return Results.Json(new { accepted=true }); });
 app.MapGet("/api/health", () => Results.Json(new { product="RadioTEDU-OnAirNext", version=access.Version, processId=Environment.ProcessId }));
+app.MapPost("/api/private-cue",async(PrivateCueOpen request,HttpContext context)=>
+{
+    using var stop=CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted,app.Lifetime.ApplicationStopping);
+    await using var cue=await PrivateCueDownload.OpenAsync(request.Engine,request.Cue??throw new ArgumentException("Choose a current cue item."),stop.Token);
+    context.Response.ContentType="application/octet-stream";await cue.CopyToAsync(context.Response.Body,stop.Token);
+});
+app.MapPost("/api/private-cue/stop",async(PrivateCueStop request,CancellationToken token)=>
+    Results.Json(await EngineRpc.SendAsync(request.Engine,new{Id=Guid.NewGuid().ToString("N"),Action="private-cue-stop",request.SessionId},token)));
+app.MapGet("/api/private-cue/status",async(string engine,CancellationToken token)=>
+    Results.Json(await EngineRpc.SendAsync(engine,new{Id=Guid.NewGuid().ToString("N"),Action="private-cue-status"},token)));
 app.MapPost("/api/setup/shortcuts", () => { ConsoleShortcuts.Create(); return Results.Json(new { accepted=true }); });
 app.MapGet("/api/app-update", async (AppUpdateCoordinator updates,CancellationToken token) => Results.Json(await updates.StatusAsync(token)));
 app.MapPost("/api/app-update/review", (AppUpdateCoordinator updates) => {updates.Prepare();return Results.Json(new{accepted=true});});

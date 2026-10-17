@@ -112,6 +112,38 @@ public sealed class StationLibrary : IAsyncDisposable
         if (!_stations.Contains(station)) throw new ArgumentException("Unknown station.");
     }
 
+    public PrivateCueSource OpenPrivateCue(PrivateCueRequest request)
+    {
+        request.Validate();RequireStation(request.StationId);
+        var root=_journal.LibraryRoots().SingleOrDefault(x=>x.StationId==request.StationId&&x.Revision==request.Revision)
+            ??throw new InvalidOperationException("The live folder changed. Refresh Library before cueing.");
+        var asset=_journal.LibraryItem(request.StationId,request.Revision,request.AssetId);
+        if(asset is null||asset.State!="Ready"||asset.EditVersion!=request.ExpectedVersion||asset.SourceStamp!=request.ExpectedSourceStamp||!double.IsFinite(asset.Seconds)||asset.Seconds<=0)
+            throw new InvalidOperationException("This item changed, was removed or is not ready. Refresh Library before cueing.");
+        var path=LocalMediaPath.Normalize(Path.Combine(root.Path,asset.RelativePath));
+        var boundary=Path.TrimEndingDirectorySeparator(Path.GetFullPath(root.Path));
+        var comparison=OperatingSystem.IsWindows()?StringComparison.OrdinalIgnoreCase:StringComparison.Ordinal;
+        var prefix=Path.EndsInDirectorySeparator(boundary)?boundary:boundary+Path.DirectorySeparatorChar;
+        if(!path.StartsWith(prefix,comparison)||!Extensions.Contains(Path.GetExtension(path)))
+            throw new InvalidDataException("The cue source is outside its approved live folder.");
+        for(string? current=path;current is not null;current=Path.GetDirectoryName(current))
+        {
+            if((File.GetAttributes(current)&FileAttributes.ReparsePoint)!=0)throw new IOException("Linked cue paths are not supported. Refresh Library.");
+        }
+        var guard=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read);
+        try
+        {
+            var info=new FileInfo(path);
+            if(info.Length!=asset.Bytes||info.LastWriteTimeUtc.Ticks!=asset.ModifiedTicks||!_journal.LibraryRoots().Contains(root)||
+                _journal.LibraryItem(request.StationId,request.Revision,request.AssetId) is not {State:"Ready"} current||current.EditVersion!=asset.EditVersion||current.SourceStamp!=asset.SourceStamp)
+                throw new IOException("The source changed. Wait for Library to validate it before cueing.");
+            var frames=checked((long)Math.Round(asset.Seconds*48000));
+            if(request.StartSample>=frames)throw new ArgumentException("Choose a cue position before the end of this item.");
+            return new(new(asset.Id,path,asset.Artist,asset.Title,DurationSeconds:asset.Seconds,Loudness:asset.Loudness),frames,guard);
+        }
+        catch{guard.Dispose();throw;}
+    }
+
     public IPlayoutPlanner? Planner(StationSettings settings) => settings.Repeat ? new PlannerView(this, settings) : null;
     private sealed class PlannerView(StationLibrary owner, StationSettings settings) : IPlayoutPlanner
     {
@@ -365,3 +397,6 @@ public sealed class StationLibrary : IAsyncDisposable
         _stop.Dispose();
     }
 }
+
+public sealed record PrivateCueSource(MediaItem Item,long TotalSamples,FileStream Guard):IDisposable
+{public void Dispose()=>Guard.Dispose();}

@@ -11,6 +11,7 @@ public sealed record LibraryAsset(string Id, string RelativePath, string Artist,
     long Bytes, long ModifiedTicks, string State, string? Error = null, long EditVersion = 0, bool HasMetadataOverride = false, string? ValidationState = null, SourceLoudness? Loudness = null, bool AnalysisRequested = false)
 {
     public SourceGain? Normalization => State == "Ready" ? SourceNormalization.Decide(Loudness) : null;
+    public string SourceStamp=>Bytes.ToString(CultureInfo.InvariantCulture)+":"+ModifiedTicks.ToString(CultureInfo.InvariantCulture);
 }
 public sealed record LibraryImport(string Id, string StationId, long Revision, string[] Paths, string State, string? Error);
 public sealed record LibraryPage(LibraryRoot? Root, long Total, long Ready, long Missing,

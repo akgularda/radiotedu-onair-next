@@ -4,7 +4,7 @@
   const roster = [{id:'1',name:'Classic'},{id:'2',name:'Lofi'},{id:'4',name:'Pop'},{id:'5',name:'Cazz'},{id:'8',name:'Rock'},{id:'9',name:'Energize'},{id:'10',name:'Situation'},{id:'11',name:'Main Character'}];
   const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null,folderTarget:null,folderSource:null,editTarget:null,assetStateTarget:null,controller:null,consoleClosed:false,upload:null,uploadSelection:null};
   const migration={engine:null,preview:null,loading:false,busy:false,key:null,selects:new Map(),pending:null,submissionError:null};
-  let brandingUI=null;
+  let brandingUI=null,cueUI=null;
   let setupFolderTarget='setup-runtime';
   try{const request=JSON.parse(localStorage.getItem('studio-migration-request')??'null');if(request&&typeof request.engine==='string'&&/^[a-f0-9]{32}$/.test(request.id??'')&&typeof request.legacyRoot==='string')migration.pending=request;}catch{}
 
@@ -92,9 +92,15 @@
     $('engine-label').replaceChildren(document.createTextNode(connected?'Engine connected':'Engine not connected'),element('small','',connected?'Isolated development engine':'Existing broadcasts unchanged'));
     $('disconnect-engine').disabled=!state.engine;
     $('retry-command').hidden=!pending();$('retry-command').disabled=!connected||state.busy;
-    libraryControls();renderProgrammeMeter();brandingUI?.update();
+    libraryControls();renderProgrammeMeter();brandingUI?.update();cueUI?.update();
   }
-  function libraryControls(){const enabled=fresh()&&!state.busy&&!pending();$('choose-folder').disabled=!enabled;$('add-files').disabled=!enabled||!state.library?.canImportFiles;$('managed-folder').disabled=!enabled;$('rescan').disabled=!enabled||!state.library?.page?.Root;$('library-prev').disabled=!fresh()||state.offset===0;$('library-next').disabled=!fresh()||state.library?.page?.Items?.length!==50;document.querySelectorAll('.transfer-action').forEach(button=>button.disabled=!enabled);document.querySelectorAll('.asset-action').forEach(button=>button.disabled=!enabled);assetDialogControls();folderControls();}
+  function libraryControls(){
+    const enabled=fresh()&&!state.busy&&!pending();$('choose-folder').disabled=!enabled;$('add-files').disabled=!enabled||!state.library?.canImportFiles;
+    $('managed-folder').disabled=!enabled;$('rescan').disabled=!enabled||!state.library?.page?.Root;$('library-prev').disabled=!fresh()||state.offset===0;
+    $('library-next').disabled=!fresh()||state.library?.page?.Items?.length!==50;
+    document.querySelectorAll('.transfer-action').forEach(button=>button.disabled=!enabled);document.querySelectorAll('.asset-action').forEach(button=>button.disabled=!enabled);
+    assetDialogControls();folderControls();cueUI?.update();
+  }
   function renderProgrammeMeter(){
     const station=current(),connected=fresh(),offered=station?.Loudness;
     const cached=state.meter?.engine===state.engine&&state.meter?.station===state.station?state.meter.snapshot:null;
@@ -242,6 +248,7 @@
     if(!fresh())return;const engine=state.engine,station=state.station,query=state.query,offset=state.offset;
     try{const result=await api('/api/library?'+new URLSearchParams({engine,station,query,offset:String(offset)}));if(engine!==state.engine||station!==state.station||query!==state.query||offset!==state.offset)return;if(result.accepted===false||!result.page)throw new Error(result.error??'Library response is unavailable.');state.library=result;const page=result.page,root=page.Root;renderLegacyMusicReceipt(page);text('folder-name',root?'Live music folder':'No folder assigned');text('folder-path',root?.Path??'Add files to create a managed folder, or choose an existing live folder.');$('folder-path').title=root?.Path??'';text('folder-state',result.worker?.State??'Unknown');text('library-count',`${page.Ready??0} validated · ${page.Retired??0} removed · ${page.Total??0} indexed`);text('library-page',page.Items?.length?`${offset+1}–${offset+page.Items.length}`:'0');$('managed-folder').hidden=result.canImportFiles||!root;
       const rows=(page.Items??[]).map(asset=>{const row=element('tr');row.title=asset.Error??'';const item=element('td');item.append(icon('music'));const title=element('td');title.append(element('span','asset-title',asset.Title),element('span','asset-artist',asset.Artist||'Unknown artist'));const file=element('td','quiet',asset.RelativePath);file.title=asset.RelativePath;const status=element('td');status.append(element('span','asset-state '+asset.State.toLowerCase(),asset.State));if(asset.AnalysisRequested)status.append(element('small','asset-analysis','Analysis queued'));else if(asset.State==='Ready')status.append(element('small','asset-analysis',RadioTeduMeter.sourceGain(asset.Normalization).text));const actions=element('td');const group=element('div','asset-actions');const edit=element('button','button asset-action','Edit');edit.setAttribute('aria-label','Edit metadata for '+asset.Title);edit.addEventListener('click',()=>openAssetEditor(asset));const toggle=element('button','button asset-action',asset.State==='Retired'?'Restore':'Remove');toggle.setAttribute('aria-label',(asset.State==='Retired'?'Restore ':'Remove from rotation: ')+asset.Title);toggle.addEventListener('click',()=>openAssetState(asset));group.append(edit,toggle);actions.append(group);row.append(item,title,file,status,element('td','align-right mono',duration(asset.Seconds)),actions);return row;});if(rows.length)$('library-rows').replaceChildren(...rows);else stableEmpty('library-rows',String(fresh()),emptyLibrary);text('library-progress',[result.worker?.State,result.worker?.Error,page.Import?`Latest import: ${page.Import.State}`:null,page.Import?.Error].filter(Boolean).join(' · '));renderUploads();libraryControls();
+      if(cueUI)rows.forEach((row,index)=>{const asset=page.Items[index];row.querySelector('.asset-actions').prepend(cueUI.button({engine,station,revision:root?.Revision,assetId:asset.Id,version:asset.EditVersion,stamp:asset.SourceStamp,title:asset.Title,artist:asset.Artist,seconds:asset.Seconds,label:stationName(station)+' · Music',ready:asset.State==='Ready'&&!!root&&Number.isFinite(asset.Seconds)&&asset.Seconds>0}));});cueUI?.update();
     }catch(error){if(engine!==state.engine||station!==state.station||query!==state.query||offset!==state.offset)return;state.library=null;$('legacy-music-receipt').hidden=true;text('library-progress','Library unavailable: '+error.message);libraryControls();}
   }
   let searchTimer; $('library-search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{state.query=$('library-search').value.trim();state.offset=0;void loadLibrary();},250);});
@@ -504,7 +511,14 @@
   $('setup-install').addEventListener('click',async()=>{if(!setupState?.plan)return;try{await api('/api/setup/install',{method:'POST',body:{Id:setupState.plan.id}});await loadSetup();}catch(error){text('setup-detail',error.message);}});
   $('setup-shortcuts').addEventListener('click',async()=>{try{await api('/api/setup/shortcuts',{method:'POST'});text('setup-detail','Desktop and Start menu shortcuts are available. They open the local console without Codex; the service runs independently.');}catch(error){text('setup-detail',error.message);}});
   $('close-console').addEventListener('click',()=>$('close-console-dialog').showModal());
-  $('confirm-close-console').addEventListener('click',async()=>{$('close-console-dialog').close();try{await api('/api/console/close',{method:'POST'});state.consoleClosed=true;state.engine=null;state.sampleAt=0;renderStatus();setupControls();message('Console closed. Broadcast service continues. Open the installed shortcut or new package to return.');}catch(error){message(error.message);}});
+  $('confirm-close-console').addEventListener('click',async()=>{
+    $('close-console-dialog').close();
+    try{
+      if(cueUI&&!await cueUI.close())throw new Error('Private cue has not confirmed cleanup. Retry Stop cue before closing this console. Broadcast service continues.');
+      await api('/api/console/close',{method:'POST'});state.consoleClosed=true;state.engine=null;state.sampleAt=0;renderStatus();setupControls();
+      message('Console closed. Broadcast service continues. Open the installed shortcut or new package to return.');
+    }catch(error){message(error.message);}
+  });
   $('setup-refresh').addEventListener('click',()=>void loadSetup());
 
   function migrationControls(){
@@ -657,8 +671,13 @@
   $('reports-prev').addEventListener('click',()=>{reports.offset=Math.max(0,reports.offset-32);void loadReports();});
   $('reports-next').addEventListener('click',()=>{reports.offset+=32;void loadReports();});
   const reportToday=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(part=>[part.type,part.value]));$('report-day').value=reportToday.year+'-'+reportToday.month+'-'+reportToday.day;$('report-day').max='9998-12-31';$('report-year').value=reportToday.year;for(const station of roster){const option=element('option','',station.name);option.value=station.id;$('report-station').append(option);}renderReports();
+  cueUI=RadioTeduCue.create({api,
+    context:()=>({engine:state.engine,fresh:fresh(),busy:state.busy,supported:state.controller?.capabilities?.includes('private-cue-v1')===true}),
+    stream:(body,signal)=>fetch('/api/private-cue',{method:'POST',headers:{'Content-Type':'application/json','X-Studio-Token':state.session?.token??''},body:JSON.stringify(body),credentials:'same-origin',signal})
+  });
+  document.querySelector('[aria-label="Private audition"]').addEventListener('click',()=>cueUI.show());cueUI.update();
   brandingUI=RadioTeduBranding.create({
-    api,message,
+    api,message,cue:cueUI,
     context:()=>({engine:state.engine,station:state.station,name:stationName(),fresh:fresh(),busy:state.busy,supported:state.controller?.capabilities?.includes('branding-library-v1')===true,active:state.page==='ads'}),
     claim:()=>{if(!fresh()||state.busy||pending())return false;state.busy=true;renderStatus();return true;},
     release:()=>{state.busy=false;renderStatus();},

@@ -17,8 +17,9 @@ internal static partial class ProcessingChecks
         await SlowAuditAsync(ffmpeg,root,result,Fixture(root,"long",96000,0.03f));
         await MixedPeakAsync(ffmpeg,root,result,Fixture(root,"mix",192000,0.8f));
         await BrandingChecksAsync(ffmpeg,root,result);
+        await PrivateCueChecksAsync(ffmpeg,root,result);
         Check(result,ChildProcess.ActiveProcesses.Count==0,"Processing qualification closes every owned decoder/validation worker.");
-        result.Details["scope"]="Synthetic final-mix limiting, prepared/audible EOF, automatic branding PCM/order and Stop/Skip/recovery ownership, and bounded asynchronous audit only. No physical mic/cue/recording, encoded worst-case headroom, HE-AAC/all18 or production acceptance.";
+        result.Details["scope"]="Synthetic final-mix limiting, prepared/audible EOF, automatic branding PCM/order, private cue PCM/seek/cancellation isolation, Stop/Skip/recovery ownership, and bounded asynchronous audit only. No physical audio output, browser/mouse cue, mic/recording, encoded worst-case headroom, HE-AAC/all18 or production acceptance.";
     }
     private static async Task FiniteAsync(string ffmpeg,string root,CaseResult result,MediaItem[] items)
     {

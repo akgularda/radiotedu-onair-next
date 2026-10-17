@@ -7,6 +7,7 @@
     <Compile Include="../OnAirNext.Engine/ReportExport.cs" Link="Protocol/ReportExport.cs" />
     <Compile Include="../OnAirNext.Engine/ReportTransferProtocol.cs" Link="Protocol/ReportTransferProtocol.cs" />
     <Compile Include="../OnAirNext.Engine/UploadProtocol.cs" Link="Protocol/UploadProtocol.cs" />
+    <Compile Include="../OnAirNext.Engine/PrivateCueProtocol.cs" Link="Protocol/PrivateCueProtocol.cs" />
     <Compile Include="../OnAirNext.Engine/PipeFrames.cs" Link="Protocol/PipeFrames.cs" />
     <Compile Include="../OnAirNext.Engine/LocalMediaPath.cs" Link="Protocol/LocalMediaPath.cs" />
   </ItemGroup>

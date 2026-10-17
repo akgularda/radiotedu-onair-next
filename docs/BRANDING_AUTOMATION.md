@@ -32,7 +32,7 @@ Enabled branding rules also block old maintenance status admission and the read-
 
 ## Operator and legacy integration still required
 
-The implemented file/folder, role, cadence, warning, running-order and saved-readback controls still need connected functional and mouse acceptance. Private audition remains missing. Legacy active/inactive state, asset role, gains and startup audio require a visible import review; do not silently activate inactive references or classify every old jingle as both roles. Importing files must preserve saved enable switches.
+The implemented file/folder, role, cadence, warning, running-order and saved-readback controls still need connected functional and mouse acceptance. The separate [private cue implementation](PRIVATE_CUE.md) now adds per-role preview controls; its rendered/physical acceptance is still required. Legacy active/inactive state, asset role, gains and startup audio require a visible import review; do not silently activate inactive references or classify every old jingle as both roles. Importing files must preserve saved enable switches.
 
 Respect higher-priority live/program/event takeover. Carry due branding across a held automation boundary without interrupting the current song or injecting branding into a live show. Only completed music advances the song counters; advertisements and prerecorded programmes do not.
 

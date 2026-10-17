@@ -34,8 +34,9 @@
       for(const id of ['branding-edit-save','branding-edit-reset','branding-remove-confirm'])$(id).disabled=!usable||!same(state.edit??state.remove??{});
       for(const b of $('branding-rows').querySelectorAll('button'))b.disabled=!usable;
       for(const b of $('branding-transfers').querySelectorAll('button'))b.disabled=!usable;
-      if(!c.fresh)txt('branding-feedback','Connect the engine to manage this channel’s branding.');
-      else if(!c.supported)txt('branding-feedback','This engine needs the matching branding update. Existing broadcasts keep their current settings.');
+      if(!c.fresh){txt('branding-feedback','Connect the engine to manage this channel’s branding.');if(!state.library){empty('Connect the engine to load this inventory.');txt('branding-library-status','Not connected');}}
+      else if(!c.supported){txt('branding-feedback','This engine needs the matching branding update. Existing broadcasts keep their current settings.');if(!state.library){empty('Update this engine before loading branding files.');txt('branding-library-status','Engine update required');}}
+      bridge.cue?.update();
     }
     function update(){
       const c=context(),next=key(c),changed=next!==state.key;
@@ -85,7 +86,7 @@
       }catch(error){if(same(target))txt('branding-feedback','Branding unavailable: '+error.message);}
       finally{state.loading=false;controls();if(context().active&&(!same(target)||role!==state.role||query!==state.query||offset!==state.offset))void load();}
     }
-    function empty(value){state.rowKey=null;const row=node('tr'),cell=node('td','table-empty',value);cell.colSpan=5;row.append(cell);$('branding-rows').replaceChildren(row);}
+    function empty(value){if(state.rowKey===null&&state.emptyText===value)return;state.emptyText=value;state.rowKey=null;const row=node('tr'),cell=node('td','table-empty',value);cell.colSpan=5;row.append(cell);$('branding-rows').replaceChildren(row);}
     function renderLibrary(){
       const l=state.library,p=l?.page;if(!p)return;
       txt('branding-folder-label','Live '+state.role.toLowerCase()+' folder');
@@ -101,6 +102,7 @@
         const captured={...scope(),asset};
         function action(label,fn){const b=node('button','button asset-action',label);b.type='button';b.addEventListener('click',fn);buttons.append(b);}
         action('Edit',()=>openEditor(captured));
+        if(bridge.cue)buttons.prepend(bridge.cue.button({engine:captured.engine,station:captured.inventory,revision:captured.revision,assetId:asset.Id,version:asset.EditVersion,stamp:asset.SourceStamp,title:asset.Title,artist:asset.Artist,seconds:asset.Seconds,label:context().name+' · '+state.role,ready:asset.State==='Ready'&&Number.isFinite(asset.Seconds)&&asset.Seconds>0}));
         action(asset.State==='Retired'?'Restore':'Remove',()=>{if(asset.State==='Retired')void mutate('library-restore',assetPayload(captured),captured);else{state.remove=captured;txt('branding-remove-title',context().name+' · '+state.role+' · '+asset.Title);$('branding-remove-dialog').showModal();controls();}});
         action('Measure',()=>void mutate('library-analyze-loudness',assetPayload(captured),captured));
         const actionsCell=node('td');actionsCell.append(buttons);const sec=Number(asset.Seconds);row.append(title,node('td','quiet',asset.RelativePath),status,node('td','align-right mono',Number.isFinite(sec)?Math.floor(sec/60)+':'+String(Math.floor(sec%60)).padStart(2,'0'):'--:--'),actionsCell);return row;

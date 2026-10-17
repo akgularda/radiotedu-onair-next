@@ -18,7 +18,7 @@ public sealed class MediaDecoder : IAsyncDisposable
     public Task Ready { get; }
     private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public MediaDecoder(string ffmpeg, MediaItem item, long startSample = 0)
+    public MediaDecoder(string ffmpeg, MediaItem item, long startSample = 0,string role="codec",bool fastSeek=false)
     {
         FileStream? guard = null;
         try
@@ -31,11 +31,15 @@ public sealed class MediaDecoder : IAsyncDisposable
             if (file.Length != measured.Bytes || file.LastWriteTimeUtc.Ticks != measured.ModifiedTicks)
                 throw new InvalidDataException("The measured source changed; revalidate it in Library before playback.");
         }
-        var filters = SourceNormalization.DecodeFormat + ",atrim=start_sample=" + startSample.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var seekSeconds=fastSeek?startSample/48000:0;
+        var trimSamples=fastSeek?startSample%48000:startSample;
+        var filters = SourceNormalization.DecodeFormat + ",atrim=start_sample=" + trimSamples.ToString(System.Globalization.CultureInfo.InvariantCulture);
         if (gain.AppliedDb != 0) filters += ",volume=" + gain.Linear.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ":precision=double";
         _pcm = new(System.IO.Pipes.PipeDirection.In);
-        try { _process = ChildProcess.Start(ffmpeg, ["-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", item.Path,
-            "-vn", "-sn", "-dn", "-threads", "1", "-af", filters, "-f", "f32le", "-acodec", "pcm_f32le", "-ar", "48000", "-ac", "2", _pcm.Path]); }
+        var arguments=new List<string>{"-hide_banner","-loglevel","error","-nostdin","-y"};
+        if(seekSeconds>0)arguments.AddRange(["-ss",seekSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+        arguments.AddRange(["-i",item.Path,"-vn","-sn","-dn","-threads","1","-af",filters,"-f","f32le","-acodec","pcm_f32le","-ar","48000","-ac","2",_pcm.Path]);
+        try { _process = ChildProcess.Start(ffmpeg,arguments,role:role); }
         catch { _pcm.Dispose(); throw; }
         _stderr = ChildProcess.DrainErrorAsync(_process);
         Ready = _ready.Task;
@@ -103,6 +107,9 @@ public sealed class MediaDecoder : IAsyncDisposable
         if (await _blocks.Reader.WaitToReadAsync(token)) return await _blocks.Reader.ReadAsync(token);
         return null;
     }
+
+    public void PreferBackgroundScheduling()
+    {if(OperatingSystem.IsWindows())_process.PriorityClass=ProcessPriorityClass.BelowNormal;}
 
     public async ValueTask DisposeAsync()
     {

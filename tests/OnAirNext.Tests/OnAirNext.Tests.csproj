@@ -23,5 +23,7 @@
     <Compile Include="../../src/OnAirNext.Host/ServicePipeClient.cs" Link="ServiceControl/ServicePipeClient.cs" />
     <Compile Include="../../src/OnAirNext.Host/ServicePipePolicy.cs" Link="ServiceControl/ServicePipePolicy.cs" />
     <Compile Include="../../src/OnAirNext.Web/ReportDownloadGrants.cs" Link="Reports/ReportDownloadGrants.cs" />
+    <Compile Include="../../src/OnAirNext.Web/EngineRpc.cs" Link="Cue/EngineRpc.cs" />
+    <Compile Include="../../src/OnAirNext.Web/PrivateCueDownload.cs" Link="Cue/PrivateCueDownload.cs" />
   </ItemGroup>
 </Project>
