@@ -147,6 +147,12 @@ internal static class QueueDurableChecks
             await Accepted(Command("skip",skip),"The same Skip request can be retried after the lost acknowledgement/restart.");
             await Accepted(firstAppend!,"The original append receipt remains retryable after its occurrence was consumed.");
             var afterSkip=Events();
+            // Skip admission and the kill are deliberately not a scheduler lock.
+            // The next item may have published real samples before the process
+            // dies. Retain/count that genuine attempt instead of assuming it away.
+            var betaBeforeStall=afterSkip.Count(e=>e.QueueEntryId==beta&&e.Type=="started");
+            Check(result,betaBeforeStall>=1&&Linked(afterSkip,beta,betaBeforeStall),"Every Beta attempt actually committed around the Skip/kill race has correct predecessor ownership.");
+            result.Details["betaAttemptsBeforeWriterStall"]=betaBeforeStall;
             Check(result,afterSkip.Count(e=>e.QueueEntryId==alpha&&e.Type=="skipped")==1&&Linked(afterSkip,alpha,2),"Recovered/retried Skip consumes only Alpha once and never restarts it again.");
             Check(result,(await Read<StationQueueView>("queue-status","queue")).Items.Select(x=>x.Id).SequenceEqual(new[]{beta,gamma}),"Append/Skip retries do not add a duplicate or consume Beta.");
             await Wait(async()=>{var s=await Status();return s.CurrentQueueEntryId==beta&&s.CurrentItemSamples>=2*AudioFormat.SampleRate;},"Beta was not on air before the writer stall.");
@@ -173,7 +179,7 @@ internal static class QueueDurableChecks
                 finally{hold.CommandText="ROLLBACK";hold.ExecuteNonQuery();}
             }
             await StopProbes();await Launch();await Opening(660,"restarted uncommitted Beta");
-            Check(result,Linked(Events(),beta,2),"Uncommitted EOF recovers Beta from its beginning as a linked new attempt.");
+            Check(result,Linked(Events(),beta,betaBeforeStall+1),"Uncommitted EOF recovers Beta from its beginning as exactly one linked new attempt.");
             Check(result,Cadence(database).MusicSinceJingle==0&&Cadence(database).MusicSinceSweeper==0,"Uncommitted EOF and skipped Alpha do not manufacture completed-song cadence.");
             await StopProbes();
             await Wait(async()=>{var s=await Status();return s.CurrentQueueEntryId==gamma&&s.CurrentItemSamples>=AudioFormat.SampleRate;},"Committed Beta did not advance to Gamma.");
@@ -181,7 +187,7 @@ internal static class QueueDurableChecks
             Check(result,committed.Count(e=>e.QueueEntryId==beta&&e.Type=="ended")==1,"The recovered Beta completes exactly once in the journal.");
             Check(result,(await Read<StationQueueView>("queue-status","queue")).Items.Select(x=>x.Id).SequenceEqual(new[]{gamma}),"Committed Beta is removed from the active queue atomically with its terminal.");
             await Crash("after committed Beta");await Launch();await Opening(880,"restarted Gamma");
-            Check(result,Linked(Events(),beta,2)&&Linked(Events(),gamma,2),"A consumed Beta stays consumed; only unfinished Gamma gets a linked restart.");
+            Check(result,Linked(Events(),beta,betaBeforeStall+1)&&Linked(Events(),gamma,2),"A consumed Beta stays consumed; only unfinished Gamma gets a linked restart.");
             var beforeCadence=Cadence(database);
             Check(result,beforeCadence.MusicSinceJingle==1&&beforeCadence.MusicSinceSweeper==1,"The one committed music completion survives another host crash on both cadence counters.");
             await Wait(()=>Task.FromResult(Events().Any(e=>e.Kind==ContentKind.Jingle&&e.Type=="ended")),"The preserved two-song jingle cadence did not run after Gamma.");
