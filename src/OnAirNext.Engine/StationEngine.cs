@@ -77,7 +77,8 @@ public sealed partial class StationEngine : IStationSession
             current?.Title,Interlocked.Read(ref _late),Interlocked.Read(ref _auditRejected),_outputs.Select(x=>x.Snapshot()).ToArray(),
             current?.Id,cursor?.ItemSamples??0,_recovered,CurrentArtist:current?.Artist,CurrentDurationSeconds:current?.DurationSeconds,
             NextItem:next is null?null:new(next.Id,next.Artist,next.Title,next.Kind,next.DurationSeconds),Loudness:_loudness?.Snapshot(),
-            SourceGain:SourceNormalization.Decide(current?.Loudness),Limiter:Volatile.Read(ref _publishedLimiter),PendingAuditCommits:Volatile.Read(ref _pendingAudit));
+            SourceGain:SourceNormalization.Decide(current?.Loudness),Limiter:Volatile.Read(ref _publishedLimiter),PendingAuditCommits:Volatile.Read(ref _pendingAudit),
+            CurrentQueueEntryId:cursor?.Selection.QueueEntryId,NextQueueEntryId:Volatile.Read(ref _visibleNextSelection)?.QueueEntryId);
     }
     private async Task RunAsync()
     {
@@ -85,6 +86,12 @@ public sealed partial class StationEngine : IStationSession
         try
         {
             var saved=await _journal.PrepareRecoveryAsync(_settings.Id);await _journal.RecoverLoudnessAsync(_settings.Id);
+            if (saved is {QueueEntryId:not null,Item:not null} && _planner is not null)
+            {
+                var approved=_planner.ResolveQueueRecovery(new(saved.Item,saved.QueueEntryId));
+                saved=approved is null?await _journal.DeferUnavailableQueueRecoveryAsync(_settings.Id,saved.OccurrenceId)
+                    :saved with {Item=approved.Item};
+            }
             if(saved is { HoldsRotation:true,Item:not null }&&(saved.Item.Kind is ContentKind.Jingle or ContentKind.Sweeper))
             {
                 var approved=_branding?.Snapshot()?.ResolveRecovery(saved.Item);
@@ -152,7 +159,7 @@ public sealed partial class StationEngine : IStationSession
             frame?.Dispose();
             try{if(fault is null)EmitAudibleTerminal("interrupted","Explicit stop discards only unread preparation; restart begins a new attempt at the item's beginning.");}
             catch(Exception ex){fault??=ex;}
-            try{await ReleaseResourcesAsync();}catch(Exception ex){fault=fault is null?ex:new AggregateException(fault,ex);}
+            try{await ReleaseResourcesAsync();_planner?.ReleaseQueueReservations();}catch(Exception ex){fault=fault is null?ex:new AggregateException(fault,ex);}
             _state=fault is not null?"Faulted":_exhausted?"Completed":"Stopped";
         }
         if(fault is not null)throw new InvalidOperationException("Station engine failed; inspect audit events.",fault);
@@ -164,7 +171,7 @@ public sealed partial class StationEngine : IStationSession
         {
             if(_disposed)return;await _stop.CancelAsync();
             if(_run is not null){try{await _run;}catch(Exception){}}
-            await ReleaseResourcesAsync();if(_branding is not null)_branding.Changed-=RefreshNext;
+            await ReleaseResourcesAsync();_planner?.ReleaseQueueReservations();if(_branding is not null)_branding.Changed-=RefreshNext;
             Live.Dispose();_stop.Dispose();_disposed=true;
         }
         finally{_disposeGate.Release();}

@@ -142,7 +142,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Private cue script syntax failed." }
           node --check src/OnAirNext.Web/wwwroot/cue-worklet.js
           if ($LASTEXITCODE -ne 0) { throw "Cue worklet syntax failed." }
-          node --test tests/browser/loudness-view.test.cjs tests/browser/private-cue-worklet.test.cjs | Tee-Object -FilePath artifacts/test-results/browser-cue.tap
+          node --check src/OnAirNext.Web/wwwroot/queue.js
+          if ($LASTEXITCODE -ne 0) { throw "Queue script syntax failed." }
+          node --test tests/browser/loudness-view.test.cjs tests/browser/private-cue-worklet.test.cjs tests/browser/queue-view.test.cjs | Tee-Object -FilePath artifacts/test-results/browser-cue.tap
           if ($LASTEXITCODE -ne 0) { throw "Browser state and cue buffer checks failed." }
       - name: Retain unit test results
         if: always()

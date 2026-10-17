@@ -13,6 +13,7 @@ public sealed partial class StationEngine
     private readonly HashSet<string> _inflightQueue=new(StringComparer.Ordinal);
     private Cursor? _audible;
     private MediaItem? _visibleNext;
+    private PlayoutSelection? _visibleNextSelection;
     private PlayoutCheckpoint? _lastCheckpoint;
     private int _pendingAudit;
 
@@ -21,6 +22,15 @@ public sealed partial class StationEngine
     {
         if(selection.QueueEntryId is not null&&!_inflightQueue.Add(selection.QueueEntryId))
             throw new InvalidOperationException("The planner selected a queue entry already owned by prepared or uncommitted audio.");
+        _previousOccurrence ??= selection.PreviousOccurrenceId;
+    }
+    private void PublishQueueReservations()
+    {
+        if (_planner is null) return;
+        var retained=new HashSet<string>(_inflightQueue,StringComparer.Ordinal);
+        foreach (var source in new[]{_nextSource,_secondBrand,_musicFallback})
+            if (source?.Selection.QueueEntryId is { } id) retained.Add(id);
+        _planner.RetainQueueReservations(retained);
     }
     private void AddSlice(long start,long end,Cursor cursor)
     {
@@ -30,7 +40,7 @@ public sealed partial class StationEngine
     private void PrepareBoundary(string type,long position,string detail="")
     {
         if(_boundaries.Count>=MaximumPreparedEntries)throw new InvalidOperationException("Prepared event ownership exceeded its bounded window.");
-        var between=type is "ended" or "skipped" or "failed" or "decode_failed";
+        var between=type is "ended" or "skipped" or "failed" or "decode_failed" or "queue_deferred";
         var cursor=PreparedCursor();
         _preparedBranding=_preparedBranding.Project(cursor.Selection.Item.Kind,type);
         var checkpoint=new PlayoutCheckpoint(_settings.Id,between?"BetweenItems":"Playing",
@@ -51,7 +61,7 @@ public sealed partial class StationEngine
                 boundary.Position,boundary.Detail,cursor.Selection.QueueEntryId,cursor.PreviousOccurrence,
                 SourceGain:SourceNormalization.Decide(item.Loudness));
             var checkpoint=boundary.Checkpoint with{SavedAtUtc=DateTimeOffset.UtcNow};
-            var terminal=boundary.Type is "ended" or "skipped" or "failed" or "decode_failed";
+            var terminal=boundary.Type is "ended" or "skipped" or "failed" or "decode_failed" or "queue_deferred";
             QueueAudit(()=>_journal.AppendAsync(entry,checkpoint),terminal?cursor.Selection.QueueEntryId:null);
             _lastCheckpoint=checkpoint;
             if(boundary.Type=="started")Volatile.Write(ref _audible,cursor);
@@ -78,9 +88,10 @@ public sealed partial class StationEngine
     private void UpdateVisibleNext()
     {
         var occurrence=Volatile.Read(ref _audible)?.Occurrence;
-        var next=_slices.FirstOrDefault(x=>x.Cursor.Occurrence!=occurrence)?.Cursor.Selection.Item;
-        if(next is null&&_selection is not null&&_occurrence!=occurrence)next=_selection.Item;
-        next??=_nextSource?.Selection.Item;Volatile.Write(ref _visibleNext,next);
+        var next=_slices.FirstOrDefault(x=>x.Cursor.Occurrence!=occurrence)?.Cursor.Selection;
+        if(next is null&&_selection is not null&&_occurrence!=occurrence)next=_selection;
+        next??=_nextSource?.Selection;
+        Volatile.Write(ref _visibleNextSelection,next);Volatile.Write(ref _visibleNext,next?.Item);
     }
     private PlayoutCheckpoint AudibleCheckpoint(string state)
     {
@@ -108,12 +119,14 @@ public sealed partial class StationEngine
     }
     private void ObserveAudit()
     {
+        var changed=false;
         while(_audits.TryPeek(out var ticket)&&ticket.Commit.IsCompleted)
         {
             _audits.Dequeue();Volatile.Write(ref _pendingAudit,_audits.Count);
             try{ticket.Commit.GetAwaiter().GetResult();}catch{Interlocked.Increment(ref _auditRejected);throw;}
-            if(ticket.ReleaseQueueEntry is not null)_inflightQueue.Remove(ticket.ReleaseQueueEntry);
+            if(ticket.ReleaseQueueEntry is not null) changed|=_inflightQueue.Remove(ticket.ReleaseQueueEntry);
         }
+        if (changed) PublishQueueReservations();
     }
     private async Task DrainAuditAsync()
     {

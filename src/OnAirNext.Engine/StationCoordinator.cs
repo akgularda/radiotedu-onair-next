@@ -49,7 +49,7 @@ public sealed class StationCoordinator : IAsyncDisposable
         _factory = factory ?? (station => new StationEngine(ffmpeg, station, journal));
     }
 
-    public async Task InitializeAsync()
+    public async Task InitializeAsync(Func<Task>? initializePlayout = null)
     {
         await _commands.WaitAsync();
         try
@@ -57,6 +57,7 @@ public sealed class StationCoordinator : IAsyncDisposable
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (_workers is not null) throw new InvalidOperationException("Coordinator already initialized.");
             foreach (var slot in _slots.Values) slot.Desired = await _journal.InitializeDesiredStateAsync(slot.Settings);
+            if (initializePlayout is not null) await initializePlayout();
             _workers = _slots.Values.Select(slot => Task.Run(() => RunStationAsync(slot))).ToArray();
         }
         finally { _commands.Release(); }
@@ -131,7 +132,9 @@ public sealed class StationCoordinator : IAsyncDisposable
     {
         if (_disposed || !_slots.TryGetValue(station, out var slot)) return;
         slot.Session?.RefreshNext();
-        Interlocked.Exchange(ref slot.ContentAvailable, available ? 1 : 0);
+        // An empty queue notification must not erase a simultaneous folder-return
+        // wakeup. The worker consumes positive availability after completion.
+        if (available) Interlocked.Exchange(ref slot.ContentAvailable, 1);
         Signal(slot);
     }
 

@@ -124,6 +124,7 @@ public sealed class CoordinatorTests
         await Until(() => sessions.TryPeek(out var current) && current.Starts == 1);
         coordinator.RefreshLibrary("a", true);
         await Task.Delay(100); // worker sees the signal before the old session reaches EOF
+        coordinator.RefreshLibrary("a", false); // an empty queue cannot erase the folder-return wakeup
         Assert.True(sessions.TryPeek(out var original)); original!.Finish();
         await Until(() => sessions.Count == 2 && coordinator.Snapshot().Single().State == "Running");
         await coordinator.RequestRunningAsync("a", false, "stop-a");

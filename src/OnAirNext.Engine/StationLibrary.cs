@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -7,13 +8,17 @@ namespace OnAirNext.Engine;
 
 public sealed record LibraryWorkerStatus(string State, string? Error, DateTimeOffset? ScannedAtUtc);
 public sealed record LibraryPlaybackInventory(bool Configured, int ReadyCount, IReadOnlyList<MediaItem> Items, long Version);
+public enum QueuedSourceState { Ready, Waiting, Changed, Unlinked }
+public readonly record struct QueuedSourceResolution(MediaItem? Item, QueuedSourceState State);
 
 // One bounded import/validation lane across stations. No file operation or SQLite query runs in Select().
 public sealed class StationLibrary : IAsyncDisposable
 {
     private sealed record Signature(string Path, string Relative, long Bytes, long Modified);
     private sealed record Stable(long Bytes, long Modified, long FirstObserved);
-    private sealed record PlaybackSet(bool Configured, MediaItem[] Items, long Version);
+    private readonly record struct QueueIdentity(long Version, long Bytes, long ModifiedTicks);
+    private sealed record PlaybackSet(bool Configured, MediaItem[] Items, long Version,
+        long RootRevision = 0, QueueIdentity[]? Identities = null);
     private static readonly HashSet<string> Extensions = new(StringComparer.OrdinalIgnoreCase)
         { ".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg", ".opus", ".aif", ".aiff", ".wma", ".mp4" };
     private readonly EventJournal _journal;
@@ -70,6 +75,33 @@ public sealed class StationLibrary : IAsyncDisposable
             :new(false,0,Array.Empty<MediaItem>(),0);
     }
     public LibraryPage Page(string station, string query, int offset) { RequireStation(station); return _journal.LibraryPage(station, query, offset); }
+    // Binary search over the already-published rotation. No SQLite, path access,
+    // copying the full catalog or string allocation on the programme clock.
+    public MediaItem? ResolveQueuedItem(string station, StationQueueEntry entry)
+        => ResolveQueuedSource(station,entry).Item;
+    public QueuedSourceResolution ResolveQueuedSource(string station, StationQueueEntry entry)
+    {
+        if (entry.StationId != station || entry.Source is not { } source) return new(null,QueuedSourceState.Unlinked);
+        if (!_playback.TryGetValue(station,out var set) || set.RootRevision==0 || set.Identities is not { } identities)
+            return new(null,QueuedSourceState.Waiting);
+        if (set.RootRevision!=source.Revision || source.SourceStamp is not { } stamp) return new(null,QueuedSourceState.Changed);
+        var separator = stamp.IndexOf(':');
+        if (separator < 1 || !long.TryParse(stamp.AsSpan(0,separator),NumberStyles.None,CultureInfo.InvariantCulture,out var bytes) ||
+            !long.TryParse(stamp.AsSpan(separator+1),NumberStyles.None,CultureInfo.InvariantCulture,out var modified)) return new(null,QueuedSourceState.Changed);
+        var low = 0; var high = set.Items.Length - 1;
+        while (low <= high)
+        {
+            var index = low + (high-low)/2; var item = set.Items[index];
+            var comparison = StringComparer.Ordinal.Compare(item.Id,source.AssetId);
+            if (comparison < 0) { low = index+1; continue; }
+            if (comparison > 0) { high = index-1; continue; }
+            var identity = identities[index];
+            return identity.Version == source.ExpectedVersion && identity.Bytes == bytes && identity.ModifiedTicks == modified &&
+                item.Id == entry.Item.Id && item.Artist == entry.Item.Artist && item.Title == entry.Item.Title && item.Kind == entry.Item.Kind
+                ? new(item,QueuedSourceState.Ready) : new(null,QueuedSourceState.Changed);
+        }
+        return new(null,QueuedSourceState.Waiting);
+    }
     public async Task SetRootAsync(string station, string root, string command, Action? authorizeNewAssignment = null)
     {
         RequireStation(station);
@@ -351,12 +383,16 @@ public sealed class StationLibrary : IAsyncDisposable
             _playback.TryGetValue(root.StationId, out var prior);
             // Edits may update/remove already eligible items; only a successful scan can add them.
             var eligible = allowNew ? null : prior?.Items.Select(x => x.Id).ToHashSet(StringComparer.Ordinal) ?? [];
-            var items = _journal.LibraryAssets(root).Where(x => x.State == "Ready" && (eligible is null || eligible.Contains(x.Id)))
+            var assets = _journal.LibraryAssets(root).Where(x => x.State == "Ready" && (eligible is null || eligible.Contains(x.Id)))
+                .OrderBy(x => x.Id, StringComparer.Ordinal).ToArray();
+            var items = assets
                 .Select(x => new MediaItem(x.Id, Path.Combine(root.Path, x.RelativePath), x.Artist, x.Title,
                     Kind: _contentKinds.GetValueOrDefault(root.StationId, ContentKind.Music), DurationSeconds: x.Seconds, Loudness: x.Loudness))
-                .OrderBy(x => x.Id, StringComparer.Ordinal).ToArray();
-            if (prior is not null && prior.Configured && prior.Items.SequenceEqual(items)) return;
-            _playback[root.StationId] = new(true, items, Interlocked.Increment(ref _version));
+                .ToArray();
+            var identities = assets.Select(x => new QueueIdentity(x.EditVersion,x.Bytes,x.ModifiedTicks)).ToArray();
+            if (prior is not null && prior.Configured && prior.RootRevision == root.Revision && prior.Items.SequenceEqual(items) &&
+                prior.Identities is { } previous && previous.AsSpan().SequenceEqual(identities)) return;
+            _playback[root.StationId] = new(true, items, Interlocked.Increment(ref _version),root.Revision,identities);
             Changed?.Invoke(root.StationId, items.Length > 0);
         }
     }

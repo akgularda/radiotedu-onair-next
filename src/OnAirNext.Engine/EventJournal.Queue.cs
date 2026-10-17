@@ -5,16 +5,17 @@ using Microsoft.Data.Sqlite;
 
 namespace OnAirNext.Engine;
 
-public sealed record StationQueueEntry(string Id, string StationId, long Position, MediaItem Item, string State);
+public sealed record QueueLibraryReference(long Revision, string AssetId, long ExpectedVersion, string SourceStamp);
+public sealed record StationQueueEntry(string Id, string StationId, long Position, MediaItem Item, string State,
+    QueueLibraryReference? Source = null, string? PreviousOccurrenceId = null);
 public sealed record StationQueueSnapshot(string StationId, long Revision, IReadOnlyList<StationQueueEntry> Entries);
 public enum QueueEdit { MoveUp, MoveDown, Remove }
 
-// Storage foundation. The active host does not expose queue commands yet. Its future
-// library/UI adapter must authorize catalog sources and protect live prepared selections.
 public sealed partial class EventJournal
 {
     public const int MaximumQueuedItems = 128;
     private readonly ConcurrentDictionary<string, StationQueueSnapshot> _queueViews = new(StringComparer.Ordinal);
+    public event Action<string>? QueueChanged;
 
     // Readers on the programme clock only see immutable, committed snapshots.
     public StationQueueSnapshot? PublishedQueue(string station) => _queueViews.GetValueOrDefault(station);
@@ -64,6 +65,27 @@ public sealed partial class EventJournal
     // can arbitrate against prepared audio. An unfinished recovery item stays owned.
     public async Task<StationQueueSnapshot> EditStationQueueAsync(string station, string entryId,
         long expectedRevision, QueueEdit edit, string commandId)
+        => await EditStationQueueCoreAsync(station, entryId, expectedRevision, edit, commandId, null);
+
+    internal Task<bool> HasStationQueueEditReceiptAsync(string station, string entryId, long expectedRevision,
+        QueueEdit edit, string commandId) => TransactionAsync((c,t) =>
+    {
+        RequireQueueStation(c,t,station);
+        var payload=JsonSerializer.Serialize(new { entryId, expectedRevision, edit });
+        using var read=LibraryCommand(c,t,"SELECT station_id,kind,request_target FROM engine_commands WHERE id=$id",("$id",commandId));
+        using var reader=read.ExecuteReader();
+        if (!reader.Read()) return false;
+        if (reader.GetString(0)!=station||reader.GetString(1)!="station-queue-edit"||reader.IsDBNull(2)||reader.GetString(2)!=payload)
+            throw new InvalidOperationException("This request ID belongs to another operation.");
+        return true;
+    });
+
+    internal Task<StationQueueSnapshot> EditReservedStationQueueAsync(string station, string entryId,
+        long expectedRevision, QueueEdit edit, string commandId, Action authorizeReservation)
+        => EditStationQueueCoreAsync(station, entryId, expectedRevision, edit, commandId, authorizeReservation);
+
+    private async Task<StationQueueSnapshot> EditStationQueueCoreAsync(string station, string entryId,
+        long expectedRevision, QueueEdit edit, string commandId, Action? authorizeReservation)
     {
         if (string.IsNullOrWhiteSpace(entryId) || entryId.Length > 128 || !Enum.IsDefined(edit))
             throw new ArgumentException("Choose a queued item and an available queue action.");
@@ -73,8 +95,9 @@ public sealed partial class EventJournal
             RequireQueueStation(c, t, station);
             if (!AdmitControl(c, t, station, "station-queue-edit", payload, commandId)) return ReadQueue(c, t, station);
             var current = ReadQueue(c, t, station); RequireQueueRevision(current, expectedRevision);
-            if (ReadDesired(c, t, station)!.RequestedRunning)
+            if (authorizeReservation is null && ReadDesired(c, t, station)!.RequestedRunning)
                 throw new InvalidOperationException("Stop this channel before changing saved queue order.");
+            authorizeReservation?.Invoke();
             var entries = current.Entries.ToArray(); var index = Array.FindIndex(entries, e => e.Id == entryId);
             if (index < 0) throw new InvalidOperationException("This queued item was consumed or removed. Refresh the queue.");
             using var checkpoint = LibraryCommand(c, t, "SELECT payload FROM playout_checkpoints WHERE station_id=$station", ("$station", station));
@@ -103,7 +126,21 @@ public sealed partial class EventJournal
     }
 
     private void PublishQueue(StationQueueSnapshot view)
-        => _queueViews.AddOrUpdate(view.StationId, view, (_, prior) => view.Revision > prior.Revision ? view : prior);
+    {
+        while (true)
+        {
+            if (!_queueViews.TryGetValue(view.StationId, out var prior))
+            {
+                if (!_queueViews.TryAdd(view.StationId, view)) continue;
+            }
+            else
+            {
+                if (view.Revision <= prior.Revision) return;
+                if (!_queueViews.TryUpdate(view.StationId, view, prior)) continue;
+            }
+            QueueChanged?.Invoke(view.StationId); return;
+        }
+    }
 
     private static void RequireQueueStation(SqliteConnection c, SqliteTransaction t, string station)
     {
@@ -126,14 +163,16 @@ public sealed partial class EventJournal
         using var version = LibraryCommand(c, t, "SELECT revision FROM station_queue_state WHERE station_id=$station", ("$station", station));
         var revision = Convert.ToInt64(version.ExecuteScalar() ?? 0, CultureInfo.InvariantCulture);
         using var rows = LibraryCommand(c, t,
-            "SELECT id,position,payload,state FROM station_queue WHERE station_id=$station AND state IN ('Pending','Playing') ORDER BY position,id LIMIT 129",
+            "SELECT id,position,payload,state,library_reference,occurrence_id FROM station_queue WHERE station_id=$station AND state IN ('Pending','Playing') ORDER BY position,id LIMIT 129",
             ("$station", station));
         using var reader = rows.ExecuteReader(); var entries = new List<StationQueueEntry>();
         while (reader.Read())
         {
             if (entries.Count >= MaximumQueuedItems) throw new InvalidDataException("The saved queue exceeds its bounded capacity.");
             var item = JsonSerializer.Deserialize<MediaItem>(reader.GetString(2)) ?? throw new InvalidDataException("The saved queue item is empty.");
-            entries.Add(new(reader.GetString(0), station, reader.GetInt64(1), item, reader.GetString(3)));
+            var source = reader.IsDBNull(4) ? null : JsonSerializer.Deserialize<QueueLibraryReference>(reader.GetString(4));
+            entries.Add(new(reader.GetString(0), station, reader.GetInt64(1), item, reader.GetString(3), source,
+                reader.IsDBNull(5)?null:reader.GetString(5)));
         }
         return new(station, revision, entries.AsReadOnly());
     }

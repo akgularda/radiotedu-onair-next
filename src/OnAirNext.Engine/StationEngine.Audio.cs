@@ -44,6 +44,12 @@ public sealed partial class StationEngine
         var offset=0;var failedAssets=0;
         while(offset<target.Length&&_selection is not null)
         {
+            if (!_announced && _selection.QueueEntryId is not null && _planner?.ResolveQueueRecovery(_selection) is null)
+            {
+                PrepareBoundary("queue_deferred",_preparedSamples+offset/AudioFormat.BytesPerSampleFrame,
+                    "The queued source changed before its first programme sample. Its entry remains pending.");
+                await AdvanceAsync();continue;
+            }
             if(!_announced&&IsBranding(_selection)&&_branding?.Snapshot()?.ResolveRecovery(_selection.Item) is null)
             {
                 PrepareBoundary("skipped",_preparedSamples+offset/AudioFormat.BytesPerSampleFrame,"Automatic branding was disabled or the asset was withdrawn before its first sample.");
@@ -104,10 +110,11 @@ public sealed partial class StationEngine
 
     private PlayoutSelection? ChooseBranding(PlayoutSelection? ordinary,BrandingProgress progress)
     {
-        // Explicit queue entries and programmes retain their operator priority.
+        // Queued music follows the same completed-song cadence as rotation.
+        // Programmes and advertisements retain their explicit operator priority.
         // There must be ordinary music to return to; branding cannot keep an
         // empty or exhausted library on air by repeating station identifiers.
-        if(ordinary is null||ordinary.QueueEntryId is not null||ordinary.Item.Kind!=ContentKind.Music||ordinary.HoldsRotation)return ordinary;
+        if(ordinary is null||ordinary.Item.Kind!=ContentKind.Music||ordinary.HoldsRotation)return ordinary;
         var pool=_branding?.Snapshot();
         if(!ReferenceEquals(pool,_brandingPool)){_brandingPool=pool;_failedBrandingAssets.Clear();}
         var decision=pool?.DecideProjected(progress,_failedBrandingAssets);
@@ -172,6 +179,7 @@ public sealed partial class StationEngine
         {
             var readyNext=Make(desired,nextPrepared);var readySecond=Make(second,secondPrepared);var readyFallback=Make(fallback,fallbackPrepared);
             _nextSource=readyNext;_secondBrand=readySecond;_musicFallback=readyFallback;
+            PublishQueueReservations();
         }
         catch
         {

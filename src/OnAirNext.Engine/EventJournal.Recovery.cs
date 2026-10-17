@@ -4,6 +4,29 @@ namespace OnAirNext.Engine;
 
 public sealed partial class EventJournal
 {
+    public async Task<PlayoutCheckpoint> DeferUnavailableQueueRecoveryAsync(string station, string expectedOccurrence)
+    {
+        var result=await TransactionAsync((c,t) =>
+        {
+            using var read=LibraryCommand(c,t,"SELECT payload FROM playout_checkpoints WHERE station_id=$station",("$station",station));
+            var saved=read.ExecuteScalar() is string payload?JsonSerializer.Deserialize<PlayoutCheckpoint>(payload):null;
+            if (saved is not {QueueEntryId:not null,Item:not null} || saved.OccurrenceId!=expectedOccurrence ||
+                saved.State is not ("RestartPending" or "Stopped"))
+                throw new InvalidOperationException("The unfinished queued item changed. Recovery was not altered.");
+            var queue=ReadQueue(c,t,station);
+            if (queue.Entries.SingleOrDefault(e=>e.Id==saved.QueueEntryId) is not {State:"Pending"})
+                throw new InvalidDataException("The queued recovery ownership is inconsistent.");
+            if (saved.Announced)
+                WriteEvent(c,t,new PlaybackEvent(Guid.NewGuid().ToString("N"),saved.OccurrenceId,station,"recovery_deferred",
+                    saved.Item.Id,saved.Item.Artist,saved.Item.Title,saved.Item.Kind,saved.SavedAtUtc,saved.ProgramSamples,
+                    "The queued source is unavailable or changed. Its unfinished entry remains pending; other validated music may play.",
+                    saved.QueueEntryId,saved.PreviousOccurrenceId,"last_committed_checkpoint"));
+            var next=saved with {State="BetweenItems",Item=null,ItemSamples=0,Announced=false,QueueEntryId=null,HoldsRotation=false};
+            WriteCheckpoint(c,t,next); return next;
+        });
+        return result;
+    }
+
     public async Task RequireRecoveryReaderAsync(IReadOnlyCollection<string>? features)
     {
         if (features?.Contains(RecoveryCompatibility.StationQueueFeature, StringComparer.Ordinal) != true &&

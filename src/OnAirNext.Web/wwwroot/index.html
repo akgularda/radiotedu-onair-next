@@ -6,7 +6,7 @@
   <link rel="stylesheet" href="/studio.css">
   <link rel="stylesheet" href="/branding.css">
   <link rel="stylesheet" href="/private-cue.css">
-  <script src="/programme-meter.js" defer></script><script src="/branding.js" defer></script><script src="/private-cue.js" defer></script><script src="/studio.js" defer></script>
+  <script src="/programme-meter.js" defer></script><script src="/branding.js" defer></script><script src="/private-cue.js" defer></script><script src="/queue.js" defer></script><script src="/studio.js" defer></script>
 </head>
 <body>
 <svg class="sprite" aria-hidden="true"><defs>
@@ -63,9 +63,9 @@
       <div class="playback-timeline"><div class="track-progress" role="progressbar" aria-label="Item progress" aria-valuenow="0"><span id="progress-fill"></span></div><div class="time-labels"><span id="elapsed">--:--</span><span id="duration-label">Duration unavailable</span><span id="remaining">--:--</span></div></div>
       <div class="transport"><div class="transport-left"><button class="button primary" id="start-station" disabled><svg><use href="#i-play"/></svg>Start station</button><button class="button stop-outline" id="stop-station" disabled><svg><use href="#i-stop"/></svg>Stop</button><button class="button" id="skip-item" disabled><svg><use href="#i-skip"/></svg>Next item</button><button class="icon-button" aria-label="Private audition" disabled title="Private audition is not implemented yet"><svg><use href="#i-headphones"/></svg></button></div><span class="transport-note" id="transport-note">Controls unavailable</span></div>
      </section>
-     <section class="panel running-order"><div class="panel-heading"><div class="heading-with-count"><h2>NEXT UP</h2><span class="number-badge" id="queue-count">—</span></div><button class="text-button" data-page="library"><svg><use href="#i-plus"/></svg>Browse music</button></div>
-      <div class="table-scroll"><table><thead><tr><th class="row-number">#</th><th>ITEM</th><th>TYPE</th><th class="align-right">DURATION</th></tr></thead><tbody id="queue-rows"><tr><td colspan="4" class="table-empty"><svg><use href="#i-library"/></svg><strong>Your running order will appear here</strong><span>Connect the engine to view this channel’s queued items.</span><button class="button subtle" data-page="system">Connect engine<svg><use href="#i-chevron"/></svg></button></td></tr></tbody></table></div>
-      <div class="table-bottom"><span>Prepared item</span><span id="queue-footer">Not loaded</span></div>
+     <section class="panel running-order" aria-label="Upcoming programme"><div class="panel-heading"><div class="heading-with-count"><h2>NEXT UP</h2><span class="number-badge" id="queue-count">—</span></div><div class="asset-actions"><button class="text-button" id="queue-refresh" disabled>Refresh queue</button><button class="text-button" data-page="library"><svg><use href="#i-plus"/></svg>Browse music</button></div></div>
+      <div class="table-scroll"><table><thead><tr><th class="row-number">#</th><th>ITEM</th><th>TYPE</th><th class="align-right">DURATION</th><th>ACTIONS</th></tr></thead><tbody id="queue-rows"><tr><td colspan="5" class="table-empty"><svg><use href="#i-library"/></svg><strong>Your running order will appear here</strong><span>Connect the engine to view this channel’s queued items.</span><button class="button subtle" data-page="system">Connect engine<svg><use href="#i-chevron"/></svg></button></td></tr></tbody></table></div>
+      <div class="table-bottom"><span>Saved queue</span><span id="queue-footer" role="status">Not loaded</span></div>
      </section>
     </div>
     <aside class="channel-inspector" id="channel-inspector">

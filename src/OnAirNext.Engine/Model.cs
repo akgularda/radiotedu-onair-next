@@ -71,13 +71,17 @@ public sealed record PlaybackEvent(string EventId, string OccurrenceId, string S
     string Artist, string Title, ContentKind Kind, DateTimeOffset AtUtc, long SamplePosition, string Detail = "", string? QueueEntryId = null, string? PreviousOccurrenceId = null, string TimingQuality = "sample_clock",
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] SourceGain? SourceGain = null);
 public sealed record PlayoutSelection(MediaItem Item, string? QueueEntryId = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool HoldsRotation = false)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool HoldsRotation = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? PreviousOccurrenceId = null)
 {
     [JsonIgnore] public bool AdvancesRotation => QueueEntryId is null && !HoldsRotation;
 }
 public interface IPlayoutPlanner
 {
     int? AvailableItems => null;
+    void RetainQueueReservations(IReadOnlySet<string> entries) { }
+    void ReleaseQueueReservations() { }
+    PlayoutSelection? ResolveQueueRecovery(PlayoutSelection selection) => selection;
     PlayoutSelection Select(int rotationIndex, string? excludeQueueEntryId = null);
     PlayoutSelection? SelectPrepared(int rotationIndex,IReadOnlySet<string> excludedQueueEntries)
     {
@@ -97,7 +101,9 @@ public sealed record StationSnapshot(string Id, string State, long Samples, long
     string? CurrentAssetId = null, long CurrentItemSamples = 0, bool Recovered = false,
     bool Enabled = true, bool RequestedRunning = true, string? LastError = null, DateTimeOffset? RetryAtUtc = null,
     string? CurrentArtist = null, double? CurrentDurationSeconds = null, PlayoutItemSnapshot? NextItem = null,
-    ProgrammeLoudnessSnapshot? Loudness = null, SourceGain? SourceGain = null, LimiterSnapshot? Limiter = null, int PendingAuditCommits = 0);
+    ProgrammeLoudnessSnapshot? Loudness = null, SourceGain? SourceGain = null, LimiterSnapshot? Limiter = null, int PendingAuditCommits = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? CurrentQueueEntryId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? NextQueueEntryId = null);
 
 public interface IStationSession : IAsyncDisposable
 {

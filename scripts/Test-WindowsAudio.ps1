@@ -36,7 +36,7 @@ try {
     $audioDotnet = (Get-Command dotnet.exe -ErrorAction Stop).Source
     $audioLab = Join-Path $BuildRoot 'OnAirNext.Lab\release\OnAirNext.Lab.dll'
     if (-not (Test-Path -LiteralPath $audioLab)) { throw 'The compiled audio lab is missing.' }
-    $audioScenarios = @('baseline','precision','normalization','processing','roster18','live','recovery','finite','backpressure','corrupt')
+    $audioScenarios = @('baseline','precision','normalization','processing','roster18','queue','live','recovery','finite','backpressure','corrupt')
     foreach ($audioScenario in $audioScenarios) {
         $audioLog = Join-Path $audioEvidence ($audioScenario + '.log')
         $audioOutput = @(& (Join-Path $PSScriptRoot 'Test-Engine.ps1') -PreparedCiBuild -Scenario $audioScenario -DurationSeconds 12 -FfmpegRuntime $audioFfmpeg -IcecastRuntime $audioIcecast 2>&1)
@@ -56,7 +56,7 @@ try {
         }
         Write-Output "$audioScenario passed with $(@($audioResult.Results[0].Checks).Count) real checks."
     }
-    $audioSummary.HeAacTested = @($audioSummary.Cases | Where-Object { $_.HeAacTested -eq $true }).Count -eq 1
+    $audioSummary.HeAacTested = @($audioSummary.Cases | Where-Object { $_.HeAacTested -eq $true }).Count -eq 2
     if (-not $audioSummary.HeAacTested) { throw 'The real 18-output HE-AAC roster did not qualify.' }
     $audioSummary.Completed = $audioSummary.Cases.Count -eq $audioScenarios.Count
     if (-not $audioSummary.Completed) { throw "Not every requested audio scenario completed." }

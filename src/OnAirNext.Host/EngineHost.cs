@@ -54,8 +54,9 @@ internal static class EngineHost
         var libraryInventories=brandingStations.Concat(brandingKinds.Keys).ToArray();
         await using var library = new StationLibrary(journal, config.Ffmpeg, config.DataRoot, libraryInventories,contentKinds:brandingKinds);
         using var branding = new StationBranding(journal,library,brandingStations);
+        using var queues = new StationQueues(journal,library,brandingStations);
         await using var coordinator = new StationCoordinator(config.Ffmpeg, config.Stations, journal,
-            settings => new StationEngine(config.Ffmpeg, settings, journal, planner: library.Planner(settings),
+            settings => new StationEngine(config.Ffmpeg, settings, journal, planner: queues.Planner(settings),
                 branding:settings.Repeat?branding.Source(settings.Id):null));
         await using var sourceChecks = new SourceAccessChecks(async path =>
         {
@@ -72,13 +73,14 @@ internal static class EngineHost
             return result;
         });
         library.Changed += coordinator.RefreshLibrary;
+        queues.Changed += coordinator.RefreshLibrary;
         try
         {
             if (serviceMode) WindowsServiceDiagnostics.Stage("library initialization");
             await branding.InitializeAsync();
             await library.InitializeAsync();
             if (serviceMode) WindowsServiceDiagnostics.Stage("coordinator initialization");
-            await coordinator.InitializeAsync();
+            await coordinator.InitializeAsync(queues.InitializeAsync);
             var inbox = new UploadInbox(journal, library);
             await inbox.InitializeAsync();
             await using var fileServer = new UploadPipeServer(config.PipeName, serviceMode, servicePolicy, inbox, stop.Token);
@@ -122,8 +124,17 @@ internal static class EngineHost
                                 await journal.RequireRecoveryReaderAsync(request.JournalFeatures);
                                 result = JsonSerializer.Serialize(new { stations = coordinator.Snapshot(),
                                     audit = new { journal.PendingEvents, journal.RejectedEvents, journal.Error },
-                                    children = ChildProcess.ActiveProcesses, privateCue=privateCue.Snapshot(), controller = new { mode = serviceMode ? "windows-service" : "developer", service = serviceMode ? ServiceEndpoint.Name : null, capabilities = new[] { "legacy-music-assignment-v1", RecoveryCompatibility.HeldRotationFeature, "branding-library-v1","private-cue-v1" } } });
+                                    children = ChildProcess.ActiveProcesses, privateCue=privateCue.Snapshot(), controller = new { mode = serviceMode ? "windows-service" : "developer", service = serviceMode ? ServiceEndpoint.Name : null, capabilities = new[] { "legacy-music-assignment-v1", RecoveryCompatibility.HeldRotationFeature, "branding-library-v1","private-cue-v1",RecoveryCompatibility.StationQueueFeature } } });
                                 break;
+                            case "queue-status" when request.StationId is { } queueStation:
+                                result=JsonSerializer.Serialize(new{queue=await queues.SnapshotAsync(queueStation)});break;
+                            case "queue-append" when request.StationId is { } appendStation && request.QueueSource is { } queueSource:
+                                await queues.EnqueueAsync(appendStation,queueSource,request.QueueRevision,request.Id);
+                                result=JsonSerializer.Serialize(new{accepted=true,queue=await queues.SnapshotAsync(appendStation)});break;
+                            case "queue-up" or "queue-down" or "queue-remove" when request.StationId is { } editQueueStation && request.QueueEntryId is { } queueEntry:
+                                var queueEdit=request.Action=="queue-up"?QueueEdit.MoveUp:request.Action=="queue-down"?QueueEdit.MoveDown:QueueEdit.Remove;
+                                await queues.EditAsync(editQueueStation,queueEntry,request.QueueRevision,queueEdit,request.Id);
+                                result=JsonSerializer.Serialize(new{accepted=true,queue=await queues.SnapshotAsync(editQueueStation)});break;
                             case "private-cue-status":result=JsonSerializer.Serialize(new{cue=privateCue.Snapshot()});break;
                             case "private-cue-stop" when request.SessionId is { } cueSession:
                                 privateCue.RequestStop(cueSession);result=JsonSerializer.Serialize(new{accepted=true,cue=privateCue.Snapshot()});break;
@@ -253,7 +264,7 @@ internal static class EngineHost
                 }
             }
         }
-        finally { stopping(); library.Changed -= coordinator.RefreshLibrary; await stop.CancelAsync(); }
+        finally { stopping(); library.Changed -= coordinator.RefreshLibrary; queues.Changed -= coordinator.RefreshLibrary; await stop.CancelAsync(); }
         return 0;
 
     }
@@ -262,4 +273,5 @@ internal static class EngineHost
 internal sealed record HostSettings(string Ffmpeg, string DataRoot, string PipeName, List<StationSettings> Stations, string? OperatorSid = null);
 internal sealed record EngineCommand(string Id, string Action, string? StationId, string? Path = null,
     string[]? Paths = null, string? Query = null, int Offset = 0, string? AssetId = null,string? SessionId=null,
-    long Revision = 0, long ExpectedVersion = 0, string? Artist = null, string? Title = null, string? SourceCheckId = null, string? ReportPeriod = null, string? ReportSelection = null, string? ReportId = null, string? PreviewId = null, LegacyStationMapping[]? Mappings = null, int? MappingRevision = null, string[]? JournalFeatures = null, BrandingRules? BrandingRules = null);
+    long Revision = 0, long ExpectedVersion = 0, string? Artist = null, string? Title = null, string? SourceCheckId = null, string? ReportPeriod = null, string? ReportSelection = null, string? ReportId = null, string? PreviewId = null, LegacyStationMapping[]? Mappings = null, int? MappingRevision = null, string[]? JournalFeatures = null, BrandingRules? BrandingRules = null,
+    QueueLibraryReference? QueueSource = null,long QueueRevision = 0,string? QueueEntryId = null);

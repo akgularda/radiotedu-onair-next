@@ -5,12 +5,14 @@
   const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null,folderTarget:null,folderSource:null,editTarget:null,assetStateTarget:null,controller:null,consoleClosed:false,upload:null,uploadSelection:null};
   const migration={engine:null,preview:null,loading:false,busy:false,key:null,selects:new Map(),pending:null,submissionError:null};
   let brandingUI=null,cueUI=null;
+  const queueState={engine:null,station:null,snapshot:null,receivedAt:0,loading:false,lastAttempt:0,error:null,key:null};
+  const queueButtons=new WeakMap();
   let setupFolderTarget='setup-runtime';
   try{const request=JSON.parse(localStorage.getItem('studio-migration-request')??'null');if(request&&typeof request.engine==='string'&&/^[a-f0-9]{32}$/.test(request.id??'')&&typeof request.legacyRoot==='string')migration.pending=request;}catch{}
 
   try { const saved=JSON.parse(localStorage.getItem('studio-pending-commands')??'[]');if(Array.isArray(saved))state.pending=saved.filter(p=>typeof p.engine==='string'&&p.request?.Id&&p.request?.StationId).slice(0,32); } catch { }
   const pending = () => state.pending.find(p=>p.engine===state.engine&&p.request.StationId===state.station);
-  const savePending = () => {try{localStorage.setItem('studio-pending-commands',JSON.stringify(state.pending));}catch{}};
+  const savePending = () => {try{return RadioTeduQueue.persistPending(localStorage,state.pending);}catch{return false;}};
   let bootstrap='';
   try{
     const supplied=new URLSearchParams(location.hash.slice(1)).get('access');
@@ -43,7 +45,7 @@
     const stations=state.stations.length?state.stations.map(s=>({id:s.Id,name:roster.find(r=>r.id===s.Id)?.name??s.Id})):roster;
     $('stations').replaceChildren(...stations.map(station=>{const button=element('button','station-tab');button.role='tab';button.setAttribute('aria-selected',String(station.id===state.station));button.setAttribute('aria-label',station.name+' channel');button.append(element('span','dot'),document.createTextNode(station.name));button.addEventListener('click',()=>selectStation(station.id));return button;}));
   }
-  function selectStation(id){state.station=id;state.library=null;state.offset=0;stationTabs();renderStatus();resetLibrary();if(state.page==='library')void loadLibrary();}
+  function selectStation(id){state.station=id;state.library=null;state.offset=0;queueState.snapshot=null;queueState.error=null;queueState.key=null;queueState.lastAttempt=0;stationTabs();renderStatus();resetLibrary();if(state.page==='library')void loadLibrary();void loadQueue(true);}
   function navigate(page){if(!names[page])return;state.page=page;document.querySelectorAll('[data-view]').forEach(section=>section.hidden=section.dataset.view!==page);document.querySelectorAll('.nav-item[data-page]').forEach(button=>{button.classList.toggle('selected',button.dataset.page===page);button.setAttribute('aria-current',button.dataset.page===page?'page':'false');});text('breadcrumb',names[page]);if(page==='library')void loadLibrary();if(page==='system'){void loadSetup();void loadAppUpdates();void loadAudioTools();}if(page==='reports')void loadReports();brandingUI?.update();}
   document.querySelectorAll('[data-page]:not(:disabled)').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();navigate(button.dataset.page);}));
   document.addEventListener('keydown',event=>{if(event.altKey && (event.key==='1'||event.key==='2')){event.preventDefault();navigate(event.key==='1'?'air':'library');}});
@@ -76,9 +78,7 @@
     progress.setAttribute('aria-valuenow',String(Math.round(percent)));$('progress-fill').style.width=percent+'%';
     text('remaining',knownDuration?'−'+duration(Math.max(0,seconds-elapsed)):'');
     text('duration-label',knownDuration?duration(seconds):connected?'Elapsed programme time · duration unavailable':'Duration unavailable');
-    const next=connected?station?.NextItem:null;
-    if(next){const row=element('tr');const title=element('td');title.append(element('span','asset-title',next.Title),element('span','asset-artist',next.Artist||'Unknown artist'));row.append(element('td','row-number','1'),title,element('td','',next.Kind),element('td','align-right',duration(next.DurationSeconds)));$('queue-rows').replaceChildren(row);text('queue-count','1');text('queue-footer','Prepared by the engine · order may change');}
-    else{stableEmpty('queue-rows',String(connected),()=>{const cell=element('td','table-empty');cell.colSpan=4;cell.append(icon('library'),element('strong','',connected?'No next item prepared':'Next item will appear here'),element('span','',connected?'Add music to the library. The engine will prepare the next item.':'Connect the engine to view channel status.'));if(!connected){const connect=element('button','button subtle','Connect engine');connect.addEventListener('click',()=>navigate('system'));cell.append(connect);}const row=element('tr');row.append(cell);return row;});text('queue-count','—');text('queue-footer',connected?'Waiting for a prepared item':'Not loaded');}
+    renderQueue();
     $('skip-item').disabled=!connected||state.busy||!!pending()||station?.State!=='Running'||!station?.CurrentTitle;
     text('transport-note',connected?(station?.Outputs?.length?'Selected station only':'Configure outputs before starting'):'Controls unavailable');
     const outputs=connected?(station?.Outputs??[]):[];text('output-count',connected?String(outputs.length):'—');
@@ -100,7 +100,64 @@
     $('library-next').disabled=!fresh()||state.library?.page?.Items?.length!==50;
     document.querySelectorAll('.transfer-action').forEach(button=>button.disabled=!enabled);document.querySelectorAll('.asset-action').forEach(button=>button.disabled=!enabled);
     assetDialogControls();folderControls();cueUI?.update();
+    updateQueueButtons();
   }
+  function queueContext(){const station=current();return {engine:state.engine,station:state.station,libraryRevision:state.library?.page?.Root?.Revision,
+    fresh:fresh(),supported:state.controller?.capabilities?.includes('station-queue-v1')===true,busy:state.busy,pending:!!pending(),
+    running:station?.State==='Running',currentId:station?.CurrentQueueEntryId,nextId:station?.NextQueueEntryId,next:station?.NextItem};}
+  function queueSnapshot(){return queueState.engine===state.engine&&queueState.station===state.station&&!queueState.error&&Date.now()-queueState.receivedAt<6000?queueState.snapshot:null;}
+  function acceptQueue(snapshot,engine=state.engine,station=state.station){
+    if(engine!==state.engine||station!==state.station||snapshot?.StationId!==station)return;
+    queueState.engine=engine;queueState.station=station;queueState.snapshot=snapshot;queueState.receivedAt=Date.now();queueState.error=null;
+  }
+  async function loadQueue(force=false){
+    const context=queueContext();if(queueState.loading||!context.fresh||!context.supported||state.consoleClosed||
+      !force&&(state.page!=='air'&&state.page!=='library'||Date.now()-queueState.lastAttempt<1500))return;
+    const engine=state.engine,station=state.station;queueState.loading=true;queueState.lastAttempt=Date.now();
+    try{const result=await api('/api/queue?'+new URLSearchParams({engine,station}));
+      if(engine!==state.engine||station!==state.station)return;
+      if(!result.queue||result.queue.StationId!==station)throw Error(result.error??'The channel queue is unavailable.');
+      acceptQueue(result.queue,engine,station);
+    }catch(error){if(engine===state.engine&&station===state.station)queueState.error=error.message;}
+    finally{queueState.loading=false;renderQueue();}
+  }
+  function renderQueue(){
+    const context=queueContext(),model=RadioTeduQueue.view(queueSnapshot(),context);
+    $('queue-refresh').disabled=!context.fresh||!context.supported||queueState.loading;
+    text('queue-count',model.count===null?'—':String(model.count));text('queue-footer',queueState.error&&context.supported?'Queue unavailable: '+queueState.error:model.note);
+    const key=JSON.stringify({engine:context.engine,station:context.station,model});
+    if(queueState.key!==key){queueState.key=key;
+      const rows=model.items.map((item,index)=>{
+        const row=element('tr'),title=element('td');title.append(element('span','asset-title',item.Title),element('span','asset-artist',item.Artist||'Unknown artist'),element('small','quiet',item.status));
+        const actions=element('td'),group=element('div','asset-actions');
+        if(item.Id)for(const[label,action,enabled]of [['Up','queue-up',item.up],['Down','queue-down',item.down],['Remove','queue-remove',item.remove]]){
+          const button=element('button','button',label);button.disabled=!enabled;button.setAttribute('aria-label',label+' queued item: '+item.Title);
+          button.addEventListener('click',()=>void command(action,{QueueEntryId:item.Id,QueueRevision:model.revision}));group.append(button);
+        }
+        actions.append(group);row.append(element('td','row-number',String(index+1)),title,element('td','',item.Kind),element('td','align-right mono',duration(item.DurationSeconds)),actions);return row;
+      });
+      if(rows.length)$('queue-rows').replaceChildren(...rows);
+      else{const row=element('tr'),cell=element('td','table-empty');cell.colSpan=5;
+        cell.append(icon('library'),element('strong','',model.valid?'No queued items':'Next item will appear here'),element('span','',model.valid?'Use Add to queue in Library. Automatic rotation continues from the live folder.':model.note));
+        if(!context.fresh){const connect=element('button','button subtle','Connect engine');connect.addEventListener('click',()=>navigate('system'));cell.append(connect);}
+        row.append(cell);$('queue-rows').replaceChildren(row);}
+    }
+    updateQueueButtons();
+  }
+  function updateQueueButtons(){
+    const context=queueContext(),model=RadioTeduQueue.view(queueSnapshot(),context);
+    document.querySelectorAll('.queue-add').forEach(button=>{const source=queueButtons.get(button);button.hidden=!context.supported;
+      button.disabled=!model.enabled||!source?.ready||source.engine!==context.engine||source.station!==context.station||source.revision!==context.libraryRevision||model.count>=128;});
+  }
+  function queueButton(asset,root,engine,station){
+    const button=element('button','button queue-add','Add to queue');button.setAttribute('aria-label','Add to queue: '+asset.Title);
+    const source={engine,station,revision:root?.Revision,assetId:asset.Id,version:asset.EditVersion??0,stamp:asset.SourceStamp,ready:asset.State==='Ready'};
+    queueButtons.set(button,source);button.addEventListener('click',()=>{
+      try{const payload=RadioTeduQueue.appendPayload(source,queueSnapshot(),queueContext());void command('queue-append',payload);}
+      catch(error){message(error.message);}
+    });return button;
+  }
+  $('queue-refresh').addEventListener('click',()=>void loadQueue(true));
   function renderProgrammeMeter(){
     const station=current(),connected=fresh(),offered=station?.Loudness;
     const cached=state.meter?.engine===state.engine&&state.meter?.station===state.station?state.meter.snapshot:null;
@@ -152,15 +209,19 @@
     if(state.polling||!state.engine||document.hidden)return;state.polling=true;const engine=state.engine;
     try{const result=await api('/api/status?engine='+encodeURIComponent(engine));if(engine!==state.engine)return;const previous=state.stations.map(s=>s.Id).join(',');state.stations=result.stations??[];state.controller=result.controller??null;state.sampleAt=Date.now();if(!state.stations.some(s=>s.Id===state.station)&&state.stations.length)state.station=state.stations[0].Id;if(previous!==state.stations.map(s=>s.Id).join(','))stationTabs();text('audit-pending',String(result.audit?.PendingEvents??'—'));text('audit-rejected',String(result.audit?.RejectedEvents??'—'));text('audit-error',result.audit?.Error??'None reported');}
     catch(error){message('Status unavailable: '+error.message);state.sampleAt=0;}
-    finally{state.polling=false;renderStatus();if(state.page==='reports')void loadReports();if(state.page==='system')void loadMigration();}
+    finally{state.polling=false;renderStatus();void loadQueue();if(state.page==='reports')void loadReports();if(state.page==='system')void loadMigration();}
   }
   async function command(action,payload={},retry=null){
     if(!fresh()||state.busy||(!retry&&pending()))return null;
     const selected=state.station,engine=state.engine;const envelope=retry??{engine,request:{Id:crypto.randomUUID(),Action:action,StationId:selected,...payload}};
     if(envelope.engine!==engine||envelope.request.StationId!==selected)return null;
-    if(!state.pending.some(p=>p.request.Id===envelope.request.Id))state.pending.push(envelope);savePending();state.busy=true;renderStatus();
+    const known=state.pending.some(p=>p.request.Id===envelope.request.Id);
+    if(!known&&state.pending.length>=32){message('Resolve saved command reminders before starting another command.');return null;}
+    if(!known)state.pending.push(envelope);
+    if(!savePending()){if(!known)state.pending=state.pending.filter(p=>p.request.Id!==envelope.request.Id);message('The browser could not preserve this request for retry. No command was sent.');renderStatus();return null;}
+    state.busy=true;renderStatus();
     try{let result;for(let attempt=0;attempt<2;attempt++){try{result=await api('/api/command',{method:'POST',body:envelope});break;}catch(error){if(error.status&&error.status<500){state.pending=state.pending.filter(p=>p.request.Id!==envelope.request.Id);savePending();throw error;}if(attempt===1)throw error;}}
-      state.pending=state.pending.filter(p=>p.request.Id!==envelope.request.Id);savePending();if(result?.accepted!==true)throw new Error(result?.error??'Command not accepted');message('Accepted for '+stationName(selected)+'. Reading back saved state…');await poll();if(selected===state.station)await loadLibrary();return result;}
+      state.pending=state.pending.filter(p=>p.request.Id!==envelope.request.Id);savePending();if(result?.accepted!==true)throw new Error(result?.error??'Command not accepted');if(result.queue)acceptQueue(result.queue,engine,selected);message('Accepted for '+stationName(selected)+'. Reading back saved state…');await poll();if(selected===state.station)await loadLibrary();return result;}
     catch(error){message((pending()?'Acknowledgement unavailable. Retry the same request. ':'Command rejected. ')+error.message);return null;}
     finally{state.busy=false;renderStatus();}
   }
@@ -248,7 +309,7 @@
     if(!fresh())return;const engine=state.engine,station=state.station,query=state.query,offset=state.offset;
     try{const result=await api('/api/library?'+new URLSearchParams({engine,station,query,offset:String(offset)}));if(engine!==state.engine||station!==state.station||query!==state.query||offset!==state.offset)return;if(result.accepted===false||!result.page)throw new Error(result.error??'Library response is unavailable.');state.library=result;const page=result.page,root=page.Root;renderLegacyMusicReceipt(page);text('folder-name',root?'Live music folder':'No folder assigned');text('folder-path',root?.Path??'Add files to create a managed folder, or choose an existing live folder.');$('folder-path').title=root?.Path??'';text('folder-state',result.worker?.State??'Unknown');text('library-count',`${page.Ready??0} validated · ${page.Retired??0} removed · ${page.Total??0} indexed`);text('library-page',page.Items?.length?`${offset+1}–${offset+page.Items.length}`:'0');$('managed-folder').hidden=result.canImportFiles||!root;
       const rows=(page.Items??[]).map(asset=>{const row=element('tr');row.title=asset.Error??'';const item=element('td');item.append(icon('music'));const title=element('td');title.append(element('span','asset-title',asset.Title),element('span','asset-artist',asset.Artist||'Unknown artist'));const file=element('td','quiet',asset.RelativePath);file.title=asset.RelativePath;const status=element('td');status.append(element('span','asset-state '+asset.State.toLowerCase(),asset.State));if(asset.AnalysisRequested)status.append(element('small','asset-analysis','Analysis queued'));else if(asset.State==='Ready')status.append(element('small','asset-analysis',RadioTeduMeter.sourceGain(asset.Normalization).text));const actions=element('td');const group=element('div','asset-actions');const edit=element('button','button asset-action','Edit');edit.setAttribute('aria-label','Edit metadata for '+asset.Title);edit.addEventListener('click',()=>openAssetEditor(asset));const toggle=element('button','button asset-action',asset.State==='Retired'?'Restore':'Remove');toggle.setAttribute('aria-label',(asset.State==='Retired'?'Restore ':'Remove from rotation: ')+asset.Title);toggle.addEventListener('click',()=>openAssetState(asset));group.append(edit,toggle);actions.append(group);row.append(item,title,file,status,element('td','align-right mono',duration(asset.Seconds)),actions);return row;});if(rows.length)$('library-rows').replaceChildren(...rows);else stableEmpty('library-rows',String(fresh()),emptyLibrary);text('library-progress',[result.worker?.State,result.worker?.Error,page.Import?`Latest import: ${page.Import.State}`:null,page.Import?.Error].filter(Boolean).join(' · '));renderUploads();libraryControls();
-      if(cueUI)rows.forEach((row,index)=>{const asset=page.Items[index];row.querySelector('.asset-actions').prepend(cueUI.button({engine,station,revision:root?.Revision,assetId:asset.Id,version:asset.EditVersion,stamp:asset.SourceStamp,title:asset.Title,artist:asset.Artist,seconds:asset.Seconds,label:stationName(station)+' · Music',ready:asset.State==='Ready'&&!!root&&Number.isFinite(asset.Seconds)&&asset.Seconds>0}));});cueUI?.update();
+      rows.forEach((row,index)=>{const asset=page.Items[index],actions=row.querySelector('.asset-actions');actions.prepend(queueButton(asset,root,engine,station));if(cueUI)actions.prepend(cueUI.button({engine,station,revision:root?.Revision,assetId:asset.Id,version:asset.EditVersion,stamp:asset.SourceStamp,title:asset.Title,artist:asset.Artist,seconds:asset.Seconds,label:stationName(station)+' · Music',ready:asset.State==='Ready'&&!!root&&Number.isFinite(asset.Seconds)&&asset.Seconds>0}));});cueUI?.update();updateQueueButtons();void loadQueue();
     }catch(error){if(engine!==state.engine||station!==state.station||query!==state.query||offset!==state.offset)return;state.library=null;$('legacy-music-receipt').hidden=true;text('library-progress','Library unavailable: '+error.message);libraryControls();}
   }
   let searchTimer; $('library-search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{state.query=$('library-search').value.trim();state.offset=0;void loadLibrary();},250);});

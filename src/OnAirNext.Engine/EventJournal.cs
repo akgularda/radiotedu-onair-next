@@ -105,7 +105,7 @@ public sealed partial class EventJournal : IAsyncDisposable
                 CREATE INDEX IF NOT EXISTS report_exports_requested ON report_exports(requested_utc DESC,id);
                 CREATE TABLE IF NOT EXISTS station_queue_state(station_id TEXT PRIMARY KEY,revision INTEGER NOT NULL);
                 CREATE TABLE IF NOT EXISTS station_queue(id TEXT PRIMARY KEY,station_id TEXT NOT NULL,
-                  position INTEGER NOT NULL,payload TEXT NOT NULL,state TEXT NOT NULL,occurrence_id TEXT);
+                  position INTEGER NOT NULL,payload TEXT NOT NULL,state TEXT NOT NULL,occurrence_id TEXT,library_reference TEXT);
                 CREATE INDEX IF NOT EXISTS station_queue_active ON station_queue(station_id,state,position,id);
                 CREATE INDEX IF NOT EXISTS station_queue_order ON station_queue(station_id,position);
                 """;
@@ -139,6 +139,16 @@ public sealed partial class EventJournal : IAsyncDisposable
                 }
             }
             InitializeBrandingOrdinals(_connection);
+            using (var queueColumns = _connection.CreateCommand())
+            {
+                queueColumns.CommandText = "SELECT COUNT(*) FROM pragma_table_info('station_queue') WHERE name='library_reference'";
+                if (Convert.ToInt32(queueColumns.ExecuteScalar(), CultureInfo.InvariantCulture) == 0)
+                {
+                    using var migrateQueue = _connection.CreateCommand();
+                    migrateQueue.CommandText = "ALTER TABLE station_queue ADD COLUMN library_reference TEXT";
+                    migrateQueue.ExecuteNonQuery();
+                }
+            }
             _writer = Task.Factory.StartNew(WriteLoop, CancellationToken.None,
                 TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
