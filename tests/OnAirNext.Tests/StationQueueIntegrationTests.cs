@@ -76,7 +76,7 @@ public sealed class StationQueueIntegrationTests
     public async Task StaleLibrarySelectionCannotCreateAQueueEntryOrKeepACommandReceipt()
     {
         await using var f=await Fixture.Create();var source=f.Source();var id=Guid.NewGuid().ToString("N");
-        await f.Library.EditAssetAsync("a",source.Revision,source.AssetId,source.ExpectedVersion,LibraryEditKind.Metadata,"edit",title:"Corrected title");
+        await f.Library.EditAssetAsync("a",source.Revision,source.AssetId,source.ExpectedVersion,LibraryEditKind.Metadata,"edit",artist:"Fixture",title:"Corrected title");
         await Assert.ThrowsAsync<InvalidOperationException>(()=>f.Queues.EnqueueAsync("a",source,0,id));
         await f.Queues.EnqueueAsync("a",f.Source(),0,id);
         Assert.Equal("Corrected title",Assert.Single((await f.Queues.SnapshotAsync("a")).Items).Title);
