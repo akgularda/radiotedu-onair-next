@@ -152,7 +152,9 @@ internal sealed class RuntimeSupplementCoordinator:IAsyncDisposable
             if(File.Exists(path))await SetupPaths.ReadVerifiedAsync<RuntimeSupplementPlan>(path,RuntimeSupplementInventory.HashPlan(plan),_stop.Token);else await SaveAsync(path,bytes,false,_stop.Token);
             var start=new ProcessStartInfo(_helper){UseShellExecute=true,Verb="runas",WindowStyle=ProcessWindowStyle.Hidden,WorkingDirectory=_package};
             foreach(var arg in new[]{"--complete-audio-tools",path,RuntimeSupplementInventory.HashPlan(plan)})start.ArgumentList.Add(arg);
-            SetupPaths.RequireNoLinks(_helper);using var process=Process.Start(start)??throw new IOException("Windows audio tools completion did not start.");await process.WaitForExitAsync(_stop.Token);
+            SetupPaths.RequireNoLinks(_helper);using var process=Process.Start(start)??throw new IOException("Windows audio tools completion did not start.");
+            lock(_gate){_phase="Adding reviewed files";_detail="Windows started the approved helper. It is verifying and adding the reviewed missing files; wait for its protected completion receipt. Existing codec binaries and broadcasting services are retained.";}
+            await process.WaitForExitAsync(_stop.Token);
             lock(_gate){_phase=process.ExitCode==0?"Complete":"Needs attention";_detail=process.ExitCode==0?"Read the protected completion receipt. The service was not restarted and original codec files were retained.":"Read the saved receipt and retry this same reviewed operation. Keep its original provider folder.";}
         }
         catch(Win32Exception error)when(error.NativeErrorCode==1223){lock(_gate){_phase="Approval cancelled";_detail="Windows approval was cancelled. The saved review is retained.";}}
