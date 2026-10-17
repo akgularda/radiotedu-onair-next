@@ -51,6 +51,8 @@ A bounded stereo 48 kHz BS.1770-5/EBU-mode measurement core has scoped synthetic
 
 ## Evidence and release limits
 
+A new [queue process-crash scenario](docs/QUEUE_CRASH_QUALIFICATION.md) is under qualification. It runs real host kills and an intentional SQLite writer stall across decoded EOF, with three independently decoded codec profiles. Prior source results do not establish this scenario passed. No operational update or migration on the broadcasting PC is implied.
+
 Exact source 10862c903e4154596878fb03fa638cd995073500 compiled in Windows CI and passed **123/123 unit cases**, plus all 35 real Windows-service lifecycle/source/file-transfer checks (run 38814727175). Digest-verified [file-transfer evidence](artifacts/evidence/file-transfer-123-20261016.json) covers cross-account byte integrity, retained-file retry, a stalled transfer alongside responsive station controls, anonymous-client rejection, unchanged source ACLs and cleanup preserving original files. See the [file-transfer workflow](docs/LIBRARY_FILE_TRANSFERS.md). These are disposable-runner software checks; target-PC setup, connected mouse workflows and audio commissioning remain incomplete. The earlier 107-case source-access evidence is retained in the [delivery ledger](docs/BROADCAST_PC_DELIVERY_LEDGER.md).
 
 A protected local build was stopped after an existing Classic transport-health flag changed. No legacy PID/generation changed, the guardian verified zero remaining test processes, and later snapshots recovered. That observation is not proof of a listener outage or its cause. Remote builds reduce load on the broadcasting PC.

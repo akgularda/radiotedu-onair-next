@@ -19,11 +19,16 @@ internal sealed class ControlHost : IAsyncDisposable
         _stdout = Process.StandardOutput.ReadToEndAsync(); _stderr = ChildProcess.DrainErrorAsync(Process);
     }
 
-    internal async Task<JsonDocument> CommandAsync(string action, string? station = null, string? id = null, CancellationToken token = default)
+    internal Task<JsonDocument> CommandAsync(string action, string? station = null, string? id = null, CancellationToken token = default)
+        => RequestAsync(new { Id=id??Guid.NewGuid().ToString("N"), Action=action, StationId=station,
+            JournalFeatures=action=="status"?new[]{RecoveryCompatibility.HeldRotationFeature,RecoveryCompatibility.StationQueueFeature}:null },token);
+
+    internal async Task<JsonDocument> RequestAsync(object request, CancellationToken token = default)
     {
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
         deadline.CancelAfter(TimeSpan.FromSeconds(4));
-        var frame = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Id = id ?? Guid.NewGuid().ToString("N"), Action = action, StationId = station }) + "\n");
+        var frame = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request) + "\n");
+        if(frame.Length>65536)throw new ArgumentException("The test command exceeds the host frame limit.");
         for (var attempt = 0; ; attempt++)
         {
             try

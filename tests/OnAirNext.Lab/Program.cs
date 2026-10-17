@@ -41,7 +41,7 @@ var icecastRoot = arguments.GetValueOrDefault("--icecast-root") ?? Path.Combine(
 var scenario = arguments.GetValueOrDefault("--scenario") ?? "all";
 var duration = int.Parse(arguments.GetValueOrDefault("--duration-seconds") ?? "12", System.Globalization.CultureInfo.InvariantCulture);
 if (duration is < 6 or > 259200) throw new ArgumentException("Choose 6 seconds through 72 hours.");
-if (scenario is not ("all" or "baseline" or "recovery" or "durable" or "lifecycle" or "finite" or "offline" or "fleet" or "live" or "soak" or "backpressure" or "corrupt" or "host" or "precision" or "normalization" or "processing" or "roster18" or "queue")) throw new ArgumentException("Unknown lab scenario.");
+if (scenario is not ("all" or "baseline" or "recovery" or "durable" or "lifecycle" or "finite" or "offline" or "fleet" or "live" or "soak" or "backpressure" or "corrupt" or "host" or "precision" or "normalization" or "processing" or "roster18" or "queue" or "queue-durable")) throw new ArgumentException("Unknown lab scenario.");
 var runRoot = Path.Combine(localRoot, "runs", DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N")[..8]);
 Directory.CreateDirectory(runRoot);
 var fixtures = Sandbox.Fixtures(Path.Combine(runRoot, "fixtures"));
@@ -71,6 +71,8 @@ foreach (var name in scenario == "all" ? new[] { "baseline", "precision", "norma
             case "roster18": await Roster18Checks.RunAsync(ffmpeg,icecastRoot,Path.Combine(runRoot,result.Name),result); break;
             case "normalization": await NormalizationChecks.RunAsync(ffmpeg,icecastRoot,Path.Combine(runRoot,result.Name),result); break;
             case "queue": await QueueChecks.RunAsync(ffmpeg,icecastRoot,Path.Combine(runRoot,result.Name),result); break;
+            case "queue-durable": await QueueDurableChecks.RunAsync(ffmpeg,icecastRoot,dotnet,
+                Path.Combine(localRoot,"build","bin","OnAirNext.Host","release","OnAirNext.Host.dll"),Path.Combine(runRoot,result.Name),result); break;
         }
         result.Passed = true;
     }
@@ -82,8 +84,8 @@ foreach (var name in scenario == "all" ? new[] { "baseline", "precision", "norma
     {
         SchemaVersion = 1, CreatedAtUtc = DateTimeOffset.UtcNow, Machine = Environment.MachineName,
         OS = RuntimeInformation.OSDescription, Runtime = RuntimeInformation.FrameworkDescription,
-        Icecast = "2.5.0", TestProfiles = scenario is "roster18" or "queue" ? new[] { "AAC-LC 192 kbps", "libfdk HE-AACv2 64 kbps", "24-bit Ogg FLAC" } : new[] { "AAC-LC 192 kbps", "24-bit Ogg FLAC" },
-        HeAacTested = results.Any(r=>(r.Name is "roster18" or "queue")&&r.Passed), Source = "New independent implementation; no production configuration or services accessed.",
+        Icecast = "2.5.0", TestProfiles = scenario is "roster18" or "queue" or "queue-durable" ? new[] { "AAC-LC 192 kbps", "libfdk HE-AACv2 64 kbps", "24-bit Ogg FLAC" } : new[] { "AAC-LC 192 kbps", "24-bit Ogg FLAC" },
+        HeAacTested = results.Any(r=>(r.Name is "roster18" or "queue" or "queue-durable")&&r.Passed), Source = "New independent implementation; no production configuration or services accessed.",
         ExecutionSource = Environment.GetEnvironmentVariable("GITHUB_SHA"), PcmFormat = "48k stereo float32 little-endian",
         ExecutionBuild = typeof(StationEngine).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
             .Cast<System.Reflection.AssemblyInformationalVersionAttribute>().Single().InformationalVersion,
