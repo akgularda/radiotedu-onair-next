@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Collections.Concurrent;
 using OnAirNext.Engine;
 using Xunit;
 
@@ -127,14 +128,20 @@ public sealed class StationQueueIntegrationTests
             if(!release.Wait(TimeSpan.FromSeconds(10)))throw new TimeoutException("Queue publication observer was not released.");
         }
         f.Journal.QueueChanged+=Observe;
-        var mutation=Task.Run(()=>f.Queues.EditAsync("a",second,2,QueueEdit.MoveUp,"move-with-held-ack"));
         var planner=f.Queues.Planner(f.Settings())!;
+        var notifications=new ConcurrentQueue<string?>();
+        void SelectionNotification(string station,bool available)
+        {if(station=="a")notifications.Enqueue(planner.SelectPrepared(0,new HashSet<string>())!.QueueEntryId);}
+        f.Queues.Changed+=SelectionNotification;
+        var mutation=Task.Run(()=>f.Queues.EditAsync("a",second,2,QueueEdit.MoveUp,"move-with-held-ack"));
         try
         {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
             Assert.Null(planner.SelectPrepared(0,new HashSet<string>())!.QueueEntryId);
         }
-        finally{release.Set();f.Journal.QueueChanged-=Observe;await mutation;}
+        finally{release.Set();f.Journal.QueueChanged-=Observe;await mutation;f.Queues.Changed-=SelectionNotification;}
+        Assert.Contains((string?)null,notifications);
+        Assert.Equal(second,notifications.Last());
         Assert.Equal(second,planner.SelectPrepared(0,new HashSet<string>())!.QueueEntryId);
         planner.ReleaseQueueReservations();
     }

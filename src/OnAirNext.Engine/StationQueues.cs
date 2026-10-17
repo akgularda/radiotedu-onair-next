@@ -160,8 +160,16 @@ public sealed class StationQueues : IDisposable
         var other=edit==QueueEdit.MoveUp?index-1:index+1;
         if (edit!=QueueEdit.Remove&&(other<0||other>=entries.Count)) throw new InvalidOperationException("This item is already at the end of the queue.");
         string[] ids=edit==QueueEdit.Remove?[entryId]:[entryId,entries[other].Id];
-        using var lease=gate.Edit(ids);
-        await _journal.EditReservedStationQueueAsync(station,entryId,revision,edit,commandId,lease.Require);
+        var lease=gate.Edit(ids);
+        try { await _journal.EditReservedStationQueueAsync(station,entryId,revision,edit,commandId,lease.Require); }
+        finally
+        {
+            lease.Dispose();
+            // The commit notification can race the PCM loop while these entries
+            // are still leased. Refresh again after release so it can warm the
+            // new next item instead of retaining a temporary rotation fallback.
+            OnQueueChanged(station);
+        }
     }
 
     public IPlayoutPlanner? Planner(StationSettings settings)
