@@ -120,6 +120,34 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void OriginSourceListDetectsOnlyTheExactOccupiedMount()
+    {
+        const string status = "{\"icestats\":{\"source\":[" +
+            "{\"listenurl\":\"http://stream.radiotedu.com:11154/energize\",\"listeners\":2}," +
+            "{\"listenurl\":\"http://stream.radiotedu.com:11154/energize-low\"}," +
+            "{\"listenurl\":\"http://stream.radiotedu.com:11154/rock\"}]}}";
+        Assert.True(OriginSourceList.OwnsMount(status, "/energize"));
+        Assert.True(OriginSourceList.OwnsMount(status, "/energize-low"));
+        Assert.True(OriginSourceList.OwnsMount(status, "/rock"));
+        Assert.False(OriginSourceList.OwnsMount(status, "/classic"));
+        Assert.False(OriginSourceList.OwnsMount(status, "/energize-"));
+    }
+
+    [Fact]
+    public void OriginSourceListHandlesSingleEntriesAndEmptyListings()
+    {
+        const string single = "{\"icestats\":{\"source\":{\"mount\":\"/energize\",\"listeners\":1}}}";
+        Assert.True(OriginSourceList.OwnsMount(single, "/energize"));
+        Assert.False(OriginSourceList.OwnsMount(single, "/energize-low"));
+        Assert.False(OriginSourceList.OwnsMount("{\"icestats\":{}}", "/energize"));
+        Assert.False(OriginSourceList.OwnsMount("{\"icestats\":{\"source\":[]}}", "/energize"));
+    }
+
+    [Fact]
+    public void OriginSourceListRejectsUnparsableStatus()
+        => Assert.ThrowsAny<JsonException>(() => OriginSourceList.OwnsMount("<html>status unavailable</html>", "/energize"));
+
+    [Fact]
     public void SharedPcmRemainsAliveUntilTheLastConsumerReleasesIt()
     {
         var block = PcmBlock.Rent();

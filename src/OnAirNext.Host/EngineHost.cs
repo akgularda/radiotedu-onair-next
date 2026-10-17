@@ -78,7 +78,7 @@ internal static class EngineHost
         using var queues = new StationQueues(journal,library,brandingStations);
         await using var coordinator = new StationCoordinator(config.Ffmpeg, config.Stations, journal,
             settings => new StationEngine(config.Ffmpeg, settings, journal,
-                outputs: config.Commissioning ? settings.Outputs.Select(output => (IProgramOutput)new IcecastOutput(config.Ffmpeg, output, LegacyServiceFence.RequireReleased)).ToArray() : null,
+                outputs: config.Commissioning ? settings.Outputs.Select(output => (IProgramOutput)new IcecastOutput(config.Ffmpeg, output, LegacyServiceFence.ForOutput(output))).ToArray() : null,
                 planner: queues.Planner(settings), branding:settings.Repeat?branding.Source(settings.Id):null),
             commissionedService: config.Commissioning);
         await using var sourceChecks = new SourceAccessChecks(async path =>

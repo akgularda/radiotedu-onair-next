@@ -1,6 +1,9 @@
 using System.ComponentModel;
+using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.Text.Json;
+using OnAirNext.Engine;
 
 namespace OnAirNext.ServiceControl;
 
@@ -14,6 +17,55 @@ internal static class LegacyServiceFence
     {
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Commissioning requires the installed Windows service.");
         RequireWindowsRelease();
+    }
+
+    // Per-output guard for the one-station-at-a-time handover: the whole former
+    // service must be released, or (while it still serves the other channels)
+    // this exact mount must have no connected source on the production origin.
+    public static Action ForOutput(OutputSettings output)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+        return () => RequireOutputReleased(output);
+    }
+
+    public static void RequireOutputReleased(OutputSettings output)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Commissioning requires the installed Windows service.");
+        if (TryWindowsRelease()) return;
+        RequireOriginMountFree(output);
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static bool TryWindowsRelease()
+    {
+        try { RequireWindowsRelease(); return true; }
+        catch (InvalidOperationException) { return false; }
+        catch (Win32Exception) { return false; }
+    }
+
+    private static void RequireOriginMountFree(OutputSettings output)
+    {
+        var destination = $"http://{output.Host}:{output.Port}/status-json.xsl";
+        string payload;
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+            payload = client.GetStringAsync(destination).GetAwaiter().GetResult();
+        }
+        catch (Exception error) when (error is HttpRequestException or TaskCanceledException or TimeoutException or
+            IOException or InvalidOperationException or UriFormatException or NotSupportedException)
+        {
+            throw new InvalidOperationException($"The production source list for {output.Mount} could not be read from {output.Host}:{output.Port}; the former program's release stays unverified.", error);
+        }
+        bool owned;
+        try { owned = OriginSourceList.OwnsMount(payload, output.Mount); }
+        catch (JsonException error)
+        {
+            throw new InvalidOperationException($"The production source list for {output.Mount} could not be parsed; the former program's release stays unverified.", error);
+        }
+        if (owned)
+            throw new InvalidOperationException($"The former program still owns {output.Mount} on {output.Host}:{output.Port}; this source waits for the mount release.");
     }
 
     [SupportedOSPlatform("windows")]
@@ -72,4 +124,48 @@ internal static class LegacyServiceFence
     [DllImport("advapi32.dll", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool QueryServiceConfigW(nint service, nint config, uint bytes, out uint needed);
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("advapi32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool CloseServiceHandle(nint handle);
+}
+
+// Pure parser for Icecast status-json.xsl source lists. Matches the exact mount
+// path so that /energize and /energize-low are never confused.
+internal static class OriginSourceList
+{
+    public static bool OwnsMount(string statusJson, string mount)
+    {
+        ArgumentNullException.ThrowIfNull(statusJson);
+        ArgumentNullException.ThrowIfNull(mount);
+        using var document = JsonDocument.Parse(statusJson);
+        if (!document.RootElement.TryGetProperty("icestats", out var stats) || stats.ValueKind != JsonValueKind.Object) return false;
+        if (!stats.TryGetProperty("source", out var source)) return false;
+        if (source.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var entry in source.EnumerateArray())
+                if (EntryOwns(entry, mount)) return true;
+            return false;
+        }
+        return source.ValueKind == JsonValueKind.Object && EntryOwns(source, mount);
+    }
+
+    private static bool EntryOwns(JsonElement entry, string mount)
+    {
+        if (entry.ValueKind != JsonValueKind.Object) return false;
+        if (entry.TryGetProperty("listenurl", out var listenUrl) && listenUrl.ValueKind == JsonValueKind.String)
+        {
+            var value = listenUrl.GetString();
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                if (Uri.TryCreate(value, UriKind.Absolute, out var uri))
+                {
+                    if (uri.AbsolutePath.Equals(mount, StringComparison.Ordinal)) return true;
+                }
+                else if (value.TrimEnd('/').Equals(mount, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+        }
+        if (entry.TryGetProperty("mount", out var mountElement) && mountElement.ValueKind == JsonValueKind.String &&
+            string.Equals(mountElement.GetString(), mount, StringComparison.Ordinal)) return true;
+        return false;
+    }
 }
