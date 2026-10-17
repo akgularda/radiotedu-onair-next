@@ -49,7 +49,7 @@ internal sealed class PrivateCuePipeServer:IAsyncDisposable
                     try
                     {
                         const string message="Private cue did not complete. Refresh Library, check its drive and validation state, then retry.";
-                        if(!started){await ReplyAsync(new PrivateCueHeader(false,Error:message),timeout.Token);await _pipe.ReadAsync(new byte[1],timeout.Token);}
+                        if(!started){await ReplyAsync(new PrivateCueHeader(false,Error:message),timeout.Token);if(await _pipe.ReadAsync(new byte[1],timeout.Token)!=0)throw new IOException("Unexpected trailing private cue data.");}
                         else{await _pipe.WriteAsync(new byte[4],timeout.Token);await ReplyAsync(new PrivateCueResult(request?.SessionId??"",false,0,message),timeout.Token);await EndAckAsync(timeout.Token);}
                     }
                     catch(Exception reply)when(reply is IOException or OperationCanceledException){}

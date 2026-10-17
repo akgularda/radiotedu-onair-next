@@ -18,7 +18,7 @@ public sealed class PrivateCueDownloadTests
         using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var worker=Task.Run(async()=>
         {
-            try{await server.WaitForConnectionAsync(deadline.Token);await PipeFrames.ReadAsync(server,4096,deadline.Token);await write(server,request,deadline.Token);if(waitForClose)await server.ReadAsync(new byte[1],deadline.Token);}
+            try{await server.WaitForConnectionAsync(deadline.Token);await PipeFrames.ReadAsync(server,4096,deadline.Token);await write(server,request,deadline.Token);if(waitForClose){var ack=new byte[1];if(await server.ReadAsync(ack,deadline.Token)!=0)Assert.Equal(4,ack[0]);}}
             catch(Exception error)when(error is IOException or OperationCanceledException){}
             finally{if(server.IsConnected)server.Disconnect();}
         });
