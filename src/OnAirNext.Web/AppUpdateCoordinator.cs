@@ -138,8 +138,11 @@ internal sealed class AppUpdateCoordinator:IAsyncDisposable
         {
             await SetupPaths.ReadVerifiedAsync<AppUpdateReview>(path,hash,_stop.Token);
             await SetupPaths.VerifyBundleAsync(_package,review.Files.Replacement.BundleSha256,_stop.Token);
+            // Refresh the operator-side live status immediately before asking a
+            // separate Windows administrator to run the protected maintenance step.
+            (review,path,hash)=await RefreshReviewAsync(review);
             ApprovalDetail(direction);
-            var start=new ProcessStartInfo(_helper){UseShellExecute=true,Verb="runas",WindowStyle=ProcessWindowStyle.Hidden,WorkingDirectory=_package};
+            var start=new ProcessStartInfo(_helper){UseShellExecute=true,Verb="runas",WindowStyle=ProcessWindowStyle.Normal,WorkingDirectory=_package};
             start.ArgumentList.Add(direction==UpdateDirection.Apply?"--apply-update":"--rollback-update");start.ArgumentList.Add(path);start.ArgumentList.Add(hash);
             SetupPaths.RequireNoLinks(_helper);using var child=Process.Start(start)??throw new IOException("Windows application maintenance did not start.");
             // An elevated helper survives console closure; no UI timeout kills it.
@@ -147,7 +150,37 @@ internal sealed class AppUpdateCoordinator:IAsyncDisposable
             lock(_gate){_phase=child.ExitCode==0?(direction==UpdateDirection.Apply?"Updated":"Rolled back"):"Update needs attention";_detail=child.ExitCode==0?"Read the verified completion receipt below, then reconnect the engine. Current data is retained.":"Read the retained progress and failure below. Resume this same operation or use its targeted rollback.";}
         }
         catch(Win32Exception error)when(error.NativeErrorCode==1223){lock(_gate){_phase="Approval cancelled";_detail="Windows administrator approval was cancelled. The review is retained.";}}
-        catch(Exception){lock(_gate){_phase="Update needs attention";_detail="Read the retained operation. An approved helper may continue after this console closes; reopen this package to resume or read the result.";}}
+        catch(Exception error){lock(_gate){_phase="Update needs attention";_detail=error is InvalidOperationException or ArgumentException or IOException?error.Message:"Read the retained operation. An approved helper may continue after this console closes; reopen this package to resume or read the result.";}}
+    }
+    private async Task<(AppUpdateReview Review,string Path,string Hash)> RefreshReviewAsync(AppUpdateReview current)
+    {
+        var start=new ProcessStartInfo(_helper){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true,WorkingDirectory=_package};
+        start.ArgumentList.Add("--prepare-update");SetupPaths.RequireNoLinks(_helper);
+        using var child=Process.Start(start)??throw new IOException("The fresh update review did not start.");
+        try
+        {
+            try{child.PriorityClass=ProcessPriorityClass.BelowNormal;}catch(Win32Exception){}
+            using var deadline=CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);deadline.CancelAfter(TimeSpan.FromMinutes(4));
+            var output=ReadBoundedAsync(child.StandardOutput,deadline.Token);var errors=ReadBoundedAsync(child.StandardError,deadline.Token);
+            await child.WaitForExitAsync(deadline.Token);var results=await Task.WhenAll(output,errors);
+            using var document=JsonDocument.Parse(results[0]);
+            if(child.ExitCode!=0)throw new InvalidOperationException(document.RootElement.TryGetProperty("error",out var error)?error.GetString():"The fresh update review was rejected.");
+            var fresh=JsonSerializer.Deserialize<AppUpdateReview>(results[0])??throw new IOException("The fresh update review is missing.");
+            if(fresh.OperatorSid!=current.OperatorSid||fresh.ConfigurationSha256!=current.ConfigurationSha256||fresh.OwnershipSha256!=current.OwnershipSha256||
+                fresh.InitialPlanSha256!=current.InitialPlanSha256||fresh.ServiceProcessId!=current.ServiceProcessId||fresh.ServiceStartedAtUtc!=current.ServiceStartedAtUtc||
+                fresh.Files.Original.BundleSha256!=current.Files.Original.BundleSha256||fresh.Files.Replacement.BundleSha256!=current.Files.Replacement.BundleSha256||
+                !SetupPaths.CanonicalRoot(fresh.PackageRoot).Equals(SetupPaths.CanonicalRoot(_package),StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("The owned service or reviewed application changed. Review the update again before applying it.");
+            if(fresh.PreflightStatusSha256 is not {Length:64}||!fresh.PreflightStatusSha256.All(Uri.IsHexDigit))throw new IOException("The fresh stopped-state evidence is missing.");
+            var folderPath=Path.Combine(_folder,fresh.Files.Id+".json");var bytes=JsonSerializer.SerializeToUtf8Bytes(fresh);await WriteAsync(folderPath,bytes,false,_stop.Token);
+            var hash=Convert.ToHexString(SHA256.HashData(bytes));await WriteAsync(Path.Combine(_folder,"latest"),Encoding.ASCII.GetBytes(fresh.Files.Id),true,_stop.Token);
+            lock(_gate){_review=fresh;_path=folderPath;_hash=hash;_phase="Administrator approval";_detail="The stopped-state check was refreshed. Windows will ask a local administrator to approve this exact package update.";}
+            return(fresh,folderPath,hash);
+        }
+        finally
+        {
+            if(!child.HasExited){child.Kill(entireProcessTree:true);using var cleanup=new CancellationTokenSource(TimeSpan.FromSeconds(5));await child.WaitForExitAsync(cleanup.Token);}
+        }
     }
     private static async Task<string> ReadBoundedAsync(StreamReader reader,CancellationToken token)
     {

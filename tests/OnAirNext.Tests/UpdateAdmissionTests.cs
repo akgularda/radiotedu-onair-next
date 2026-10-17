@@ -25,6 +25,15 @@ public sealed class UpdateAdmissionTests
         UpdateAdmission.RequireUnarmedStatus(JsonSerializer.SerializeToElement(Status()));
         UpdateAdmission.RequireUnarmedConfiguration(JsonSerializer.SerializeToElement(Config()),"fixture-operator");
     }
+    [Fact]
+    public void SeparateAdministratorCanUseOnlyARecentOperatorStoppedStateReview()
+    {
+        var now=new DateTimeOffset(2026,10,17,9,0,0,TimeSpan.Zero);
+        UpdateAdmission.RequireFreshOperatorReview(now.AddSeconds(-45),new string('A',64),now);
+        Assert.Throws<InvalidOperationException>(()=>UpdateAdmission.RequireFreshOperatorReview(now.AddMinutes(-4),new string('A',64),now));
+        Assert.Throws<InvalidOperationException>(()=>UpdateAdmission.RequireFreshOperatorReview(now.AddSeconds(1),new string('A',64),now));
+        Assert.Throws<InvalidOperationException>(()=>UpdateAdmission.RequireFreshOperatorReview(now.AddSeconds(-45),"tampered",now));
+    }
     [Theory]
     [InlineData("running-intent")][InlineData("playing")][InlineData("stopped-output")][InlineData("child")]
     [InlineData("journal-error")][InlineData("journal-pending")][InlineData("duplicate-id")][InlineData("missing-intent")]

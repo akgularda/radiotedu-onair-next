@@ -24,7 +24,9 @@ internal static class AppUpdatePreparation
         RequireRunningOwned(service);
         using var process=Process.GetProcessById(checked((int)service.ProcessId));_=process.SafeHandle;
         var started=new DateTimeOffset(process.StartTime.ToUniversalTime());
-        if(!string.Equals(process.MainModule?.FileName,Path.Combine(installed,"bin","OnAirNext.Host.exe"),StringComparison.OrdinalIgnoreCase))throw new IOException("The running service image does not match its installation.");
+        // The SCM-owned binary path is already checked by RequireOwned. Reading
+        // MainModule requires elevation on some Windows builds even for a
+        // read-only review; do not turn that diagnostic into an admin-only gate.
         foreach(var path in new[]{ServiceEndpoint.DataRoot,installed,ServiceEndpoint.ConfigPath,Path.Combine(ServiceEndpoint.DataRoot,"setup-plan.json"),Path.Combine(ServiceEndpoint.DataRoot,"setup-ownership.json")})WindowsInstaller.AssertProtected(path);
         using var identity=WindowsIdentity.GetCurrent();var sid=identity.User?.Value??throw new InvalidOperationException("The Windows operator is unavailable.");
         var initialPath=Path.Combine(ServiceEndpoint.DataRoot,"setup-plan.json");var initialHash=await SetupPaths.HashAsync(initialPath,token);
@@ -38,7 +40,7 @@ internal static class AppUpdatePreparation
         var configHash=await SetupPaths.HashAsync(ServiceEndpoint.ConfigPath,token);
         var config=await SetupPaths.ReadVerifiedAsync<JsonElement>(ServiceEndpoint.ConfigPath,configHash,token);
         UpdateAdmission.RequireUnarmedConfiguration(config,sid);
-        UpdateAdmission.RequireUnarmedStatus(await StatusAsync(token));
+        var initialStatus=await StatusAsync(token);UpdateAdmission.RequireUnarmedStatus(initialStatus);
         var runtime=await RuntimeSupplementInventory.EffectiveAsync(initial,initialHash,Path.Combine(ServiceEndpoint.DataRoot,RuntimeSupplementInventory.ReceiptName),installed,WindowsInstaller.AssertProtected,token);
         var original=new UpdateImage(await SetupPaths.HashAsync(Path.Combine(installed,"bundle.json"),token),runtime);
         var currentBundle=await UpdateSwap.VerifyImageAsync(installed,original,token);
@@ -55,12 +57,13 @@ internal static class AppUpdatePreparation
         _=new UpdateSwap(installed,files.Id,original,replacement);
         // Verification may take time on a small PC. Read the authenticated status again
         // and bind the review to the same process/configuration/installation identity.
-        UpdateAdmission.RequireUnarmedStatus(await StatusAsync(token));
+        var finalStatus=await StatusAsync(token);UpdateAdmission.RequireUnarmedStatus(finalStatus);
         if(process.HasExited||SetupService.Read()!=service||!configHash.Equals(await SetupPaths.HashAsync(ServiceEndpoint.ConfigPath,token),StringComparison.OrdinalIgnoreCase)||
             !ownershipHash.Equals(await SetupPaths.HashAsync(ownershipPath,token),StringComparison.OrdinalIgnoreCase)||
             !initialHash.Equals(await SetupPaths.HashAsync(initialPath,token),StringComparison.OrdinalIgnoreCase))
             throw new IOException("The service or installation changed during review. Prepare a fresh review.");
-        return new(files,sid,package,configHash,ownershipHash,initialHash,service.ProcessId,started,1,currentBundle.Source,nextBundle.Source);
+        var statusHash=Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(finalStatus.GetRawText())));
+        return new(files,sid,package,configHash,ownershipHash,initialHash,service.ProcessId,started,1,currentBundle.Source,nextBundle.Source,statusHash);
     }
     private static void RequireRunningOwned(SetupServiceState service)
     {

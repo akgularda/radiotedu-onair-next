@@ -7,6 +7,14 @@ namespace OnAirNext.Installation;
 // unsuitable for rolling updates: even a stopped channel with configured outputs denies it.
 public static class UpdateAdmission
 {
+    public static void RequireFreshOperatorReview(DateTimeOffset created, string? hash, DateTimeOffset now)
+    {
+        var age=now-created;
+        if(created.Offset!=TimeSpan.Zero||now.Offset!=TimeSpan.Zero||age<TimeSpan.Zero||age>TimeSpan.FromMinutes(3)||
+            hash is null||hash.Length!=64||!hash.All(Uri.IsHexDigit))
+            throw Denied();
+    }
+
     public static void RequireUnarmedStatus(JsonElement status)
     {
         try

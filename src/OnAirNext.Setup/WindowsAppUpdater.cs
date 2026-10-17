@@ -17,6 +17,7 @@ internal static class WindowsAppUpdater
         if(!new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new UnauthorizedAccessException("Approve Windows administrator access for the reviewed update.");
         if(!Enum.IsDefined(direction))throw new ArgumentException("Choose update or rollback.");
         var review=await SetupPaths.ReadVerifiedAsync<AppUpdateReview>(request,expected,CancellationToken.None);
+        var originalOperator=identity.User?.Value==review.OperatorSid;
         if(review.JournalSchemaVersion!=1||review.Files is null||!Guid.TryParseExact(review.Files.Id,"N",out _)||review.ServiceStartedAtUtc==default)
             throw new ArgumentException("Prepare a fresh compatible application update review.");
         var account=new SecurityIdentifier(review.OperatorSid);var id=review.Files.Id;
@@ -37,6 +38,7 @@ internal static class WindowsAppUpdater
         var store=new UpdateOperationStore(ServiceEndpoint.InstallRoot,folder,WindowsInstaller.SetOwner);
         var fileHash=await store.SaveReviewAsync(review.Files);
         var prior=await store.ReadIntentAsync(id,fileHash);
+        if(!originalOperator&&prior is null)UpdateAdmission.RequireFreshOperatorReview(review.Files.CreatedAtUtc,review.PreflightStatusSha256,DateTimeOffset.UtcNow);
         if(prior?.Direction==UpdateDirection.Rollback&&direction==UpdateDirection.Apply)throw new InvalidOperationException("This operation has retained rollback intent. Prepare a new review before applying another update.");
         FileStream? writer=null;var maintenance=false;var executionPhase="Staging candidate";
         try
@@ -70,7 +72,8 @@ internal static class WindowsAppUpdater
                 var service=SetupService.Read()??throw new IOException("The owned service is missing.");SetupService.RequireOwned(service);
                 if(service.State==4)
                 {
-                    UpdateAdmission.RequireUnarmedStatus(await AppUpdatePreparation.StatusAsync(CancellationToken.None));
+                    if(originalOperator)UpdateAdmission.RequireUnarmedStatus(await AppUpdatePreparation.StatusAsync(CancellationToken.None));
+                    else if(prior is null)UpdateAdmission.RequireFreshOperatorReview(review.Files.CreatedAtUtc,review.PreflightStatusSha256,DateTimeOffset.UtcNow);
                     if(prior is null)
                     {
                         using var process=Process.GetProcessById(checked((int)service.ProcessId));
@@ -217,6 +220,7 @@ internal static class WindowsAppUpdater
     }
     private static async Task VerifyReadyAsync(AppUpdateReview review)
     {
+        using var identity=WindowsIdentity.GetCurrent();var originalOperator=identity.User?.Value==review.OperatorSid;
         using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(45));
         while(true)
         {
@@ -225,7 +229,14 @@ internal static class WindowsAppUpdater
             {
                 var service=SetupService.Read()??throw new IOException("Service readback is unavailable.");SetupService.RequireOwned(service);
                 if(service.State!=4||service.StartType!=2||!service.Delayed||!service.FailureFlag||service.RecoveryActions!=3)throw new IOException("Canonical service startup or recovery policy is not restored.");
-                UpdateAdmission.RequireUnarmedStatus(await AppUpdatePreparation.StatusAsync(deadline.Token));await VerifyRetainedConfigurationAsync(review);return;
+                if(originalOperator)UpdateAdmission.RequireUnarmedStatus(await AppUpdatePreparation.StatusAsync(deadline.Token));
+                else
+                {
+                    if(review.PreflightStatusSha256 is not {Length:64}||!review.PreflightStatusSha256.All(Uri.IsHexDigit))throw new IOException("The operator's stopped-state review evidence is missing.");
+                    using var process=Process.GetProcessById(checked((int)service.ProcessId));
+                    if(process.HasExited||!string.Equals(process.MainModule?.FileName,Path.Combine(ServiceEndpoint.InstallRoot,"bin","OnAirNext.Host.exe"),StringComparison.OrdinalIgnoreCase))throw new IOException("The restored service process image could not be verified.");
+                }
+                await VerifyRetainedConfigurationAsync(review);return;
             }
             catch(Exception error)when(error is IOException or InvalidOperationException or OperationCanceledException){await Task.Delay(200,deadline.Token);}
         }
