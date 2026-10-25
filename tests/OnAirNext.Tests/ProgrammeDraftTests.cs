@@ -115,6 +115,34 @@ public sealed class ProgrammeDraftTests
     }
 
     [Fact]
+    public async Task DraftLifecycleCannotResetTheNormalStationsDurableBrandingCadence()
+    {
+        var database = Database(); BrandingProgress before;
+        await using (var journal = new EventJournal(database))
+        {
+            await journal.InitializeProgrammeDraftsAsync();
+            for (var i = 0; i < 4; i++)
+            {
+                var start = new PlaybackEvent(Command(), Command(), "pop", "started", "song-" + i,
+                    "Actual artist", "Actual title", ContentKind.Music, DateTimeOffset.UtcNow, i * 48000);
+                await journal.AppendAsync(start);
+                await journal.AppendAsync(start with { EventId = Command(), Type = "ended", SamplePosition = (i + 1) * 48000 });
+            }
+            before = await journal.BrandingProgressAsync("pop");
+            Assert.Equal(4, before.Cadence.MusicSinceJingle); Assert.Equal(4, before.Cadence.MusicSinceSweeper);
+            var draft = Draft(); await journal.SaveProgrammeDraftAsync(draft, 0, Command(), "operator-a", Stations);
+            await journal.PreviewProgrammeDraftsAsync(Stations, ProgrammeCalendar.ParseIstanbulMinute("2026-10-29T00:00"));
+            await journal.ArchiveProgrammeDraftAsync(draft.Rule.Id, 1, Command(), "operator-a", Stations);
+            await journal.RestoreProgrammeDraftAsync(draft.Rule.Id, 2, 1, Command(), "operator-a", Stations);
+            Assert.Equal(before, await journal.BrandingProgressAsync("pop"));
+        }
+        await using var reopened = new EventJournal(database);
+        Assert.Equal(before, await reopened.BrandingProgressAsync("pop"));
+        Assert.All(EventJournal.ReadEvents(database), entry => Assert.Equal("Actual title", entry.Title));
+        Assert.True(EventJournal.Verify(database));
+    }
+
+    [Fact]
     public void UnsafeOrArmedDraftsAreRejectedAndNormalDisplayCanFollowSongs()
     {
         var draft = Draft();
