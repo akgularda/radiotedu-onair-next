@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="../Signals/StereoReferenceSignals.cs" Link="Measurement/StereoReferenceSignals.cs" />
     <Compile Include="../../src/OnAirNext.Setup/SetupModels.cs" Link="Installation/SetupModels.cs" />
+    <Compile Include="../../src/OnAirNext.Setup/ConsoleStartupDiagnostics.cs" Link="Installation/ConsoleStartupDiagnostics.cs" />
     <Compile Include="../../src/OnAirNext.Setup/CodecRuntimePackage.cs" Link="Installation/CodecRuntimePackage.cs" />
     <Compile Include="../../src/OnAirNext.Setup/RuntimeSupplement.cs" Link="Installation/RuntimeSupplement.cs" />
     <Compile Include="../../src/OnAirNext.Setup/RuntimeSupplementReviewProgress.cs" Link="Installation/RuntimeSupplementReviewProgress.cs" />

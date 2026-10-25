@@ -15,6 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../OnAirNext.Setup/ConsoleEndpoint.cs" Link="Protocol/ConsoleEndpoint.cs" />
+    <Compile Include="../OnAirNext.Setup/ConsoleStartupDiagnostics.cs" Link="Protocol/ConsoleStartupDiagnostics.cs" />
     <Compile Include="../OnAirNext.Setup/AppUpdateModels.cs" Link="Installation/AppUpdateModels.cs" />
     <Compile Include="../OnAirNext.Setup/UpdateMaintenanceLock.cs" Link="Installation/UpdateMaintenanceLock.cs" />
     <Compile Include="../OnAirNext.Setup/UpdateSwap.cs" Link="Installation/UpdateSwap.cs" />

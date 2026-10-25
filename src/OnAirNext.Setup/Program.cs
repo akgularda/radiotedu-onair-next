@@ -79,11 +79,18 @@ try
     }
     if(!await ReadyAsync())
     {
-        if(!File.Exists(web))throw new IOException("The browser console is missing from this installation package.");
+        if(!File.Exists(web))throw new InvalidOperationException("The browser console is missing. Open a complete reviewed package. Existing broadcasts continue.");
+        var openingAt=DateTimeOffset.UtcNow;
         using var child=Process.Start(new ProcessStartInfo(web){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Path.GetDirectoryName(web)!})??throw new IOException("The browser console did not start.");
         try
         {
-            var timer=Stopwatch.StartNew();while(!await ReadyAsync()){if(child.HasExited||timer.Elapsed>TimeSpan.FromSeconds(15))throw new IOException("The local console could not open. Check whether its port is already in use.");await Task.Delay(200);}
+            var timer=Stopwatch.StartNew();while(!await ReadyAsync())
+            {
+                if(child.HasExited)throw new InvalidOperationException(ConsoleStartupDiagnostics.ForCurrentUser().FailureMessage(child.Id,child.ExitCode,
+                    Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion??"unknown",openingAt));
+                if(timer.Elapsed>TimeSpan.FromSeconds(60))throw new InvalidOperationException("The browser console did not open within 60 seconds. Check for another open console or a busy computer, then reopen the shortcut. Existing broadcasts continue.");
+                await Task.Delay(200);
+            }
         }
         catch
         {

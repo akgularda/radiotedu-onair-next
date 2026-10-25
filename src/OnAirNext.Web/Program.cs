@@ -7,10 +7,15 @@ using Microsoft.AspNetCore.Http.Features;
 using OnAirNext.Web;
 using OnAirNext.UploadProtocol;
 using OnAirNext.Installation;
+using OnAirNext.ConsoleProtocol;
 
 var dataRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RadioTEDU", "OnAirNext-Dev", "browser-console");
+var startupStage = "temporary upload directory";
+try
+{
 Directory.CreateDirectory(Path.Combine(dataRoot, "http-temp"));
 Environment.SetEnvironmentVariable("ASPNETCORE_TEMP", Path.Combine(dataRoot, "http-temp"));
+startupStage = "web host creation";
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = args, ContentRootPath = AppContext.BaseDirectory });
 builder.WebHost.UseUrls("http://127.0.0.1:18121");
 builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 256L * 1024 * 1024);
@@ -18,7 +23,9 @@ builder.Services.Configure<FormOptions>(options => { options.MultipartBodyLength
 builder.Services.AddSingleton(_ => new SetupCoordinator(dataRoot));
 builder.Services.AddSingleton(_ => new AppUpdateCoordinator(dataRoot));
 builder.Services.AddSingleton(_ => new RuntimeSupplementCoordinator(dataRoot));
+startupStage = "Windows operator console session";
 using var access = new ConsoleAccess();
+startupStage = "web host build";
 var app = builder.Build();
 var reportDownloads = new ReportDownloadGrants();
 var csrf = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
@@ -221,7 +228,16 @@ app.MapPost("/api/import", async (HttpRequest request, CancellationToken token) 
     }
     finally { uploads.Release(); }
 });
+startupStage = "local HTTP endpoint startup";
+app.Lifetime.ApplicationStarted.Register(() => startupStage = "running local console");
 await app.RunAsync();
+}
+catch (Exception startupError)
+{
+    var version = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
+    _ = ConsoleStartupDiagnostics.ForCurrentUser().RecordFailure(Environment.ProcessId, version, startupStage, startupError);
+    throw;
+}
 
 internal sealed record ConsoleCommand(string Engine, JsonElement Request);
 internal sealed record FolderChoice(string Name, string Path);
