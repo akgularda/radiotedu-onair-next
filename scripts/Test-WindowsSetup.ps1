@@ -100,6 +100,28 @@ try{
  $shortcutCandidates=@([Environment]::GetFolderPath('DesktopDirectory'),[Environment]::GetFolderPath('Programs'))|ForEach-Object {Join-Path $_ 'RadioTEDU OnAir Next.lnk'}
  foreach($path in $shortcutCandidates){if(Test-Path -LiteralPath $path){throw 'Unexpected existing CI shortcut; fixture refuses to replace it'}}
  $shortcutPaths=$shortcutCandidates
+ # Exercise the real console's startup catch before admitting its healthy path.
+ # Only this disposable runner owns these roots; never inject a profile lock on
+ # the broadcasting PC to test error handling.
+ $accessRoot=Join-Path $env:LOCALAPPDATA 'RadioTEDU/OnAirNext-Dev/browser-console/access'
+ $null=New-Item -ItemType Directory -Path $accessRoot -Force
+ $profileLock=[IO.File]::Open((Join-Path $accessRoot 'console.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+ $failedConsole=$null
+ try{
+  $failedStart=[Diagnostics.ProcessStartInfo]::new((Join-Path $install 'console/OnAirNext.Web.exe'));$failedStart.UseShellExecute=$false;$failedStart.CreateNoWindow=$true
+  $failedStart.RedirectStandardOutput=$true;$failedStart.RedirectStandardError=$true
+  $failedConsole=[Diagnostics.Process]::Start($failedStart);$failedOut=$failedConsole.StandardOutput.ReadToEndAsync();$failedErr=$failedConsole.StandardError.ReadToEndAsync()
+  Check 'Owned console reports startup failure instead of hanging on a retained operator session' ($failedConsole.WaitForExit(30000) -and $failedConsole.ExitCode -ne 0)
+  $startupFile=Join-Path $env:LOCALAPPDATA ('RadioTEDU/OnAirNext-Dev/browser-console/startup-errors/console-'+$failedConsole.Id+'.json')
+  $startupRaw=Get-Content -LiteralPath $startupFile -Raw;$startupFailure=$startupRaw|ConvertFrom-Json
+  Check 'Real console failure retains the operator-session phase and exact build identity' ($startupFailure.ProcessId -eq $failedConsole.Id -and $startupFailure.Version.EndsWith($env:GITHUB_SHA) -and $startupFailure.Stage -eq 'Windows operator console session' -and $startupFailure.RootErrorType -eq 'IOException')
+  $startupAllowed=@([Security.Principal.WindowsIdentity]::GetCurrent().User.Value,'S-1-5-18','S-1-5-32-544')
+  $startupRules=(Get-Acl -LiteralPath $startupFile).GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])
+  Check 'Startup code details exclude session tokens and unlisted account access' ($startupRaw -notmatch '(?i)token|password|stacktrace' -and @($startupRules|Where-Object {$_.AccessControlType -eq 'Allow' -and $_.IdentityReference.Value -notin $startupAllowed}).Count -eq 0)
+ }finally{
+  if($failedConsole){if(-not $failedConsole.HasExited){$failedConsole.Kill($true);$null=$failedConsole.WaitForExit(5000)};$failedConsole.Dispose()}
+  $profileLock.Dispose()
+ }
  $webStart=[Diagnostics.ProcessStartInfo]::new((Join-Path $install 'console/OnAirNext.Web.exe'));$webStart.UseShellExecute=$false;$webStart.CreateNoWindow=$true
  $webProcess=[Diagnostics.Process]::Start($webStart);$deadline=[DateTime]::UtcNow.AddSeconds(25);$session=$null
  do{try{$endpointPath=Join-Path $env:LOCALAPPDATA 'RadioTEDU/OnAirNext-Dev/browser-console/access/console.json';$endpoint=Get-Content -LiteralPath $endpointPath -Raw|ConvertFrom-Json;$session=Invoke-RestMethod -Uri 'http://127.0.0.1:18121/api/session' -Headers @{'X-Studio-Bootstrap'=$endpoint.Token} -SessionVariable setupWebSession -TimeoutSec 2;break}catch{};Start-Sleep -Milliseconds 200}while([DateTime]::UtcNow -lt $deadline)
