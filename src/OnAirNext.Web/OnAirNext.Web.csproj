@@ -4,6 +4,8 @@
     <Content Update="wwwroot/**" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="../OnAirNext.Engine/LegacyImportPreview.cs" Link="Protocol/LegacyImportPreview.cs" />
     <Compile Include="../OnAirNext.Engine/ReportCalendar.cs" Link="Protocol/ReportCalendar.cs" />
+    <Compile Include="../OnAirNext.Engine/ProgrammeCalendar.cs" Link="Protocol/ProgrammeCalendar.cs" />
+    <Compile Include="../OnAirNext.Engine/ProgrammeDraft.cs" Link="Protocol/ProgrammeDraft.cs" />
     <Compile Include="../OnAirNext.Engine/ReportExport.cs" Link="Protocol/ReportExport.cs" />
     <Compile Include="../OnAirNext.Engine/ReportTransferProtocol.cs" Link="Protocol/ReportTransferProtocol.cs" />
     <Compile Include="../OnAirNext.Engine/UploadProtocol.cs" Link="Protocol/UploadProtocol.cs" />
