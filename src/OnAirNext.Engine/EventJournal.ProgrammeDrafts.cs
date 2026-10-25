@@ -110,23 +110,25 @@ public sealed partial class EventJournal
         });
     }
 
-    public Task<ProgrammeForecast> PreviewProgrammeDraftsAsync(IReadOnlySet<string> installedStations, DateTimeOffset from,
+    public async Task<ProgrammeForecast> PreviewProgrammeDraftsAsync(IReadOnlySet<string> installedStations, DateTimeOffset from,
         string? station = null, ProgrammeDraft? unsaved = null)
     {
         var known = installedStations.ToHashSet(StringComparer.Ordinal); RequireProgrammePage(known, station, 0);
         var reviewed = unsaved?.Normalize(known);
-        return TransactionAsync((c, t) =>
+        var drafts = await TransactionAsync((c, t) =>
         {
             using var query = ProgrammeDraftCommand(c, t, "SELECT id,version FROM programme_draft_heads WHERE archived=0 LIMIT 257");
             var keys = new List<(string Id, long Version)>();
             using (var reader = query.ExecuteReader()) while (reader.Read()) keys.Add((reader.GetString(0), reader.GetInt64(1)));
             if (keys.Count > ProgrammeCalendar.MaximumRules) throw new InvalidDataException("Too many active programme drafts.");
-            var drafts = keys.Select(x => ReadProgrammeRevision(c, t, x.Id, x.Version, known).Draft).ToList();
-            if (reviewed is not null) { drafts.RemoveAll(x => x.Rule.Id == reviewed.Rule.Id); drafts.Add(reviewed); }
-            var rules = drafts.Where(x => station is null || x.Rule.Stations.Contains(station, StringComparer.Ordinal))
-                .Select(x => x.Rule with { Enabled = true, Stations = station is null ? x.Rule.Stations : new[] { station } }).ToArray();
-            return ProgrammeCalendar.Forecast(rules, known, from, TimeSpan.FromHours(24));
+            return keys.Select(x => ReadProgrammeRevision(c, t, x.Id, x.Version, known).Draft).ToList();
         });
+        // Forecast expansion and conflict detection must not retain the journal
+        // writer transaction needed by actual-play and recovery checkpoints.
+        if (reviewed is not null) { drafts.RemoveAll(x => x.Rule.Id == reviewed.Rule.Id); drafts.Add(reviewed); }
+        var rules = drafts.Where(x => station is null || x.Rule.Stations.Contains(station, StringComparer.Ordinal))
+            .Select(x => x.Rule with { Enabled = true, Stations = station is null ? x.Rule.Stations : new[] { station } }).ToArray();
+        return ProgrammeCalendar.Forecast(rules, known, from, TimeSpan.FromHours(24));
     }
 
     private static ProgrammeDraftRevision WriteProgrammeRevision(SqliteConnection c, SqliteTransaction t, ProgrammeDraftRevision value,
