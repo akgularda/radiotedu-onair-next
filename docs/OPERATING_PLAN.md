@@ -2,11 +2,30 @@
 
 # RadioTEDU OnAir Next operating and delivery plan
 
-Updated 15 October 2026 from the approved feature scope and the operator's answers. This is the controlling product plan where it refines earlier planning defaults. Implementation proceeds with durable recovery first, followed by the native interface and connected workflows. The present request produces the plan; it does not perform a production installation or cutover.
+Updated 25 October 2026 from the approved feature scope and the operator's answers. This is the controlling product plan where it refines earlier planning defaults. The active interface is the browser console. Implementation and UI acceptance precede staged production handover.
 
 Subsequent user authorization: the broadcasting-PC agent is to finish the build, learn the actual legacy media/branding configuration, configure and migrate through UI workflows **one station group at a time**, and retire the old service only after all required outputs are verified. Follow [the broadcasting-PC handoff](BROADCAST_PC_HANDOFF.md) for that later deployment. No production change is authorized on this development host.
 
 ## Confirmed operating requirements
+
+### Approved additions, 25 October 2026
+
+The operator explicitly started an active implementation and migration goal covering the following additions. These are requirements, not a claim that the current application implements or has qualified them.
+
+| Workstream | Required operator workflow and acceptance |
+|---|---|
+| Listener-side verification | Distinguish programme activity, origin transport and independently decoded listener audio. Bounded probes run outside the audio clock, distinguish planned quiet from failure and never restart healthy siblings. |
+| Next 24 hours | Preview future event windows, estimated starts/returns, missing media, overlaps and the reason for priority. Use the same calendar and policies as actual selection. Estimates are not as-played evidence. |
+| Special-day music | In Schedule choose stations, dates/annual recurrence, local start/end, a folder/list, order, optional stream display text and transition policies. Example: October 29, 08:00–14:00. Hold the ordinary queue/rotation separately and return automatically to it; keep encoder/source connections open. |
+| Timed sweepers | Independently schedule a chosen file/collection, e.g. LÖSEV, at selected times or a recurrence within a date/time window. It is an insertion, not a takeover of the music folder. Persist occurrence ownership so restart/retry cannot duplicate it or replay a backlog of expired insertions. |
+| Transitions and metadata | Finish Current Song is the default start. Offer a deliberate timed fade as the exact-time alternative; never make an abrupt cut implicit. Preview whether a finish-current-item return extends beyond 14:00. Restore ordinary now-playing text when the event actually ends. A display override must not replace actual song metadata in the immutable history. |
+| Stable branding | Confirmed by the operator: normal station jingle/sweeper files and their frequency remain in force during special-day music. Preserve the same durable counters across event entry/exit. Separately scheduled LÖSEV or other insertions supplement that arrangement rather than replacing its assignments or resetting its counters. |
+| Music separation | UI-configurable artist/title/album/identical-recording separation; account for collaborations and actual plays. Explain exclusions and any bounded relaxation required by a small catalog. Preserve manual queue ownership and immutable history. |
+| Roles and change history | Coordinator, presenter and administrator permissions with station/time scope, auditable changes and reversal of eligible future configuration changes. Reversal never rewrites actual play history or repeats an executed transport command. |
+| Backup/restore/move | UI-created consistent snapshots, integrity verification, a read-back restore rehearsal and a protected move-to-another-PC flow. Keep source credentials local/protected and separate history provenance. No plain copy of a live WAL database. |
+| Persistent service operation | Start after Windows boots without login or Codex; preserve explicit Start/Stop intent. Retry failed outputs indefinitely with capped backoff, wake promptly on network recovery and rejoin the current programme without rewinding healthy outputs. Offline boot and real process/network recovery require tests. |
+
+The old OnAir installation may be inspected read-only for source credentials, station/output settings, media roots and branding. All new application's operational installation, import, configuration, backup, restore and handover actions must be completed through working UI controls. Missing controls are implementation work; hidden API calls, SQL/config edits and command-line operations do not count as operator acceptance. Current live broadcasts remain the fallback throughout development.
 
 | Requirement | Decision |
 |---|---|
