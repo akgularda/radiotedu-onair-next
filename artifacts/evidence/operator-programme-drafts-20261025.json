@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "qualificationDate": "2026-10-25",
+  "sourceCommit": "72425549efc0c490fac5a179b36c60dda29c704c",
+  "softwareRunId": 40177278931,
+  "softwareRunUrl": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/40177278931",
+  "evidenceMethod": "GitHub terminal run/step status and filtered compiler/test logs. Artifact digest verification was not performed for this summary.",
+  "solutionBuild": { "result": "passed", "warnings": 0, "errors": 0 },
+  "unitTests": { "passed": 467, "failed": 0, "skipped": 0, "total": 467 },
+  "newDraftCasesInUnitSuite": 11,
+  "browserModelTests": { "passed": 25, "failed": 0, "total": 25 },
+  "browserScriptSyntax": "passed",
+  "implementedScope": [
+    "Disabled programme draft contracts with local folder/file, stations, date/time/annual recurrence, order, display text, start/return policies and smooth-transition duration",
+    "Atomic versioned draft save, archive and restoration as a new disabled revision; actor supplied by the authenticated engine boundary",
+    "Bound request receipts, idempotent retry after later edits, optimistic edit conflict rejection and bounded list/history pages",
+    "Hypothetical 24-hour preview with named conflicts; expansion runs after releasing the journal writer transaction",
+    "Schedule editor, local audio folder/file picker, history and exact-request retry reminder",
+    "Engine-specific local recovery for incomplete unsaved editor settings; stale preview invalidation and engine/dialog response guards",
+    "Draft lifecycle regression confirming that normal station cadence and actual song titles remain unchanged"
+  ],
+  "priorCalendarFullQualification": {
+    "sourceCommit": "6f7e43df81eb575afbd1c4a46bf728674cc28d4b",
+    "runId": 40172546967,
+    "status": "completed",
+    "conclusion": "success",
+    "scope": "Earlier calendar source only; does not certify the later draft editor or target-PC handover."
+  },
+  "additionalFullQualification": {
+    "sourceCommit": "3ceaa21815b603ae9ebfeb0e073866eea9cc4700",
+    "runId": 40176946794,
+    "lastObservedStatus": "in_progress",
+    "lastObservedStep": "Qualify real float PCM and isolated audio codecs",
+    "completedJobs": ["windows-codec-runtime", "loudness-reference", "windows-codec-qualification"],
+    "note": "Collect this same run to terminal status. Later 7242554 changes are browser context guards and the UI acceptance checklist; their software result is recorded above."
+  },
+  "retainedFailure": {
+    "sourceCommit": "65ce2a5aab33e9a225ee3353cfceb0d72cbee768",
+    "runId": 40175178003,
+    "reason": "Browser project did not yet link ProgrammeDraft contracts; fixed in 363f98d and compiled successfully in the later passing runs."
+  },
+  "productionOperationsPerformed": false,
+  "connectedMouseAcceptance": "not performed",
+  "targetPcObservation": {
+    "legacySupervisor": "Running at inspection",
+    "newDevelopmentService": "Stopped at inspection",
+    "aiServices": "Stopped at inspection; not enabled by this work",
+    "consolePorts": "Only 18110 listening at the most recent read-only check; neither 18120 nor 18121 was listening.",
+    "operatorResponse": "Operator reported opening the shortcut; the opened address or error text is pending clarification. Setup processes were present, but no new console process was observed."
+  },
+  "limitations": [
+    "Drafts cannot be enabled or played by this capability. It is not a finished special-day/timed-sweeper runtime.",
+    "No actual event media preparation, PCM event entry/return, event position recovery or output metadata override/restoration is claimed.",
+    "The normal-branding regression covers draft configuration operations, not yet real special-day playback or additional timed sweeper insertions.",
+    "Immutable revision tables and per-revision hashes do not constitute qualified backup/restore or a whole-database integrity claim.",
+    "Browser model tests and source review are not mouse/keyboard acceptance. The blocked error page was not bypassed.",
+    "No target-PC audio, source transfer, microphone, full-18 continuity or 24/72-hour soak claim follows from these software checks.",
+    "The selected listener monitoring, music separation, scoped roles, backup/restore, durability acceptance and staged migration goal remains active."
+  ]
+}
