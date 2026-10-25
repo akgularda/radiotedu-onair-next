@@ -4,7 +4,7 @@
   const roster = [{id:'1',name:'Classic'},{id:'2',name:'Lofi'},{id:'4',name:'Pop'},{id:'5',name:'Cazz'},{id:'8',name:'Rock'},{id:'9',name:'Energize'},{id:'10',name:'Situation'},{id:'11',name:'Main Character'}];
   const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null,folderTarget:null,folderSource:null,editTarget:null,assetStateTarget:null,controller:null,consoleClosed:false,upload:null,uploadSelection:null};
   const migration={engine:null,preview:null,loading:false,busy:false,key:null,selects:new Map(),pending:null,submissionError:null};
-  let brandingUI=null,cueUI=null;
+  let brandingUI=null,cueUI=null,programmeUI=null;
   const queueState={engine:null,station:null,snapshot:null,receivedAt:0,loading:false,lastAttempt:0,error:null,key:null};
   const queueButtons=new WeakMap();
   let setupFolderTarget='setup-runtime';
@@ -22,7 +22,7 @@
       try{sessionStorage.setItem('studio-bootstrap',supplied);}catch{}
     }else{try{const stored=sessionStorage.getItem('studio-bootstrap');if(stored&&/^[0-9A-Fa-f]{64}$/.test(stored))bootstrap=stored;}catch{}}
   }catch{}
-  const names = {air:'On Air',library:'Library',ads:'Ads & Sweepers',reports:'Reports',system:'System'};
+  const names = {air:'On Air',library:'Library',schedule:'Schedule',ads:'Ads & Sweepers',reports:'Reports',system:'System'};
   const clock = new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Istanbul',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
   const text = (id,value) => { $(id).textContent = value; };
   const icon = name => {const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); const use=document.createElementNS(svg.namespaceURI,'use');use.setAttribute('href','#i-'+name);svg.append(use);return svg;};
@@ -46,7 +46,7 @@
     $('stations').replaceChildren(...stations.map(station=>{const button=element('button','station-tab');button.role='tab';button.setAttribute('aria-selected',String(station.id===state.station));button.setAttribute('aria-label',station.name+' channel');button.append(element('span','dot'),document.createTextNode(station.name));button.addEventListener('click',()=>selectStation(station.id));return button;}));
   }
   function selectStation(id){state.station=id;state.library=null;state.offset=0;queueState.snapshot=null;queueState.error=null;queueState.key=null;queueState.lastAttempt=0;stationTabs();renderStatus();resetLibrary();if(state.page==='library')void loadLibrary();void loadQueue(true);}
-  function navigate(page){if(!names[page])return;state.page=page;document.querySelectorAll('[data-view]').forEach(section=>section.hidden=section.dataset.view!==page);document.querySelectorAll('.nav-item[data-page]').forEach(button=>{button.classList.toggle('selected',button.dataset.page===page);button.setAttribute('aria-current',button.dataset.page===page?'page':'false');});text('breadcrumb',names[page]);if(page==='library')void loadLibrary();if(page==='system'){void loadSetup();void loadAppUpdates();void loadAudioTools();}if(page==='reports')void loadReports();brandingUI?.update();}
+  function navigate(page){if(!names[page])return;state.page=page;document.querySelectorAll('[data-view]').forEach(section=>section.hidden=section.dataset.view!==page);document.querySelectorAll('.nav-item[data-page]').forEach(button=>{button.classList.toggle('selected',button.dataset.page===page);button.setAttribute('aria-current',button.dataset.page===page?'page':'false');});text('breadcrumb',names[page]);if(page==='library')void loadLibrary();if(page==='system'){void loadSetup();void loadAppUpdates();void loadAudioTools();}if(page==='reports')void loadReports();brandingUI?.update();programmeUI?.update();}
   document.querySelectorAll('[data-page]:not(:disabled)').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();navigate(button.dataset.page);}));
   document.addEventListener('keydown',event=>{if(event.altKey && (event.key==='1'||event.key==='2')){event.preventDefault();navigate(event.key==='1'?'air':'library');}});
   function renderStatus(){
@@ -92,7 +92,7 @@
     $('engine-label').replaceChildren(document.createTextNode(connected?'Engine connected':'Engine not connected'),element('small','',connected?'Isolated development engine':'Existing broadcasts unchanged'));
     $('disconnect-engine').disabled=!state.engine;
     $('retry-command').hidden=!pending();$('retry-command').disabled=!connected||state.busy;
-    libraryControls();renderProgrammeMeter();brandingUI?.update();cueUI?.update();
+    libraryControls();renderProgrammeMeter();brandingUI?.update();cueUI?.update();programmeUI?.update();
   }
   function libraryControls(){
     const enabled=fresh()&&!state.busy&&!pending();$('choose-folder').disabled=!enabled;$('add-files').disabled=!enabled||!state.library?.canImportFiles;
@@ -737,6 +737,11 @@
     stream:(body,signal)=>fetch('/api/private-cue',{method:'POST',headers:{'Content-Type':'application/json','X-Studio-Token':state.session?.token??''},body:JSON.stringify(body),credentials:'same-origin',signal})
   });
   document.querySelector('[aria-label="Private audition"]').addEventListener('click',()=>cueUI.show());cueUI.update();
+  programmeUI=RadioTeduProgrammes.create({api,message,
+    context:()=>({engine:state.engine,station:state.station,stations:state.stations.map(s=>({id:s.Id,name:stationName(s.Id)})),fresh:fresh(),busy:state.busy,supported:state.controller?.capabilities?.includes('programme-drafts-v1')===true,active:state.page==='schedule'}),
+    claim:()=>{if(!fresh()||state.busy||pending())return false;state.busy=true;renderStatus();return true;},
+    release:()=>{state.busy=false;renderStatus();}
+  });
   brandingUI=RadioTeduBranding.create({
     api,message,cue:cueUI,
     context:()=>({engine:state.engine,station:state.station,name:stationName(),fresh:fresh(),busy:state.busy,supported:state.controller?.capabilities?.includes('branding-library-v1')===true,active:state.page==='ads'}),

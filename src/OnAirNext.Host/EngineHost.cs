@@ -104,6 +104,9 @@ internal static class EngineHost
             await library.InitializeAsync();
             if (serviceMode) WindowsServiceDiagnostics.Stage("coordinator initialization");
             await coordinator.InitializeAsync(queues.InitializeAsync);
+            await journal.InitializeProgrammeDraftsAsync();
+            var programmeStations = config.Stations.Select(station => station.Id).ToHashSet(StringComparer.Ordinal);
+            var programmeActor = config.OperatorSid ?? "isolated-operator";
             var inbox = new UploadInbox(journal, library);
             await inbox.InitializeAsync();
             await using var fileServer = new UploadPipeServer(config.PipeName, serviceMode, servicePolicy, inbox, stop.Token);
@@ -156,7 +159,7 @@ internal static class EngineHost
                                         })).ToArray()
                                     } : null,
                                     controller = new { mode = serviceMode ? "windows-service" : "developer", service = serviceMode ? ServiceEndpoint.Name : null,
-                                        capabilities = new[] { "legacy-music-assignment-v1", RecoveryCompatibility.HeldRotationFeature, "branding-library-v1", "private-cue-v1", RecoveryCompatibility.StationQueueFeature, "commissioning-output-profile-v1" } } });
+                                        capabilities = new[] { "legacy-music-assignment-v1", RecoveryCompatibility.HeldRotationFeature, "branding-library-v1", "private-cue-v1", RecoveryCompatibility.StationQueueFeature, "commissioning-output-profile-v1", "programme-drafts-v1" } } });
                                 break;
                             case "commission-output-profile" when serviceMode && OperatingSystem.IsWindows() && request.OutputProfile is { } outputProfile:
                                 CommissioningOutputStore.RequireAllDisarmed(coordinator.Snapshot());
@@ -173,6 +176,19 @@ internal static class EngineHost
                                 shutdown = profileCleared;
                                 result = JsonSerializer.Serialize(new { accepted = true, cleared = profileCleared, restartRequired = profileCleared });
                                 break;
+                            case "programme-drafts":
+                                result = JsonSerializer.Serialize(new { drafts = await journal.ProgrammeDraftsAsync(programmeStations, request.StationId, request.IncludeArchived, request.Offset) }); break;
+                            case "programme-draft-save" when request.ProgrammeDraft is { } programmeDraft:
+                                result = JsonSerializer.Serialize(new { accepted = true, revision = await journal.SaveProgrammeDraftAsync(programmeDraft, request.ExpectedVersion, request.Id, programmeActor, programmeStations) }); break;
+                            case "programme-draft-archive" when request.DraftId is { } archiveDraft:
+                                result = JsonSerializer.Serialize(new { accepted = true, revision = await journal.ArchiveProgrammeDraftAsync(archiveDraft, request.ExpectedVersion, request.Id, programmeActor, programmeStations) }); break;
+                            case "programme-draft-restore" when request.DraftId is { } restoreDraft:
+                                result = JsonSerializer.Serialize(new { accepted = true, revision = await journal.RestoreProgrammeDraftAsync(restoreDraft, request.ExpectedVersion, request.SourceVersion, request.Id, programmeActor, programmeStations) }); break;
+                            case "programme-draft-history" when request.DraftId is { } historyDraft:
+                                result = JsonSerializer.Serialize(new { history = await journal.ProgrammeDraftHistoryAsync(historyDraft, request.ExpectedVersion, programmeStations, request.Offset) }); break;
+                            case "programme-draft-preview" when request.PreviewFrom is { } previewFrom:
+                                var draftForecast = await journal.PreviewProgrammeDraftsAsync(programmeStations, ProgrammeCalendar.ParseIstanbulMinute(previewFrom), request.StationId, request.ProgrammeDraft);
+                                result = JsonSerializer.Serialize(new { preview = ProgrammeDraftForecastPage.From(draftForecast, request.Offset) }); break;
                             case "queue-status" when request.StationId is { } queueStation:
                                 result=JsonSerializer.Serialize(new{queue=await queues.SnapshotAsync(queueStation)});break;
                             case "queue-append" when request.StationId is { } appendStation && request.QueueSource is { } queueSource:
@@ -323,4 +339,5 @@ internal sealed record EngineCommand(string Id, string Action, string? StationId
     string[]? Paths = null, string? Query = null, int Offset = 0, string? AssetId = null,string? SessionId=null,
     long Revision = 0, long ExpectedVersion = 0, string? Artist = null, string? Title = null, string? SourceCheckId = null, string? ReportPeriod = null, string? ReportSelection = null, string? ReportId = null, string? PreviewId = null, LegacyStationMapping[]? Mappings = null, int? MappingRevision = null, string[]? JournalFeatures = null, BrandingRules? BrandingRules = null,
     QueueLibraryReference? QueueSource = null,long QueueRevision = 0,string? QueueEntryId = null,
-    ProductionOutputConfiguration? OutputProfile = null);
+    ProductionOutputConfiguration? OutputProfile = null, ProgrammeDraft? ProgrammeDraft = null,
+    string? DraftId = null, long SourceVersion = 0, string? PreviewFrom = null, bool IncludeArchived = false);

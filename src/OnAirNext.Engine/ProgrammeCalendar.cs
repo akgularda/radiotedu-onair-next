@@ -59,9 +59,11 @@ public sealed record CalendarOccurrence(string Key, string RuleId, long RuleVers
             ? EndsAtUtc : currentItemEndsAt.ToUniversalTime();
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<CalendarConflictKind>))]
 public enum CalendarConflictKind { OverlappingProgrammes, SweeperInProgrammeWindow, OverlappingSweeperWindows }
 public sealed record CalendarConflict(string StationId, string FirstKey, string SecondKey,
-    CalendarConflictKind Kind, DateTimeOffset FromUtc, DateTimeOffset ThroughUtc, string? PreferredRuleId);
+    CalendarConflictKind Kind, DateTimeOffset FromUtc, DateTimeOffset ThroughUtc, string? PreferredRuleId,
+    string FirstName = "", string SecondName = "");
 public sealed record ProgrammeForecast(DateTimeOffset FromUtc, DateTimeOffset ThroughUtc, string TimeZone,
     IReadOnlyList<CalendarOccurrence> Occurrences, IReadOnlyList<CalendarConflict> Conflicts);
 
@@ -69,6 +71,15 @@ public sealed record ProgrammeForecast(DateTimeOffset FromUtc, DateTimeOffset Th
 // preparation and the 24-hour UI preview must consume this same calendar.
 public static class ProgrammeCalendar
 {
+    public static DateTimeOffset ParseIstanbulMinute(string value)
+    {
+        if (!DateTime.TryParseExact(value, "yyyy-MM-dd'T'HH:mm", CultureInfo.InvariantCulture,
+            DateTimeStyles.None, out var local)) throw new ArgumentException("Choose a valid Istanbul date and minute.");
+        local = DateTime.SpecifyKind(local, DateTimeKind.Unspecified);
+        if (ReportCalendar.Istanbul.IsInvalidTime(local) || ReportCalendar.Istanbul.IsAmbiguousTime(local))
+            throw new ArgumentException("Choose an unambiguous Istanbul date and minute.");
+        return new DateTimeOffset(local, ReportCalendar.Istanbul.GetUtcOffset(local)).ToUniversalTime();
+    }
     public const int MaximumRules = 256;
     public const int MaximumOccurrences = 4096;
     public const int MaximumConflicts = 4096;
@@ -186,7 +197,7 @@ public static class ProgrammeCalendar
                         ? prior.Priority > next.Priority ? prior.RuleId : next.RuleId : null;
                     var end = prior.EndsAtUtc < next.EndsAtUtc ? prior.EndsAtUtc : next.EndsAtUtc;
                     conflicts.Add(new(next.StationId, prior.Key, next.Key, kind, next.DueAtUtc < begin ? begin : next.DueAtUtc,
-                        end < through ? end : through, winner));
+                        end < through ? end : through, winner, prior.Name, next.Name));
                 }
                 active.Add(next);
             }

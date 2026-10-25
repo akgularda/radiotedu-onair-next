@@ -35,6 +35,13 @@ jobs:
           if ($specs.Count -eq 0) { throw 'No browser model tests were discovered.' }
           & node --test @specs
           if ($LASTEXITCODE -ne 0) { throw 'Browser model tests failed.' }
+      - name: Check browser application script syntax
+        shell: pwsh
+        run: |
+          Get-ChildItem -LiteralPath src/OnAirNext.Web/wwwroot -Filter '*.js' -File | ForEach-Object {
+            & node --check $_.FullName
+            if ($LASTEXITCODE -ne 0) { throw "Invalid browser script: $($_.Name)" }
+          }
       - name: Retain software test results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

@@ -97,6 +97,7 @@ app.MapGet("/api/queue", async (string engine, string station, CancellationToken
     Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "queue-status", StationId = station }, token)));
 app.MapGet("/api/library", async (string engine, string station, string? query, int? offset, CancellationToken token) =>
     Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "library-status", StationId = station, Query = query ?? "", Offset = offset ?? 0 }, token)));
+app.MapProgrammeDrafts();
 app.MapGet("/api/branding", async (string engine, string station, CancellationToken token) =>
     Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "branding-status", StationId = station }, token)));
 app.MapGet("/api/migration-preview", async (string engine, string? id, CancellationToken token) =>
@@ -152,7 +153,7 @@ app.MapPost("/api/command", async (ConsoleCommand command, CancellationToken tok
         !Guid.TryParse(id.GetString(), out _)) throw new ArgumentException("This station command is not available.");
     return Results.Json(await EngineRpc.SendAsync(command.Engine, command.Request, token));
 });
-app.MapGet("/api/folders", (string? path) =>
+app.MapGet("/api/folders", (string? path, bool? audio) =>
 {
     if (string.IsNullOrEmpty(path))
     {
@@ -169,7 +170,12 @@ app.MapGet("/api/folders", (string? path) =>
     var children = directory.EnumerateDirectories().Where(d => (d.Attributes & (FileAttributes.ReparsePoint | FileAttributes.System | FileAttributes.Hidden)) == 0)
         .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase).Take(2001).ToArray();
     if (children.Length > 2000) throw new ArgumentException("This folder has more than 2,000 subfolders. Choose a smaller music location.");
-    return Results.Json(new { path = directory.FullName, parent = directory.Parent?.FullName, folders = children.Select(d => new FolderChoice(d.Name, d.FullName)) });
+    var files = audio == true ? directory.EnumerateFiles().Where(f => extensions.Contains(f.Extension) &&
+        (f.Attributes & (FileAttributes.ReparsePoint | FileAttributes.System | FileAttributes.Hidden)) == 0)
+        .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase).Take(2001).ToArray() : [];
+    if (files.Length > 2000) throw new ArgumentException("This folder has more than 2,000 audio files. Choose a smaller sweeper folder.");
+    return Results.Json(new { path = directory.FullName, parent = directory.Parent?.FullName, folders = children.Select(d => new FolderChoice(d.Name, d.FullName)),
+        files = files.Select(f => new FolderChoice(f.Name, f.FullName)) });
 });
 app.MapPost("/api/upload-cancel", async (UploadCancellation request, CancellationToken token) =>
 {
