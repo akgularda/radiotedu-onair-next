@@ -4,7 +4,7 @@
     const $=id=>document.getElementById('programme-'+id),context=()=>bridge.context(),uuid=()=>crypto.randomUUID().replaceAll('-','');
     const node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
     const recovery=RadioTeduProgrammeEditor;
-    const state={engine:null,editorEngine:null,id:null,version:0,dirty:false,busy:false,loading:false,offset:0,total:0,history:null,preview:null,previewRequest:null,previewOffset:0,previewLoading:false,folder:null,folderGeneration:0,generation:0,ready:false,localError:false};
+    const state={engine:null,editorEngine:null,id:null,version:0,dirty:false,busy:false,loading:false,offset:0,total:0,history:null,historyGeneration:0,preview:null,previewRequest:null,previewOffset:0,previewLoading:false,folder:null,folderGeneration:0,generation:0,ready:false,localError:false};
     let pending=[];
     try{const p=JSON.parse(localStorage.getItem('studio-programme-pending')??'[]');if(Array.isArray(p))pending=p.filter(x=>['save','archive','restore'].includes(x.action)&&typeof x.body?.Engine==='string'&&/^[a-f0-9]{32}$/.test(x.body?.Id??'')).slice(0,8);}catch{}
     const saved=()=>pending.find(p=>p.body.Engine===context().engine),usable=()=>context().fresh&&context().supported&&!!context().engine,ownEditor=()=>state.editorEngine===context().engine;
@@ -78,7 +78,7 @@
         const page=response.drafts;state.total=page.Total;$('count').textContent=page.Total+' drafts';
         if(page.Total>0&&state.offset>=page.Total){state.offset=0;state.loading=false;return await load();}
         $('list').replaceChildren(...page.Items.map(card));if(!page.Items.length)$('list').append(node('p','No saved drafts in this view. Create an event to begin.','programme-empty'));
-      }catch(error){if(engine===context().engine)feedback('Drafts could not be loaded: '+error.message);}
+      }catch(error){if(engine===context().engine&&generation===state.generation)feedback('Drafts could not be loaded: '+error.message);}
       finally{if(generation===state.generation){state.loading=false;controls();}}
     }
     async function change(action,body,retry=false){
@@ -94,14 +94,14 @@
       finally{state.busy=false;bridge.release();controls();if(context().engine===engine)void load();}
     }
     async function history(revision,offset=0){
-      if(!usable()||state.busy)return;const engine=context().engine,r=revision.Draft.Rule;
+      if(!usable()||state.busy)return;const engine=context().engine,r=revision.Draft.Rule,generation=++state.historyGeneration;
       try{
-        const response=await bridge.api('/api/programme-drafts/history?'+new URLSearchParams({engine,id:r.Id,version:r.Version,offset}));if(engine!==context().engine)return;if(response.error)throw new Error(response.error);
+        const response=await bridge.api('/api/programme-drafts/history?'+new URLSearchParams({engine,id:r.Id,version:r.Version,offset}));if(engine!==context().engine||generation!==state.historyGeneration)return;if(response.error)throw new Error(response.error);
         const h=response.history;state.history={revision,offset,total:h.Total,engine};$('history-title').textContent=r.Name+' · history';
         $('history-list').replaceChildren(...h.Items.map(item=>{const row=node('article',undefined,'programme-card');row.append(node('h3','Version '+item.Version+' · '+item.Change),node('p',when(item.AtUtc)+' · '+item.Actor),node('p',item.Draft.Rule.Name+' · '+(item.Draft.DisplayText??'Follow song metadata')));
           row.append(button('Restore as new draft',async()=>{if(saved()||state.busy||context().engine!==engine||!await mayReplace())return;if(!await confirm('Restore version '+item.Version+'?','Create a new disabled draft revision? History and current broadcasts stay unchanged.'))return;$('history').close();await change('restore',{Engine:engine,Id:uuid(),DraftId:r.Id,ExpectedVersion:r.Version,SourceVersion:item.Version});}));return row;}));
         $('history-previous').disabled=offset===0;$('history-next').disabled=offset+4>=h.Total;if(!$('history').open)$('history').showModal();
-      }catch(error){feedback('History could not be loaded: '+error.message);}
+      }catch(error){if(engine===context().engine&&generation===state.historyGeneration)feedback('History could not be loaded: '+error.message);}
     }
     async function preview(editor=false,offset=0,request=null){
       if(!usable()||state.loading||state.busy)return;let body;
@@ -117,7 +117,7 @@
         const kinds={OverlappingProgrammes:'Overlapping programmes',SweeperInProgrammeWindow:'Sweeper within programme window',OverlappingSweeperWindows:'Overlapping sweeper windows'};
         for(const o of p.Conflicts){const row=node('tr');row.append(node('td',(context().stations.find(s=>s.id===o.StationId)?.name??o.StationId)+' · '+o.FirstName+' / '+o.SecondName),node('td',(kinds[o.Kind]??'Schedule overlap')+(o.PreferredRuleId?' · Higher priority wins':' · No implicit priority winner')),node('td',when(o.FromUtc)+' → '+when(o.ThroughUtc)));conflicts.append(row);}
         $('preview-results').replaceChildren(table,conflicts);if(!p.OccurrenceCount)$('preview-results').prepend(node('p','No draft events in this 24-hour window.','programme-empty'));
-      }catch(error){feedback('Preview could not be loaded: '+error.message);}
+      }catch(error){if(engine===context().engine&&generation===state.generation)feedback('Preview could not be loaded: '+error.message);}
       finally{if(generation===state.generation){state.loading=false;state.previewLoading=false;controls();}}
     }
     async function folders(path=null){
@@ -126,7 +126,7 @@
         const value=await bridge.api('/api/folders?'+new URLSearchParams({...(path?{path}:{}),audio:$('kind').value==='TimedSweeper'}));if(generation!==state.folderGeneration||engine!==context().engine||!$('folder-dialog').open)return;
         state.folder=value;$('folder-path').textContent=value.path??'Locations';$('folder-up').disabled=!value.path;$('folder-select').disabled=!value.path;
         $('folder-list').replaceChildren(...value.folders.map(folder=>button('Folder · '+folder.name,()=>folders(folder.path))));
-        for(const file of value.files??[])$('folder-list').append(button('Audio · '+file.name,()=>{if(!ownEditor()||state.busy)return;$('folder').value=value.path;$('file').value=file.name;mark();$('folder-dialog').close();}));
+        for(const file of value.files??[])$('folder-list').append(button('Audio · '+file.name,()=>{if(!ownEditor()||state.busy||!usable()||engine!==context().engine)return;$('folder').value=value.path;$('file').value=file.name;mark();$('folder-dialog').close();}));
         $('folder-error').textContent=value.path?'Use this folder'+($('kind').value==='TimedSweeper'?' or choose one audio file.':'.'):'';
       }catch(error){if(generation===state.folderGeneration)$('folder-error').textContent=error.message;}
     }
@@ -140,8 +140,9 @@
     for(const [id,delta]of [['history-previous',-4],['history-next',4]])$(id).addEventListener('click',()=>{const h=state.history;if(h&&h.engine===context().engine)void history(h.revision,Math.max(0,h.offset+delta));});
     $('browse').addEventListener('click',()=>{$('folder-dialog').showModal();void folders($('folder').value||null);});$('folder-up').addEventListener('click',()=>folders(state.folder?.parent??null));
     $('folder-select').addEventListener('click',()=>{if(!state.folder?.path||!ownEditor()||!usable())return;$('folder').value=state.folder.path;$('file').value='';mark();$('folder-dialog').close();});$('folder-dialog').addEventListener('close',()=>{++state.folderGeneration;});
+    function closeContextDialogs(){++state.folderGeneration;++state.historyGeneration;state.folder=null;state.history=null;for(const id of ['folder-dialog','history','confirm'])if($(id).open)$(id).close('cancel');}
     $('preview-from').value=date.format(new Date())+'T00:00';
     window.addEventListener('pagehide',saveLocal);
-    return {update(){const c=context(),ready=c.active&&usable();if(c.active&&state.engine!==c.engine){state.engine=c.engine;state.ready=false;state.offset=0;state.total=0;invalidatePreview();++state.generation;state.loading=false;$('list').replaceChildren(node('p','Load drafts from the selected engine.','programme-empty'));$('preview-results').replaceChildren();}if(ready&&!state.ready){state.ready=true;if(state.editorEngine!==c.engine&&!(state.dirty&&state.localError)||!state.dirty&&state.version===0)restoreLocal();void load();}else if(!ready)state.ready=false;controls();}};
+    return {update(){const c=context(),ready=c.active&&usable();if(c.active&&state.engine!==c.engine){closeContextDialogs();state.engine=c.engine;state.ready=false;state.offset=0;state.total=0;invalidatePreview();++state.generation;state.loading=false;$('list').replaceChildren(node('p','Load drafts from the selected engine.','programme-empty'));$('preview-results').replaceChildren();}if(ready&&!state.ready){state.ready=true;if((state.editorEngine!==c.engine&&!(state.dirty&&state.localError))||(!state.dirty&&state.version===0))restoreLocal();void load();}else if(!ready)state.ready=false;controls();}};
   }};
 })();
