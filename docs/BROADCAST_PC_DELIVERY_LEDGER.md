@@ -2,6 +2,14 @@
 
 # Broadcast-PC delivery ledger
 
+## 25 October 2026 — operator workflows goal
+
+The operator explicitly requested an active implementation/migration goal for listener-side audio verification, a 24-hour programme preview, special-day music and timed sweeper insertions, music separation, scoped user permissions/change history, UI backup/restore/move, and persistent boot/network recovery. [The controlling operating plan](OPERATING_PLAN.md#approved-additions-25-october-2026) records the complete scope and the follow-up confirmation: an 08:00–14:00 special programme returns to ordinary automation, supports a stream display-text override, uses smooth transitions and preserves the normal station jingle/sweeper files and cadence.
+
+Source `94dcd7257fe0113c86ccf20315c71c58ab2f4114` compiled with zero warnings/errors and passed 456/456 unit cases (including 12 new calendar cases) and 22/22 browser-model tests in [remote software run 40172850508](https://github.com/akgularda/radiotedu-onair-next/actions/runs/40172850508). See the [scoped evidence summary](../artifacts/evidence/operator-calendar-20261025.json). Tests ran on a disposable Windows runner, not the broadcasting PC. The new calendar is a shared, bounded timing foundation; durable schedule configuration, event media, actual playback/metadata transitions and connected UI acceptance are still unfinished. Model tests are not mouse acceptance. No production service, setting, database or stream was changed by this development step.
+
+Branch: `operator-workflows-20261025`, pushed using the verified `akgularda` CLI identity. A separate full audio/setup qualification was dispatched for functional source `6f7e43df81eb575afbd1c4a46bf728674cc28d4b` in run 40172546967; its result must be collected separately. The selected feature goal remains active; no production-ready application or completed migration is claimed.
+
 Updated 16 October 2026. This records the complete commissioning scope; it is not a release declaration. The legacy application remains the production owner. Nothing below authorizes skipping an unproven gate.
 
 ## Current user decisions

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "qualificationDate": "2026-10-25",
+  "sourceCommit": "94dcd7257fe0113c86ccf20315c71c58ab2f4114",
+  "runId": 40172850508,
+  "runUrl": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/40172850508",
+  "evidenceMethod": "GitHub run/step status and filtered compiler/test logs; artifact digest verification was not performed for this summary.",
+  "solutionBuild": { "result": "passed", "warnings": 0, "errors": 0 },
+  "unitTests": { "passed": 456, "failed": 0, "skipped": 0, "total": 456 },
+  "calendarCasesInUnitSuite": 12,
+  "browserModelTests": { "passed": 22, "failed": 0, "total": 22 },
+  "calendarScope": [
+    "Istanbul calendar expansion and explicit start/return policy estimates",
+    "Annual dates, overnight windows, New Year and leap-day behavior",
+    "Stable versioned occurrence identities and expiry of late sweeper slots",
+    "Station-scoped overlap detection with no implicit equal-priority winner",
+    "Explicit bounded-forecast rejection instead of silent truncation"
+  ],
+  "productionOperationsPerformed": false,
+  "limitations": [
+    "The timing core is not yet connected to durable event configuration, event media selection or programme playback.",
+    "The new special-day/timed-sweeper UI workflow has not been implemented or accepted.",
+    "Browser model tests are not connected mouse/keyboard operator acceptance.",
+    "No actual-PC audio, source handover, microphone, encoded-output or 24/72-hour continuity claim follows from these software checks.",
+    "The broader selected monitoring, separation, permissions and backup/restore work remains active."
+  ]
+}
