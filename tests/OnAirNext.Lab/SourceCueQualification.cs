@@ -11,8 +11,10 @@ internal static class SourceCueQualification
     public static async Task<int> RunAsync(string ffmpeg,string output,string? icecastRoot=null)
     {
         output=Path.GetFullPath(output);Directory.CreateDirectory(output);
-        var wave=Path.Combine(output,"original.wav");WriteWave(wave);
-        var encoded=Path.Combine(output,"unicode.flac");
+        var fixture=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"RadioTEDU","OnAirNext-Dev","lab","source-cues",Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(fixture);
+        var wave=Path.Combine(fixture,"original.wav");WriteWave(wave);
+        var encoded=Path.Combine(fixture,"unicode.flac");
         await ChildProcess.CaptureAsync(ffmpeg,"-hide_banner","-v","error","-nostdin","-y","-i",wave,"-c:a","flac","-metadata","artist=久石譲","-metadata","title=Şarkı – été",encoded);
         var original=Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(encoded)));
         await using var probe=new LibraryAudioProbe(ffmpeg);
@@ -36,9 +38,9 @@ internal static class SourceCueQualification
                 checks.Add(new{kind="PrivateCueSeek",seek.Frames,expected=range.Frames-48000});
             }
         }
-        if(icecastRoot is not null)await EncodedAsync(ffmpeg,icecastRoot,output,music,checks);
         var music=new MediaItem("first",encoded,metadata.Artist,metadata.Title,ContentKind.Music,range.Frames/48000d,metadata.Loudness);
-        await using(var journal=new EventJournal(Path.Combine(output,"cue-playout.db")))
+        if(icecastRoot is not null)await EncodedAsync(ffmpeg,icecastRoot,fixture,music,checks);
+        await using(var journal=new EventJournal(Path.Combine(fixture,"cue-playout.db")))
         {
             var sink=new BoundarySink(range.Frames);
             await using var engine=new StationEngine(ffmpeg,new("cue-test",[music,music with{Id="second"}],[],Repeat:false),journal,[sink]);
@@ -68,7 +70,7 @@ internal static class SourceCueQualification
         {
             using var pipe=new CodecPipe(System.IO.Pipes.PipeDirection.In);
             var input=$"http://127.0.0.1:{origin.Port}{output.Mount}";
-            var process=ChildProcess.Start(ffmpeg,["-hide_banner","-v","error","-nostdin","-y","-rw_timeout","5000000","-f",output.Profile==CodecProfile.OggFlac?"ogg":"aac","-i",input,"-t","10","-map","0:a:0","-vn","-threads","1","-filter_threads","1","-ac","2","-ar","48000","-c:a","pcm_f32le","-f","f32le",pipe.Path],role:"source-cue-listener");
+            var process=ChildProcess.Start(ffmpeg,["-hide_banner","-v","error","-nostdin","-y","-rw_timeout","5000000","-f",output.Profile==CodecProfile.OggFlac?"ogg":"aac","-i",input,"-t","10","-map","0:a:0","-vn","-threads","1","-filter_threads","1","-af",SourceNormalization.DecodeFormat+",asetpts=N/SR/TB,atrim=end_sample=480000","-ac","2","-ar","48000","-c:a","pcm_f32le","-f","f32le",pipe.Path],role:"source-cue-listener");
             var error=ChildProcess.DrainErrorAsync(process);
             try
             {
