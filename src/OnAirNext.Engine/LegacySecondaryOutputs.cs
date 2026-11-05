@@ -10,6 +10,8 @@ internal static class LegacySecondaryOutputs
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
+        command.CommandText = "SELECT 1 FROM sqlite_master WHERE type='table' AND name='system_settings'";
+        if (command.ExecuteScalar() is null) return [];
         command.Parameters.AddWithValue("$key", $"station_{stationId}_extra_icecast_outputs");
         command.CommandText = """
             SELECT CASE WHEN value IS NULL OR trim(value)='' THEN 0
