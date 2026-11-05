@@ -2,13 +2,13 @@
 
 > Calendar report controls and a separate streaming download lane are under fresh qualification. See [report workflow](docs/REPORT_EXPORTS.md). Prior evidence below applies to its stated exact source.
 
-Independent radio broadcasting engine and local browser console under development. The current RadioTEDU installation continues broadcasting. **No production migration has occurred.**
+Independent radio broadcasting engine and local browser console. On 5 November 2026 the eight existing stations transferred to the installed Next Windows service, retaining their sixteen actual outputs. All sixteen public HTTPS endpoints produced decoded audio after the transfer. The former service is stopped and disabled, with its installation and verified database retained for rollback. See [the current transfer record](docs/PRODUCTION_TRANSFER_20261105.md); historical qualification notes below keep their original scope.
 
 The user rejected the WPF prototype and requested a browser app. [The browser interface decision](docs/BROWSER_UI_DECISION.md) supersedes earlier native-only UI clauses. The rejected prototype remains historical source and is no longer part of the active solution.
 
 Exact functional source `384cc67a` passed 205 unit cases, 9 browser-model cases, 357 real audio checks across ten scenarios, 35 SCM checks, 20 setup checks, 15 independent synthetic signals and three real codec profile checks in [run 38861221700](https://github.com/akgularda/radiotedu-onair-next/actions/runs/38861221700). Seven result archive digests and execution source identities were verified. The synthetic full roster includes eight FDK AAC-LC 192, eight FDK HE-AACv2 64 and two 24-bit Ogg FLAC outputs. All 18 live decoded windows retained exactly 192000 stereo frames; all eight meters retained continuous coverage with zero history failures; Stop confirmed all audit work and the immutable attempt hash chain. These are remote low-crest fixtures, not worst-case codec headroom, actual-PC or connected operator acceptance. See [scoped evidence](artifacts/evidence/fdk-full18-205-20261016.json).
 
-Source normalization, final-mix limiting, dedicated measurement/history workers and durable journal group commits are implemented. Full official corpus, worst-case decoded codec headroom, physical devices, connected UI, target-PC and 24/72-hour qualification remain open. Zero station groups have migrated.
+Source normalization, final-mix limiting, dedicated measurement/history workers and durable journal group commits are implemented. Full official corpus, worst-case decoded codec headroom, physical devices and 24/72-hour qualification remain open. Eight station groups have transferred; this does not establish long-duration acceptance.
 
 ## Current interface
 
