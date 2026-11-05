@@ -61,7 +61,7 @@ public sealed class MetadataPublisherTests
         publisher.Start(); publisher.SetConnected(true); publisher.SetNowPlaying("", "first");
         await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
         for (var i = 0; i < 1000; i++) publisher.SetNowPlaying("", "new-" + i);
-        Assert.Equal(1, requests.Count);
+        Assert.Single(requests);
         release.SetResult(); await Until(() => publisher.Snapshot().PublishedTitle == "new-999");
         Assert.Equal(2, requests.Count);
         Assert.EndsWith("song=new-999", requests.Last());
