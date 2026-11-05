@@ -4,13 +4,42 @@ on:
   push:
     branches: [main, broadcast-pc-recovery-20261015]
   workflow_dispatch:
+    inputs:
+      public_listeners_only:
+        description: Run only the bounded, read-only public HTTPS listener check
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
   group: windows-build-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  public-listeners:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.public_listeners_only }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Prepare independent decoder on disposable runner
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends ffmpeg
+          fi
+      - name: Verify the diagnostic rejects silence and decodes AAC and Ogg FLAC
+        run: node scripts/check-public-listeners.cjs --self-test
+      - name: Read and decode the existing sixteen public HTTPS listeners
+        run: node scripts/check-public-listeners.cjs
+      - name: Retain metadata only, without audio or source credentials
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: public-listener-check
+          path: artifacts/public-listener-check.json
+          if-no-files-found: warn
   loudness-reference:
+    if: ${{ !inputs.public_listeners_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -42,6 +71,7 @@ jobs:
           path: artifacts/loudness-reference/summary.json
           if-no-files-found: error
   windows-codec-runtime:
+    if: ${{ !inputs.public_listeners_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 55
     steps:
