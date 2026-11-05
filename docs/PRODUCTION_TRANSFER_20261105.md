@@ -1,5 +1,7 @@
 # Broadcasting PC transfer, 5 November 2026
 
+Update, 6 November: the installed image is now the fully qualified source `178267a7030de1eed99bc3910e95008af133f2f3`, with [measured source edge cues](SOURCE_EDGE_CUES.md). All sixteen public outputs produced decoded audio after that update. The f4b0131-plus-fairness image below describes the first transfer and remains a rollback image. Background cue backfill and the new long-duration acceptance window are in progress.
+
 All eight existing stations now run in `RadioTEDU.OnAirNext.Development` under LocalService. The retained `Existing16` roster contains `/classic`, `/lofi`, `/radio`, `/cazz`, `/rock`, `/energize`, `/situation` and `/maincharacter`, the six existing low bitrate variants, and the existing Classic/Cazz Ogg FLAC outputs. No additional mounts or external stations were commissioned.
 
 The sixteen public HTTPS endpoints all returned independently decoded audio, with normal certificate validation. The old `RadioTEDU.OnAir.Supervisor` service is stopped and its startup is disabled. Next starts automatically and has Windows service recovery configured. Sleep was already disabled on AC and DC power. Closing the console does not own or stop the engine.
