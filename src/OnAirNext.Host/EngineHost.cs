@@ -160,7 +160,7 @@ internal static class EngineHost
                                         })).ToArray()
                                     } : null,
                                     controller = new { mode = serviceMode ? "windows-service" : "developer", service = serviceMode ? ServiceEndpoint.Name : null,
-                                        capabilities = new[] { "legacy-music-assignment-v1", RecoveryCompatibility.HeldRotationFeature, "branding-library-v1", "private-cue-v1", RecoveryCompatibility.StationQueueFeature, "commissioning-output-profile-v1", "programme-drafts-v1" } } });
+                                        capabilities = new[] { "legacy-music-assignment-v1", RecoveryCompatibility.HeldRotationFeature, "branding-library-v1", "private-cue-v1", RecoveryCompatibility.StationQueueFeature, "commissioning-output-profile-v1", "commissioning-output-roster-v1", "programme-drafts-v1" } } });
                                 break;
                             case "commission-output-profile" when serviceMode && OperatingSystem.IsWindows() && request.OutputProfile is { } outputProfile:
                                 CommissioningOutputStore.RequireAllDisarmed(coordinator.Snapshot());
@@ -176,6 +176,17 @@ internal static class EngineHost
                                 var profileCleared = CommissioningOutputStore.Clear(config.DataRoot, config.Stations.Select(station => station.Id), json);
                                 shutdown = profileCleared;
                                 result = JsonSerializer.Serialize(new { accepted = true, cleared = profileCleared, restartRequired = profileCleared });
+                                break;
+                            case "commission-output-roster" when serviceMode && OperatingSystem.IsWindows():
+                                CommissioningOutputStore.RequireAllDisarmed(coordinator.Snapshot());
+                                if (!Enum.TryParse<ProductionOutputRoster>(request.Path, out var selectedRoster) || !Enum.IsDefined(selectedRoster))
+                                    throw new ArgumentException("Choose a supported saved output roster.");
+                                var savedProfile = storedOutputProfile ?? CommissioningOutputStore.LoadPrevious(config.DataRoot, config.Stations.Select(station => station.Id), json)
+                                    ?? throw new InvalidOperationException("No protected output profile is available. Import verified connection settings before commissioning.");
+                                var selectedProfile = savedProfile.SelectRoster(selectedRoster);
+                                await CommissioningOutputStore.WriteAsync(config.DataRoot, selectedProfile, config.Stations.Select(station => station.Id), json, stop.Token);
+                                shutdown = true;
+                                result = JsonSerializer.Serialize(new { accepted = true, restartRequired = true, roster = selectedProfile.Roster, outputCount = selectedProfile.Stations.Sum(station => station.Outputs.Count) });
                                 break;
                             case "programme-drafts":
                                 result = JsonSerializer.Serialize(new { drafts = await journal.ProgrammeDraftsAsync(programmeStations, request.StationId, request.IncludeArchived, request.Offset) }); break;

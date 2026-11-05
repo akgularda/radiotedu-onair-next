@@ -119,6 +119,22 @@ public sealed record ProductionOutputConfiguration(int SchemaVersion, IReadOnlyL
         ["8"] = "/rock", ["9"] = "/energize", ["10"] = "/situation", ["11"] = "/maincharacter"
     };
 
+    public ProductionOutputConfiguration SelectRoster(ProductionOutputRoster roster)
+    {
+        Validate(StationIds);
+        var selected = this with
+        {
+            Roster = roster,
+            Stations = Stations.Select(station => station with
+            {
+                Outputs = station.Outputs.Where(output => roster != ProductionOutputRoster.Existing16 ||
+                    output.Mount is not ("/situation-low" or "/maincharacter-low")).ToArray()
+            }).ToArray()
+        };
+        // Adding an output requires its saved settings; never invent a password or codec.
+        return selected.Validate(StationIds);
+    }
+
     public ProductionOutputConfiguration Validate(IEnumerable<string> installedStations)
     {
         if (SchemaVersion != 1) throw new ArgumentException("Unsupported production-output configuration version.");

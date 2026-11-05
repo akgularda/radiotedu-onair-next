@@ -17,8 +17,14 @@ internal static class CommissioningOutputStore
     private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("RadioTEDU-OnAirNext|commissioning-output-profile|v1");
 
     public static ProductionOutputConfiguration? Load(string dataRoot, IEnumerable<string> stationIds, JsonSerializerOptions json)
+        => LoadFile(dataRoot, stationIds, json, ProfileFileName);
+
+    public static ProductionOutputConfiguration? LoadPrevious(string dataRoot, IEnumerable<string> stationIds, JsonSerializerOptions json)
+        => LoadFile(dataRoot, stationIds, json, BackupFileName);
+
+    private static ProductionOutputConfiguration? LoadFile(string dataRoot, IEnumerable<string> stationIds, JsonSerializerOptions json, string fileName)
     {
-        var path = Path.Combine(ValidateDirectory(dataRoot), ProfileFileName);
+        var path = Path.Combine(ValidateDirectory(dataRoot), fileName);
         if (!File.Exists(path)) return null;
         AssertProtectedFile(path);
         var info = new FileInfo(path);

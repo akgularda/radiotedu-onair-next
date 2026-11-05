@@ -155,8 +155,10 @@ app.MapGet("/api/source-check", async (string engine, string station, string id,
     Results.Json(await EngineRpc.SendAsync(engine, new { Id = Guid.NewGuid().ToString("N"), Action = "library-source-status", StationId = station, SourceCheckId = id }, token)));
 app.MapPost("/api/command", async (ConsoleCommand command, CancellationToken token) =>
 {
+    var outputAction = command.Request.ValueKind == JsonValueKind.Object && command.Request.TryGetProperty("Action", out var outputCommand) &&
+        outputCommand.GetString() is "commission-output-profile-clear" or "commission-output-roster";
     if (command.Request.ValueKind != JsonValueKind.Object || !command.Request.TryGetProperty("Action", out var action) ||
-        !allowedActions.Contains(action.GetString() ?? "") || !command.Request.TryGetProperty("Id", out var id) ||
+        (!outputAction && !allowedActions.Contains(action.GetString() ?? "")) || !command.Request.TryGetProperty("Id", out var id) ||
         !Guid.TryParse(id.GetString(), out _)) throw new ArgumentException("This station command is not available.");
     return Results.Json(await EngineRpc.SendAsync(command.Engine, command.Request, token));
 });

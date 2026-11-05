@@ -5,6 +5,29 @@
   const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null,folderTarget:null,folderSource:null,editTarget:null,assetStateTarget:null,controller:null,consoleClosed:false,upload:null,uploadSelection:null};
   const migration={engine:null,preview:null,loading:false,busy:false,key:null,selects:new Map(),pending:null,submissionError:null};
   let brandingUI=null,cueUI=null,programmeUI=null;
+  let outputProfile=null,outputBusy=false;
+  function renderOutputs(){
+    const stopped=fresh()&&state.stations.length===8&&state.stations.every(s=>s.State==='Stopped'&&!s.RequestedRunning&&s.Outputs.every(o=>o.State==='Stopped'&&!o.EncoderPid&&!o.QueuedBlocks));
+    const service=state.controller?.mode==='windows-service',caps=state.controller?.capabilities??[];
+    $('outputs-save').disabled=outputBusy||!stopped||!service||!caps.includes('commissioning-output-roster-v1');
+    $('outputs-clear').disabled=outputBusy||!stopped||!service||!outputProfile?.enabled||!caps.includes('commissioning-output-profile-v1');
+    $('outputs-roster').disabled=outputBusy||!stopped||!service;
+    text('outputs-phase',fresh()?(outputProfile?.enabled?'Configured':'Disarmed'):'Not connected');
+    text('outputs-summary',fresh()?(outputProfile?.outputs?.map(o=>`${o.Mount} (${o.Profile})`).join(' · ')||'No outputs configured. Saved protected connections can be restored after maintenance.'):'Connect the installed engine to review its saved stream destinations.');
+  }
+  async function saveOutputs(clear){
+    if((clear?$('outputs-clear'):$('outputs-save')).disabled)return;
+    outputBusy=true;renderOutputs();
+    try{
+      const request={Id:crypto.randomUUID(),Action:clear?'commission-output-profile-clear':'commission-output-roster',Path:$('outputs-roster').value};
+      const result=await api('/api/command',{method:'POST',body:{engine:state.engine,request}});
+      if(result.accepted!==true)throw new Error(result.error??'Output change rejected.');
+      text('outputs-feedback',result.restartRequired?'Saved. Restart the engine service, reconnect, and verify destinations before starting any channel.':'Outputs are already disarmed.');
+    }catch(error){text('outputs-feedback','Change not confirmed. Reconnect and read saved destinations before retrying. '+error.message);}
+    finally{outputBusy=false;state.sampleAt=0;renderOutputs();}
+  }
+  $('outputs-save').addEventListener('click',()=>void saveOutputs(false));
+  $('outputs-clear').addEventListener('click',()=>void saveOutputs(true));
   const queueState={engine:null,station:null,snapshot:null,receivedAt:0,loading:false,lastAttempt:0,error:null,key:null};
   const queueButtons=new WeakMap();
   let setupFolderTarget='setup-runtime';
@@ -207,9 +230,9 @@
   }
   async function poll(){
     if(state.polling||!state.engine||document.hidden)return;state.polling=true;const engine=state.engine;
-    try{const result=await api('/api/status?engine='+encodeURIComponent(engine));if(engine!==state.engine)return;const previous=state.stations.map(s=>s.Id).join(',');state.stations=result.stations??[];state.controller=result.controller??null;state.sampleAt=Date.now();if(!state.stations.some(s=>s.Id===state.station)&&state.stations.length)state.station=state.stations[0].Id;if(previous!==state.stations.map(s=>s.Id).join(','))stationTabs();text('audit-pending',String(result.audit?.PendingEvents??'—'));text('audit-rejected',String(result.audit?.RejectedEvents??'—'));text('audit-error',result.audit?.Error??'None reported');}
+    try{const result=await api('/api/status?engine='+encodeURIComponent(engine));if(engine!==state.engine)return;const previous=state.stations.map(s=>s.Id).join(',');state.stations=result.stations??[];state.controller=result.controller??null;outputProfile=result.commissioning??null;state.sampleAt=Date.now();if(!state.stations.some(s=>s.Id===state.station)&&state.stations.length)state.station=state.stations[0].Id;if(previous!==state.stations.map(s=>s.Id).join(','))stationTabs();text('audit-pending',String(result.audit?.PendingEvents??'—'));text('audit-rejected',String(result.audit?.RejectedEvents??'—'));text('audit-error',result.audit?.Error??'None reported');}
     catch(error){message('Status unavailable: '+error.message);state.sampleAt=0;}
-    finally{state.polling=false;renderStatus();void loadQueue();if(state.page==='reports')void loadReports();if(state.page==='system')void loadMigration();}
+    finally{state.polling=false;renderStatus();renderOutputs();void loadQueue();if(state.page==='reports')void loadReports();if(state.page==='system')void loadMigration();}
   }
   async function command(action,payload={},retry=null){
     if(!fresh()||state.busy||(!retry&&pending()))return null;

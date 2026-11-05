@@ -123,6 +123,21 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void SelectingExistingRosterPreservesSavedCredentialsAndNeverInventsOutputs()
+    {
+        var original = ValidProductionProfile();
+        var selected = original.SelectRoster(ProductionOutputRoster.Existing16);
+        Assert.Equal(16, selected.Stations.Sum(station => station.Outputs.Count));
+        foreach (var station in selected.Stations)
+            foreach (var output in station.Outputs)
+                Assert.Same(original.Stations.Single(saved => saved.StationId == station.StationId)
+                    .Outputs.Single(saved => saved.Id == output.Id), output);
+        Assert.Equal(18, original.Stations.Sum(station => station.Outputs.Count));
+        Assert.Throws<ArgumentException>(() => selected.SelectRoster(ProductionOutputRoster.Expanded18));
+        Assert.Throws<ArgumentException>(() => original.SelectRoster((ProductionOutputRoster)999));
+    }
+
+    [Fact]
     public void ProductionOutputProfileRejectsUnapprovedIcecastOrigins()
     {
         var profile = ValidProductionProfile();
