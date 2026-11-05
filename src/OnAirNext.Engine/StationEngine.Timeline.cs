@@ -63,7 +63,11 @@ public sealed partial class StationEngine
             var terminal=boundary.Type is "ended" or "skipped" or "failed" or "decode_failed" or "queue_deferred";
             QueueAudit(()=>_journal.AppendAsync(entry,checkpoint),terminal?cursor.Selection.QueueEntryId:null);
             _lastCheckpoint=checkpoint;
-            if(boundary.Type=="started")Volatile.Write(ref _audible,cursor);
+            if(boundary.Type=="started")
+            {
+                Volatile.Write(ref _audible,cursor);
+                foreach(var output in _outputs)output.SetNowPlaying(item.Artist,item.Title);
+            }
             else if(terminal)
             {
                 if(Volatile.Read(ref _audible)?.Occurrence==cursor.Occurrence)Volatile.Write(ref _audible,null);

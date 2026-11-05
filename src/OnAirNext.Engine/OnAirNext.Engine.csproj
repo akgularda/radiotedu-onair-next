@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><RuntimeIdentifiers>win-x64</RuntimeIdentifiers></PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="OnAirNext.Tests" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.13" />
   </ItemGroup>
 </Project>

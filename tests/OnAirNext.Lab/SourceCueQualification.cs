@@ -90,6 +90,27 @@ internal static class SourceCueQualification
             finally {await ChildProcess.StopAsync(process);}
         }));
         checks.AddRange(results);
+        var expectedSong=music.Artist+" - "+music.Title;
+        var metadataReady=false;
+        using(var statusClient=new HttpClient(new SocketsHttpHandler{UseProxy=false}){Timeout=TimeSpan.FromSeconds(2)})
+        {
+            for(var attempt=0;attempt<40&&!metadataReady;attempt++)
+            {
+                var state=engine.Snapshot();
+                if(state.Outputs.Where(o=>o.Id!=outputs.Single(x=>x.Profile==CodecProfile.OggFlac).Id)
+                    .All(o=>o.Metadata is{Updates:>0,LastError:null}&&o.Metadata.PublishedTitle==expectedSong))
+                {
+                    using var document=JsonDocument.Parse(await statusClient.GetStringAsync($"http://127.0.0.1:{origin.Port}/status-json.xsl",deadline.Token));
+                    var source=document.RootElement.GetProperty("icestats").GetProperty("source");
+                    var sources=source.ValueKind==JsonValueKind.Array?source.EnumerateArray().ToArray():[source];
+                    metadataReady=outputs.Where(o=>o.Profile!=CodecProfile.OggFlac).All(output=>sources.Any(s=>
+                        new Uri(s.GetProperty("listenurl").GetString()!).AbsolutePath==output.Mount&&s.TryGetProperty("title",out var title)&&title.GetString()==expectedSong));
+                }
+                if(!metadataReady)await Task.Delay(50,deadline.Token);
+            }
+        }
+        if(!metadataReady)throw new InvalidDataException("Live AAC metadata did not reach the independent origin with exact Unicode artist/title.");
+        checks.Add(new{kind="LiveMetadata",dynamicOutputs=2,utf8=true,expectedSong,scope="Real loopback Icecast URL updates; Ogg in-band comments are not ICY metadata."});
         if(engine.Snapshot().Outputs.Any(o=>o.State!="SourceConnected"||o.Connections!=1||o.EncoderStarts!=1||o.DroppedBlocks!=0))throw new InvalidDataException("Cued programme restarted or dropped an encoded output.");
     }
     private sealed class BoundarySink(long boundary):IProgramOutput

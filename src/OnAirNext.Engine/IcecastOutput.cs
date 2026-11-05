@@ -11,6 +11,7 @@ public sealed class IcecastOutput : IProgramOutput
     private readonly string _ffmpeg;
     private readonly OutputSettings _settings;
     private readonly Action? _requireExclusiveOwnership;
+    private readonly IcecastMetadataPublisher _metadata;
     private readonly Channel<PcmBlock> _queue;
     private readonly CancellationTokenSource _stop = new();
     private CancellationTokenSource? _session;
@@ -30,6 +31,7 @@ public sealed class IcecastOutput : IProgramOutput
         else settings.Validate();
         _requireExclusiveOwnership = requireExclusiveOwnership;
         _ffmpeg = ffmpeg; _settings = settings;
+        _metadata = new IcecastMetadataPublisher(settings, requireExclusiveOwnership);
         _queue = Channel.CreateBounded<PcmBlock>(new BoundedChannelOptions(settings.QueueBlocks)
         { SingleReader = true, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait });
     }
@@ -38,7 +40,10 @@ public sealed class IcecastOutput : IProgramOutput
     {
         if (_run is not null) throw new InvalidOperationException("Output supervisor already started.");
         _run = RunAsync();
+        _metadata.Start();
     }
+
+    public void SetNowPlaying(string artist, string title) => _metadata.SetNowPlaying(artist, title);
 
     public bool Publish(PcmBlock block)
     {
@@ -54,7 +59,7 @@ public sealed class IcecastOutput : IProgramOutput
 
     public OutputSnapshot Snapshot() => new(_settings.Id, _state, Interlocked.Read(ref _starts),
         Interlocked.Read(ref _connections), Interlocked.Read(ref _written), Interlocked.Read(ref _drops),
-        _queue.Reader.Count, Volatile.Read(ref _pid) is var pid && pid != 0 ? pid : null, _lastError);
+        _queue.Reader.Count, Volatile.Read(ref _pid) is var pid && pid != 0 ? pid : null, _lastError, _metadata.Snapshot());
 
     private async Task RunAsync()
     {
@@ -85,6 +90,7 @@ public sealed class IcecastOutput : IProgramOutput
                 Interlocked.Increment(ref _starts);
                 var errors = ChildProcess.DrainErrorAsync(encoder);
                 _state = "SourceConnected";
+                _metadata.SetConnected(true);
                 _lastError = null;
                 feed = FeedEncoderAsync(pcm, session.Token);
                 drain = SendEncodedAsync(encoded, client.GetStream(), session.Token);
@@ -101,6 +107,7 @@ public sealed class IcecastOutput : IProgramOutput
             }
             finally
             {
+                _metadata.SetConnected(false);
                 Volatile.Write(ref _pid, 0);
                 await session.CancelAsync();
                 client.Close();
@@ -193,9 +200,11 @@ public sealed class IcecastOutput : IProgramOutput
     public async ValueTask DisposeAsync()
     {
         await _stop.CancelAsync();
+        var metadataStop = _metadata.DisposeAsync().AsTask();
         _queue.Writer.TryComplete();
         if (_run is not null) await _run;
         else DrainStale();
+        await metadataStop;
         _stop.Dispose();
     }
 }

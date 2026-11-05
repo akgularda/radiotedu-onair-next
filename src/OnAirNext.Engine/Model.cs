@@ -49,7 +49,8 @@ public enum CodecProfile { AacLc192, OggFlac, HeAacV2_64 }
 
 public sealed record OutputSettings(string Id, string Host, int Port, string Mount, string SourcePassword,
     CodecProfile Profile = CodecProfile.AacLc192, int QueueBlocks = 100, int WriteTimeoutMs = 2000,
-    bool Commissioned = false, IcecastStationInformation? Information = null, string SourceUsername = "source")
+    bool Commissioned = false, IcecastStationInformation? Information = null, string SourceUsername = "source",
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool MetadataSuppressed = false)
 {
     public void Validate(bool loopbackOnly = true)
     {
@@ -210,7 +211,9 @@ public sealed record PlayoutCheckpoint(string StationId, string State, int Rotat
     string? QueueEntryId = null, string? SessionId = null, string? PreviousOccurrenceId = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool HoldsRotation = false);
 public sealed record OutputSnapshot(string Id, string State, long EncoderStarts, long Connections, long FramesWritten,
-    long DroppedBlocks, int QueuedBlocks, int? EncoderPid, string? LastError);
+    long DroppedBlocks, int QueuedBlocks, int? EncoderPid, string? LastError,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] MetadataSnapshot? Metadata = null);
+public sealed record MetadataSnapshot(string State, string? PublishedTitle, long Updates, long Failures, string? LastError);
 public sealed record PlayoutItemSnapshot(string Id, string Artist, string Title, ContentKind Kind, double? DurationSeconds);
 public sealed record StationSnapshot(string Id, string State, long Samples, long CompletedItems, long SkippedItems,
     string? CurrentTitle, long LateBlocks, long AuditRejectedEvents, IReadOnlyList<OutputSnapshot> Outputs,
@@ -235,4 +238,6 @@ public interface IProgramOutput : IAsyncDisposable
     void Start();
     bool Publish(PcmBlock block);
     OutputSnapshot Snapshot();
+    // Queue only. Metadata networking must never block the programme producer.
+    void SetNowPlaying(string artist, string title) { }
 }
