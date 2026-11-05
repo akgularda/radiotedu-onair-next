@@ -1,5 +1,7 @@
 name: Windows library fairness qualification
 on:
+  push:
+    branches: [deploy/existing16-20261105]
   workflow_dispatch:
 permissions:
   contents: read
