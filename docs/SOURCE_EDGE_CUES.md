@@ -1,4 +1,4 @@
-# Source edge cues under qualification
+# Source edge cues: installed, long-duration acceptance open
 
 The initial live listener trace exposed quiet song endings. Six inspected transitions had coincident source-ended/next-started journal sample positions. Offline reads of those original files found the same exterior quiet, including roughly twelve seconds at the end of a Situation track. This distinguishes these cases from a source socket disconnect; it does not classify every future quiet interval.
 
@@ -8,4 +8,6 @@ Original media bytes, source hashes and timestamps stay unchanged. The decoder s
 
 The validation subprocess explicitly reads metadata as UTF-8 to avoid Windows service code-page corruption. The original binary codec pipes retain their existing start path.
 
-This candidate is **not installed on the broadcasting PC**. Qualification must include the full unit suite, actual full-file measurement and decoding, exact finite song boundaries, preserved internal pauses and programme timing, Unicode tags, source-byte integrity, queue/recovery regressions and encoded listener checks before deployment. The installed sixteen-output service continues with its previously qualified image during this work.
+Source `178267a7030de1eed99bc3910e95008af133f2f3` was installed on 6 November 2026 after [full Windows qualification](https://github.com/akgularda/radiotedu-onair-next/actions/runs/42113081749). All 480 unit tests passed. Real decoding, exact finite song boundaries, preserved internal pauses and programme timing, Unicode tags, source-byte integrity and all three persistent codec profiles passed. The finite transition fixture retained 5,761 quiet frames at the boundary, approximately 0.12 seconds. Nine original production music/branding files were separately inspected read-only without changing their bytes.
+
+The previous Next image and a verified metadata snapshot are retained locally. All sixteen public endpoints produced decoded audio after the planned service update. Valid older catalogue entries stay eligible during background cue backfill, so an entry can retain its original silent tail until its new measurement is ready. Live transition monitoring and a fresh 72-hour listener/source acceptance window remain in progress; short checks do not prove flawless continuous operation.
