@@ -2,11 +2,15 @@
 
 # Broadcasting PC build and staged migration handoff
 
+Latest operator instruction, 5 November 2026: complete installation and move the broadcasts to OnAir Next. The operator explicitly allows stopping the old broadcasts for this transfer. Keep the previous installation, files and a verified current database snapshot for rollback. Validate the actual sixteen-output roster and decoded audio after the transfer. The earlier requirement to keep every existing listener socket open does not prevent this authorized cutover; long-duration acceptance is still reported separately.
+
 User-authorized handoff dated 15 October 2026. Use the **akgularda** GitHub account. Public application source: https://github.com/akgularda/radiotedu-onair-next. Private report archive: https://github.com/akgularda/radiotedu-broadcast-reports.
 
 ## Objective and authorization
 
 Finish RadioTEDU OnAir Next on the broadcasting PC, build the native Windows application, configure it through UI workflows, transfer broadcasts **one station at a time**, then retire the former program after all required outputs work and verification gates pass. The user explicitly authorized this staged transfer and final shutdown; do not repeatedly request permission for the same authorized steps. A verified rollback and sufficient evidence are prerequisites, not reasons to skip implementation.
+
+The saved live lineup verified on 3 November 2026 has sixteen outputs across eight stations. The protected commissioning profile supports this exact lineup as `Existing16`. In that profile, Situation and Main Character retain their primary outputs only. `Expanded18` remains the separate roster with a low bitrate output for each of those stations. Preview, transport qualification and rollback must cover every mount in the chosen roster before moving any station.
 
 Software development may use source edits, build commands and tests. **Operational configuration, content adjustments, import/migration, station/output settings, service setup/startup and cutover/rollback must be executable through the UI.** Do not substitute direct SQL updates, handwritten config files, hidden API calls or command-line operational workarounds for missing controls. Read-only technical inspection and verification are permitted. If the needed UI action is absent, implement and test it before using it. No operator should need Codex to run the finished application.
 
@@ -89,7 +93,7 @@ During incremental migration, preserve provenance and reporting continuity acros
 
 ## Retiring the former program
 
-Only after **all eight station groups / all 18 requested outputs**, including Classic and Cazz FLAC, are verified under the new service and the full observation gates pass:
+Only after **all eight station groups and every output in the chosen roster**, including Classic and Cazz FLAC, are verified under the new service and the full observation gates pass:
 
 - Use the UI's retirement workflow to stop the old broadcast service/supervisor and disable its automatic source startup/recovery so it cannot reclaim mounts after reboot. Closing the desktop window alone is insufficient.
 - Confirm the new service is the sole authorized source owner, all outputs still decode, reports publish and no unintended former background keeper remains.

@@ -167,17 +167,19 @@ public sealed class LegacyImportPreviews : IAsyncDisposable
                         throw new InvalidDataException("Station " + identity.Id + ": a saved primary output exceeds its preview size limit.");
                     var music = settings.GetValueOrDefault("music_library_folder");
                     var jingle = settings.GetValueOrDefault("jingle_library_folder") ?? settings.GetValueOrDefault("jingle_folder");
-                    var warnings = new List<string> { "Secondary outputs and source credentials have not been imported.", "Jingle/sweeper files and cadence require a separate validated import." };
+                    var warnings = new List<string> { "Source credentials have not been imported.", "Jingle/sweeper files and cadence require a separate validated import." };
                     if (output is not null && LegacyImportPreview.OutputAddressIssues(output) is { Length: > 0 } issues)
                     {
                         var fields = string.Join(", ", issues);
                         if (output.Enabled) throw new InvalidDataException("Station " + identity.Id + ": the enabled primary output has an invalid " + fields + ". Review its saved destination before preparing import.");
                         warnings.Add("Disabled primary output has an invalid " + fields + ". Leave this station with the former program until its destination is reviewed. It was not enabled or replaced.");
                     }
+                    var secondary = LegacySecondaryOutputs.Read(connection, transaction, identity.Id, output);
+                    var programmes = LegacyProgrammeInventory.Read(connection, transaction, identity.Id);
                     if (string.IsNullOrWhiteSpace(music)) warnings.Add("No saved music folder.");
                     if (string.IsNullOrWhiteSpace(jingle)) warnings.Add("No saved jingle folder.");
                     stations.Add(new(identity.Id, identity.Name, music, jingle, settings.GetValueOrDefault("sweeper_track_ids"),
-                        settings.GetValueOrDefault("sweeper_enabled") == "true", int.TryParse(settings.GetValueOrDefault("sweeper_interval"), NumberStyles.None, CultureInfo.InvariantCulture, out var interval) ? interval : 0, output, warnings.ToArray()));
+                        settings.GetValueOrDefault("sweeper_enabled") == "true", int.TryParse(settings.GetValueOrDefault("sweeper_interval"), NumberStyles.None, CultureInfo.InvariantCulture, out var interval) ? interval : 0, output, warnings.ToArray(), secondary, programmes));
                 }
                 using var backup = connection.CreateCommand(); backup.Transaction = transaction;
                 backup.CommandText = "SELECT file_path,sha256,size_bytes,verified_at FROM recovery_points WHERE integrity_status='ok' AND verified_at IS NOT NULL ORDER BY id DESC LIMIT 1";

@@ -21,11 +21,19 @@ public sealed partial class LegacyImportTests
         command.CommandText = """
             CREATE TABLE stations(id INTEGER PRIMARY KEY,name TEXT NOT NULL);
             CREATE TABLE station_settings(station_id INTEGER,key TEXT,value TEXT);
+            CREATE TABLE system_settings(key TEXT PRIMARY KEY,value TEXT);
             CREATE TABLE station_outputs(station_id INTEGER,icecast_host TEXT,icecast_port INTEGER,icecast_mount TEXT,stream_codec_profile TEXT,stream_bitrate_kbps INTEGER,icecast_enabled INTEGER,icecast_password TEXT);
+            CREATE TABLE special_event_programs(station_id INTEGER,id TEXT,payload_json TEXT);
+            CREATE TABLE broadcast_plans(id INTEGER PRIMARY KEY,name TEXT,plan_type TEXT,cadence_mode TEXT,starts_on TEXT,ends_on TEXT,local_start TEXT,local_end TEXT,timezone TEXT,enabled INTEGER,repeat_every_songs INTEGER,repeat_every_minutes INTEGER,weekdays_json TEXT,priority INTEGER);
+            CREATE TABLE broadcast_plan_targets(plan_id INTEGER,station_id INTEGER,track_id INTEGER,enabled INTEGER);
             CREATE TABLE recovery_points(id INTEGER PRIMARY KEY,file_path TEXT,sha256 TEXT,size_bytes INTEGER,verified_at TEXT,integrity_status TEXT);
             INSERT INTO stations VALUES(4,'Pop'),(9,'Energize');
             INSERT INTO station_settings VALUES(4,'music_library_folder',$music),(4,'jingle_library_folder',$jingle),(4,'sweeper_track_ids','21,22'),(4,'sweeper_enabled','true'),(4,'sweeper_interval','3'),(4,'ai_host_enabled','true');
             INSERT INTO station_outputs VALUES(4,'127.0.0.1',18980,'/pop','aac_low_192',192,1,'synthetic-source-secret'),(9,'127.0.0.1',18980,'/energize','aac_low_192',192,1,'synthetic-source-secret');
+            INSERT INTO system_settings VALUES('station_4_extra_icecast_outputs','[{"mount":"pop-low","password":"synthetic-secondary-secret"},{"mount":"/pop-lossless","codec":"flac_24","enabled":false,"bitrate_kbps":0}]');
+            INSERT INTO special_event_programs VALUES(4,'special-1','{"name":"Republic Day fixture","mode":"playlist","enabled":true,"annual":false,"starts_on":"2026-10-29","ends_on":"2026-10-29","local_start":"00:00","local_end":"18:00","timezone":"Europe/Istanbul","order":"shuffle","start_policy":"boundary","metadata_title":"Happy Republic Day!","priority":100,"tracks":["synthetic-library-path-not-for-preview"]}');
+            INSERT INTO broadcast_plans VALUES(1,'PowerApp fixture','ad','songs','2026-09-26','2027-09-26','00:00','00:00','Europe/Istanbul',1,5,0,'[1,2,3,4,5,6,7]',50);
+            INSERT INTO broadcast_plan_targets VALUES(1,4,53079,1);
             INSERT INTO recovery_points VALUES(1,$backup,$hash,$size,'2026-10-16T08:00:00Z','ok');
             """;
         command.Parameters.AddWithValue("$music", Path.Combine(source, "Pop")); command.Parameters.AddWithValue("$jingle", Path.Combine(source, "Jingles", "Pop"));
@@ -53,9 +61,21 @@ public sealed partial class LegacyImportTests
         var stations = result.Stations!; Assert.Equal(2, stations.Length); var pop = Assert.Single(stations, station => station.Id == 4);
         Assert.Equal(Path.Combine(fixture.Source, "Pop"), pop.MusicFolder); Assert.Equal(Path.Combine(fixture.Source, "Jingles", "Pop"), pop.JingleFolder);
         Assert.True(pop.SweepersEnabled); Assert.Equal(3, pop.SweeperEvery); Assert.True(pop.PrimaryOutput!.HasCredential);
+        Assert.Equal(new LegacySavedOutput("127.0.0.1", 18980, "/pop-low", "aac_he_v2_64", 64, true, true), pop.SecondaryOutputs![0]);
+        Assert.Equal(new LegacySavedOutput("127.0.0.1", 18980, "/pop-lossless", "flac_24", 0, false, true), pop.SecondaryOutputs[1]);
+        Assert.Empty(Assert.Single(stations, station => station.Id == 9).SecondaryOutputs!);
+        var special = Assert.Single(pop.Programmes!, programme => programme.Kind == "special-playlist");
+        Assert.True(special.Enabled); Assert.False(special.Annual); Assert.Equal("18:00", special.LocalEnd);
+        Assert.Equal("shuffle", special.Order); Assert.Equal("Happy Republic Day!", special.MetadataTitle); Assert.Equal(1, special.TrackCount);
+        var advertising = Assert.Single(pop.Programmes!, programme => programme.Kind == "ad-songs");
+        Assert.Equal(5, advertising.EverySongs); Assert.Equal("00:00", advertising.LocalEnd);
+        Assert.Equal(7, advertising.Weekdays!.Length); Assert.True(advertising.Enabled);
+        Assert.Empty(Assert.Single(stations, station => station.Id == 9).Programmes!);
         Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(database)));
         var saved = File.ReadAllText(Path.Combine(fixture.Target, "migration-previews", id + ".json"));
         Assert.DoesNotContain("synthetic-source-secret", saved); Assert.DoesNotContain("ai_host_enabled", saved);
+        Assert.DoesNotContain("synthetic-secondary-secret", saved);
+        Assert.DoesNotContain("synthetic-library-path-not-for-preview", saved);
         Assert.Equal(result.Id, previews.Start(id, fixture.Source).Id); Assert.Equal(result.State, previews.Snapshot(id)!.State);
         Assert.Throws<ArgumentException>(() => previews.Start(id, fixture.Root));
     }
@@ -138,5 +158,9 @@ public sealed partial class LegacyImportTests
         preview = preview with { Stations = [station with { PrimaryOutput = output with { Mount = "/en" } }, station with { Id = 9, PrimaryOutput = null }] };
         Assert.Throws<ArgumentException>(() => LegacyImportPreview.ValidateMappings(preview, mappings, targets));
         LegacyImportPreview.ValidateMappings(preview, [new(4, null), new(9, "9")], targets);
+        preview = preview with { Stations = [station with { SecondaryOutputs = [output with { Mount = "/en" }] }, station with { Id = 9, PrimaryOutput = null }] };
+        Assert.Throws<ArgumentException>(() => LegacyImportPreview.ValidateMappings(preview, mappings, targets));
+        preview = preview with { Stations = [station with { SecondaryOutputs = [output] }, station with { Id = 9, PrimaryOutput = null }] };
+        Assert.Throws<ArgumentException>(() => LegacyImportPreview.ValidateMappings(preview, mappings, targets));
     }
 }

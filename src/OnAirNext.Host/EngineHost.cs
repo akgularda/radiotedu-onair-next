@@ -153,6 +153,7 @@ internal static class EngineHost
                                     children = ChildProcess.ActiveProcesses, privateCue=privateCue.Snapshot(), commissioning = config.Commissioning ? new
                                     {
                                         enabled = true,
+                                         roster = storedOutputProfile?.Roster,
                                         outputs = config.Stations.SelectMany(station => station.Outputs.Select(output => new
                                         {
                                             stationId = station.Id, output.Id, output.Host, output.Port, output.Mount, output.Profile, output.Information
@@ -166,7 +167,7 @@ internal static class EngineHost
                                 var validProfile = outputProfile.Validate(config.Stations.Select(station => station.Id));
                                 await CommissioningOutputStore.WriteAsync(config.DataRoot, validProfile, config.Stations.Select(station => station.Id), json, stop.Token);
                                 shutdown = true;
-                                result = JsonSerializer.Serialize(new { accepted = true, restartRequired = true, outputCount = validProfile.Stations.Sum(station => station.Outputs.Count) });
+                                 result = JsonSerializer.Serialize(new { accepted = true, restartRequired = true, roster = validProfile.Roster, outputCount = validProfile.Stations.Sum(station => station.Outputs.Count) });
                                 break;
                             case "commission-output-profile-clear" when serviceMode && OperatingSystem.IsWindows():
                                 if (config.Commissioning && storedOutputProfile is null)

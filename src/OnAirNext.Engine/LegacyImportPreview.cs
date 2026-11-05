@@ -3,14 +3,19 @@ namespace OnAirNext.Engine;
 public sealed record LegacyStationMapping(int LegacyStationId, string? TargetStationId);
 public sealed record LegacySavedOutput(string Host, int Port, string Mount, string Profile, int BitrateKbps, bool Enabled, bool HasCredential);
 public sealed record LegacyStationPreview(int Id, string Name, string? MusicFolder, string? JingleFolder,
-    string? SweeperTrackIds, bool SweepersEnabled, int SweeperEvery, LegacySavedOutput? PrimaryOutput, string[] Warnings);
+    string? SweeperTrackIds, bool SweepersEnabled, int SweeperEvery, LegacySavedOutput? PrimaryOutput, string[] Warnings,
+    LegacySavedOutput[]? SecondaryOutputs = null, LegacyProgrammeSummary[]? Programmes = null);
+public sealed record LegacyProgrammeSummary(string Name, string Kind, bool Enabled, bool Annual,
+    string StartsOn, string EndsOn, string LocalStart, string LocalEnd, string TimeZone,
+    int? EverySongs, int? EveryMinutes, int TrackCount, string? Order = null, string? Entry = null,
+    string? MetadataTitle = null, int Priority = 0, int[]? Weekdays = null);
 public sealed record LegacyBackupProof(string FileName, string Sha256, long Bytes, string? VerifiedAt);
 public sealed record LegacyImportPreview(string Id, string LegacyRoot, string State, DateTimeOffset CreatedAtUtc,
     int Revision = 0, LegacyStationPreview[]? Stations = null, LegacyStationMapping[]? Mappings = null,
     LegacyBackupProof? Backup = null, string? SettingsFingerprint = null, string? Error = null,
     long CheckedBytes = 0, bool ProductionChanged = false)
 {
-    public const string Scope = "Saved primary-output and folder mapping review only. No channels are imported, armed, stopped or started. Secondary outputs, protected credentials, branding assets and rollback must still be qualified.";
+    public const string Scope = "Saved output and folder mapping review only. No channels are imported, armed, stopped or started. Output commissioning, protected credentials, branding assets and rollback must still be qualified.";
     public static void ValidateId(string id)
     {
         if (!Guid.TryParseExact(id, "N", out var parsed) || parsed.ToString("N") != id)
@@ -35,11 +40,13 @@ public sealed record LegacyImportPreview(string Id, string LegacyRoot, string St
         var selected = mappings.Where(mapping => mapping.TargetStationId is not null).ToArray();
         if (selected.Length == 0 || selected.Select(mapping => mapping.TargetStationId).Distinct(StringComparer.Ordinal).Count() != selected.Length)
             throw new ArgumentException("Choose distinct target channels for the stations to import.");
-        var outputs = selected.Select(mapping => preview.Stations!.Single(station => station.Id == mapping.LegacyStationId).PrimaryOutput).Where(output => output is not null).Select(output => output!).ToArray();
+        var outputs = selected.Select(mapping => preview.Stations!.Single(station => station.Id == mapping.LegacyStationId))
+            .SelectMany(station => (station.PrimaryOutput is { } primary ? new[] { primary } : [])
+                .Concat(station.SecondaryOutputs ?? [])).ToArray();
         if (outputs.Any(output => OutputAddressIssues(output).Length != 0))
-            throw new ArgumentException("A selected station has an invalid saved primary output. Leave it with the former program until its destination is reviewed.");
+            throw new ArgumentException("A selected station has an invalid saved output. Leave it with the former program until its destination is reviewed.");
         if (outputs.Any(output => output.Mount.Equals("/en", StringComparison.OrdinalIgnoreCase) || output.Mount.Equals("/fr", StringComparison.OrdinalIgnoreCase))) throw new ArgumentException("EN and FR remain with their external owners. Leave them with the former program.");
         if (outputs.Where(output => output.Enabled).Select(output => (Host: output.Host.ToLowerInvariant(), output.Port, output.Mount)).Distinct().Count() != outputs.Count(output => output.Enabled))
-            throw new ArgumentException("Two selected stations have the same saved primary destination. Resolve ownership before saving this mapping.");
+            throw new ArgumentException("Two selected outputs have the same saved destination. Resolve ownership before saving this mapping.");
     }
 }

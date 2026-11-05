@@ -5,6 +5,33 @@ using System.IO.Pipes;
 using OnAirNext.Engine;
 using OnAirNext.Lab;
 
+if (args is ["--legacy-programme-fixture", var programmeFfmpeg, var programmeOrigin, var programmeRoot, var programmeObserver])
+    return await LegacyProgrammeReplay.RunAsync(programmeFfmpeg, programmeOrigin, programmeRoot, programmeObserver);
+
+if (args is ["--legacy-bridge-feed", var codecRuntime, var originRuntime, var fixtureRoot, var fixtureAudio])
+{
+    var isolatedRoot = Path.GetFullPath(fixtureRoot);
+    if (!Path.GetFileName(isolatedRoot).StartsWith("legacy-relay-", StringComparison.Ordinal) ||
+        !string.Equals(Path.GetDirectoryName(Path.GetFullPath(fixtureAudio)), isolatedRoot, StringComparison.OrdinalIgnoreCase))
+        throw new ArgumentException("The bridge test accepts only its own isolated fixture and media.");
+    await using var origin = new Sandbox(originRuntime, Path.Combine(isolatedRoot, "next-loopback-origin"));
+    await origin.StartAsync();
+    await using var journal = new EventJournal(Path.Combine(isolatedRoot, "next-bridge-fixture.db"));
+    await using var station = new StationEngine(codecRuntime, new StationSettings("bridge-standby",
+        [new MediaItem("fixture-standby", fixtureAudio, "Synthetic", "880 Hz standby")],
+        [origin.Output("bridge-standby", CodecProfile.OggFlac)]), journal);
+    await station.StartAsync();
+    var wait = Stopwatch.StartNew();
+    while (station.Snapshot().Outputs[0].State != "SourceConnected")
+    {
+        if (wait.Elapsed > TimeSpan.FromSeconds(12)) throw new TimeoutException("Next standby did not connect to its fixture origin.");
+        await Task.Delay(100);
+    }
+    Console.WriteLine(JsonSerializer.Serialize(new { port = origin.Port, mount = "/next-bridge-standby" }));
+    await Console.In.ReadLineAsync();
+    return 0;
+}
+
 if (args.Length == 2 && args[0] is "--service-maintenance-mark" or "--service-maintenance-check-mark")
 {
     if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Disposable Windows CI setup fixture only.");
@@ -41,7 +68,7 @@ var icecastRoot = arguments.GetValueOrDefault("--icecast-root") ?? Path.Combine(
 var scenario = arguments.GetValueOrDefault("--scenario") ?? "all";
 var duration = int.Parse(arguments.GetValueOrDefault("--duration-seconds") ?? "12", System.Globalization.CultureInfo.InvariantCulture);
 if (duration is < 6 or > 259200) throw new ArgumentException("Choose 6 seconds through 72 hours.");
-if (scenario is not ("all" or "baseline" or "recovery" or "durable" or "lifecycle" or "finite" or "offline" or "fleet" or "live" or "soak" or "backpressure" or "corrupt" or "host" or "precision" or "normalization" or "processing" or "roster18" or "queue" or "queue-durable")) throw new ArgumentException("Unknown lab scenario.");
+if (scenario is not ("all" or "baseline" or "recovery" or "durable" or "lifecycle" or "finite" or "offline" or "fleet" or "live" or "soak" or "backpressure" or "corrupt" or "host" or "precision" or "normalization" or "processing" or "roster18" or "roster16-soak" or "queue" or "queue-durable")) throw new ArgumentException("Unknown lab scenario.");
 var runRoot = Path.Combine(localRoot, "runs", DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N")[..8]);
 Directory.CreateDirectory(runRoot);
 var fixtures = Sandbox.Fixtures(Path.Combine(runRoot, "fixtures"));
@@ -61,7 +88,7 @@ foreach (var name in scenario == "all" ? new[] { "baseline", "precision", "norma
             case "lifecycle": await LifecycleAsync(result); break;
             case "finite": await FiniteAsync(result); break;
             case "offline": await OfflineAsync(result); break;
-            case "fleet": case "soak": await FleetAsync(result); break;
+            case "fleet": case "soak": case "roster16-soak": await FleetAsync(result); break;
             case "live": await LiveAsync(result); break;
             case "backpressure": await BackpressureAsync(result); break;
             case "corrupt": await CorruptAsync(result); break;
@@ -84,8 +111,15 @@ foreach (var name in scenario == "all" ? new[] { "baseline", "precision", "norma
     {
         SchemaVersion = 1, CreatedAtUtc = DateTimeOffset.UtcNow, Machine = Environment.MachineName,
         OS = RuntimeInformation.OSDescription, Runtime = RuntimeInformation.FrameworkDescription,
-        Icecast = "2.5.0", TestProfiles = scenario is "roster18" or "queue" or "queue-durable" ? new[] { "AAC-LC 192 kbps", "libfdk HE-AACv2 64 kbps", "24-bit Ogg FLAC" } : new[] { "AAC-LC 192 kbps", "24-bit Ogg FLAC" },
-        HeAacTested = results.Any(r=>(r.Name is "roster18" or "queue" or "queue-durable")&&r.Passed), Source = "New independent implementation; no production configuration or services accessed.",
+        Icecast = "2.5.0",
+        TestProfiles = result.Details.TryGetValue("testedCodecProfiles", out var profiles) && profiles is string[] tested
+            ? tested : scenario is "roster18" or "queue" or "queue-durable"
+                ? new[] { "AAC-LC 192 kbps", "libfdk HE-AACv2 64 kbps", "24-bit Ogg FLAC" }
+                : new[] { "AAC-LC 192 kbps", "24-bit Ogg FLAC" },
+        HeAacTested = results.Any(r => r.Passed && (r.Name is "roster18" or "queue" or "queue-durable"
+            || r.Details.TryGetValue("testedCodecProfiles", out var value) && value is string[] names && names.Contains("libfdk HE-AACv2 64 kbps"))),
+        Source = scenario == "roster16-soak" ? "Redacted legacy inventory shapes a synthetic loopback test; production credentials and services are not used."
+            : "New independent implementation; no production configuration or services accessed.",
         ExecutionSource = Environment.GetEnvironmentVariable("GITHUB_SHA"), PcmFormat = "48k stereo float32 little-endian",
         ExecutionBuild = typeof(StationEngine).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
             .Cast<System.Reflection.AssemblyInformationalVersionAttribute>().Single().InformationalVersion,
@@ -295,19 +329,56 @@ async Task OfflineAsync(CaseResult result)
 
 async Task FleetAsync(CaseResult result)
 {
+    IReadOnlyList<StationOutputConfiguration>? roster = null;
+    LiveWorkloadGuard? guard = null;
+    if (result.Name == "roster16-soak")
+    {
+        roster = ExistingRosterLab.Read(arguments.GetValueOrDefault("--roster-inventory") ??
+            throw new ArgumentException("Provide the redacted existing-roster inventory."));
+        if (arguments.GetValueOrDefault("--roster-station") is { } stationId)
+        {
+            roster = roster.Where(group => group.StationId == stationId).ToArray();
+            if (roster.Count != 1) throw new ArgumentException("Choose an existing station from the inventory.");
+        }
+        else if (arguments.GetValueOrDefault("--roster-dedicated-host") != "true")
+            throw new InvalidOperationException("Run the full roster soak on a host reserved for the lab, or choose a single station.");
+        if (arguments.GetValueOrDefault("--protect-live-observer") is { } observer)
+        {
+            if (roster.Count != 1) throw new ArgumentException("Live protection supports only a single off-air station.");
+            guard = new LiveWorkloadGuard(observer);
+            guard.Check();
+        }
+        result.Details["inventoryStationCount"] = 8;
+        result.Details["testedStationCount"] = roster.Count;
+        result.Details["liveResourceGuardEnabled"] = guard is not null;
+        result.Details["programme"] = "Synthetic known tones; exact station and codec layout only.";
+        result.Details["testedCodecProfiles"] = roster.SelectMany(group => group.Outputs).Select(output => output.Profile switch
+        {
+            CodecProfile.AacLc192 => "AAC-LC 192 kbps",
+            CodecProfile.HeAacV2_64 => "libfdk HE-AACv2 64 kbps",
+            CodecProfile.OggFlac => "24-bit Ogg FLAC",
+            _ => throw new InvalidDataException("Unexpected codec in validated roster.")
+        }).Distinct().ToArray();
+    }
     var root = Path.Combine(runRoot, result.Name);
     await using var origin = new Sandbox(icecastRoot, root); await origin.StartAsync();
     var database = Path.Combine(root, "playback.db");
     await using var resources = new Resources();
     await using (var journal = new EventJournal(database))
     {
-        var stations = Enumerable.Range(1, 8).Select(i => new StationEngine(ffmpeg,
-            new StationSettings("fleet-" + i, fixtures, [origin.Output($"fleet-{i}-aac"), origin.Output($"fleet-{i}-flac", CodecProfile.OggFlac)]), journal)).ToArray();
+        var settings = roster is null
+            ? Enumerable.Range(1, 8).Select(i => new StationSettings("fleet-" + i, fixtures,
+                [origin.Output($"fleet-{i}-aac"), origin.Output($"fleet-{i}-flac", CodecProfile.OggFlac)])).ToArray()
+            : roster.Select(group => new StationSettings("roster-" + group.StationId, fixtures,
+                group.Outputs.Select(output => origin.Output("roster-" + output.Mount.TrimStart('/'), output.Profile)).ToArray())).ToArray();
+        var stations = settings.Select(station => new StationEngine(ffmpeg, station, journal)).ToArray();
+        var expectedOutputs = settings.Sum(station => station.Outputs.Count);
         var probes = new List<Probe>();
         try
         {
             foreach (var station in stations) await station.StartAsync();
-            await WaitAsync(() => stations.All(s => s.Snapshot().Outputs.All(o => o.State == "SourceConnected")), "Sixteen loopback outputs must connect.", 25);
+            await WaitAsync(() => stations.All(s => s.Snapshot().Outputs.All(o => o.State == "SourceConnected")),
+                $"All {expectedOutputs} loopback outputs must connect.", 25);
             await Task.Delay(500);
             foreach (var station in stations)
                 foreach (var output in station.Snapshot().Outputs) probes.Add(new Probe(ffmpeg, origin.Port, "/next-" + output.Id));
@@ -315,14 +386,16 @@ async Task FleetAsync(CaseResult result)
             while (period.Elapsed < TimeSpan.FromSeconds(duration))
             {
                 await Task.Delay(1000);
+                guard?.Check();
                 if (duration > 60 && (int)period.Elapsed.TotalSeconds % 30 == 0)
                     Console.WriteLine($"Soak {period.Elapsed.TotalMinutes:F1} minutes; {probes.Count} decoded listeners; pending audit {journal.PendingEvents}.");
             }
             var snapshots = stations.Select(x => x.Snapshot()).ToArray();
             result.Details["stations"] = snapshots; result.Details["resources"] = resources.Snapshot();
-            Check(result, snapshots.All(x => x.State == "Running" && x.CompletedItems >= 4), "All eight station programs remain active.");
-            Check(result, snapshots.SelectMany(x => x.Outputs).All(x => x.EncoderStarts == 1 && x.Connections == 1 && x.DroppedBlocks == 0),
-                "All sixteen healthy outputs retain one encoder/session with zero PCM drops.");
+            Check(result, snapshots.All(x => x.State == "Running" && x.CompletedItems >= 4), $"All {stations.Length} station programs remain active.");
+            Check(result, probes.Count == expectedOutputs && snapshots.SelectMany(x => x.Outputs)
+                .All(x => x.State == "SourceConnected" && x.EncoderStarts == 1 && x.Connections == 1 && x.DroppedBlocks == 0),
+                $"All {expectedOutputs} outputs retain one encoder/session with zero PCM drops.");
             Check(result, snapshots.All(x => x.AuditRejectedEvents == 0) && journal.Error is null, "Concurrent station histories remain writable.");
             ValidateProbes(result, probes, Math.Max(3, duration - 5));
         }

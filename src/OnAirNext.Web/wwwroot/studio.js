@@ -617,7 +617,15 @@
         identity.append(element('strong','',station.Name),element('p','quiet','Legacy ID '+station.Id));
         folders.append(element('p','asset-path','Music: '+(station.MusicFolder||'Not assigned')),element('p','asset-path','Jingles: '+(station.JingleFolder||'Not assigned')),element('p','quiet','Sweepers: '+(station.SweepersEnabled?'enabled · every '+station.SweeperEvery+' tracks':'disabled')));
         for(const warning of station.Warnings??[])folders.append(element('p','quiet',warning));
-        const saved=station.PrimaryOutput;output.textContent=saved?saved.Host+':'+saved.Port+saved.Mount+' · '+saved.Profile+' / '+saved.BitrateKbps+' kbps · '+(saved.Enabled?'enabled in former program':'disabled in former program'):'No saved primary output';
+        for(const programme of station.Programmes??[]){
+          const cadence=programme.EverySongs>0?' · every '+programme.EverySongs+' completed songs':programme.EveryMinutes>0?' · every '+programme.EveryMinutes+' minutes':'';
+          const dates=programme.StartsOn+' – '+programme.EndsOn+' · '+programme.LocalStart+'–'+programme.LocalEnd+' '+programme.TimeZone;
+          folders.append(element('p','',programme.Name),element('p','quiet',dates+cadence+' · '+(programme.Annual?'annual':'not annual')+' · '+(programme.Enabled?'enabled in former settings':'disabled in former settings')));
+          if(programme.MetadataTitle)folders.append(element('p','quiet','Saved display text: '+programme.MetadataTitle));
+        }
+        const describe=saved=>saved.Host+':'+saved.Port+saved.Mount+' · '+saved.Profile+' / '+saved.BitrateKbps+' kbps · '+(saved.Enabled?'enabled in former program':'disabled in former program');
+        output.append(element('p','','Primary: '+(station.PrimaryOutput?describe(station.PrimaryOutput):'None saved')));
+        for(const saved of station.SecondaryOutputs??[])output.append(element('p','','Secondary: '+describe(saved)));
         const select=element('select');select.setAttribute('aria-label','Target channel for '+station.Name);const leave=element('option','','Leave with former program');leave.value='';select.append(leave);
         for(const s of state.stations){const option=element('option','',stationName(s.Id));option.value=s.Id;select.append(option);}
         const mapping=preview.Mappings?.find(m=>m.LegacyStationId===station.Id);select.value=mapping?mapping.TargetStationId??'':state.stations.some(s=>s.Id===String(station.Id))?String(station.Id):'';

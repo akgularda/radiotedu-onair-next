@@ -104,7 +104,11 @@ public sealed record StationOutputConfiguration(string StationId, IReadOnlyList<
 
 // A complete fixed RadioTEDU commissioning roster is committed at once, while every
 // station remains disarmed. The service applies it only after validating its full map.
-public sealed record ProductionOutputConfiguration(int SchemaVersion, IReadOnlyList<StationOutputConfiguration> Stations)
+[JsonConverter(typeof(JsonStringEnumConverter<ProductionOutputRoster>))]
+public enum ProductionOutputRoster { Expanded18, Existing16 }
+
+public sealed record ProductionOutputConfiguration(int SchemaVersion, IReadOnlyList<StationOutputConfiguration> Stations,
+    ProductionOutputRoster Roster = ProductionOutputRoster.Expanded18)
 {
     private static readonly string[] StationIds = ["1", "2", "4", "5", "8", "9", "10", "11"];
     private const string OriginHost = "stream.radiotedu.com";
@@ -118,17 +122,19 @@ public sealed record ProductionOutputConfiguration(int SchemaVersion, IReadOnlyL
     public ProductionOutputConfiguration Validate(IEnumerable<string> installedStations)
     {
         if (SchemaVersion != 1) throw new ArgumentException("Unsupported production-output configuration version.");
-        if (Stations is null) throw new ArgumentException("Provide all eight RadioTEDU output groups.");
+        if (!Enum.IsDefined(Roster)) throw new ArgumentException("Choose a supported production output roster.");
+        if (Stations is null || Stations.Any(station => station is null || station.Outputs is null))
+            throw new ArgumentException("Provide a complete output group for every RadioTEDU channel.");
         var installed = installedStations.Order(StringComparer.Ordinal).ToArray();
         if (!installed.SequenceEqual(StationIds.Order(StringComparer.Ordinal), StringComparer.Ordinal))
             throw new ArgumentException("Commission only the eight owned RadioTEDU stations; leave external stations alone.");
         if (Stations.Count != StationIds.Length || Stations.Select(x => x.StationId).Distinct(StringComparer.Ordinal).Count() != StationIds.Length ||
             !Stations.Select(x => x.StationId).Order(StringComparer.Ordinal).SequenceEqual(StationIds.Order(StringComparer.Ordinal), StringComparer.Ordinal))
             throw new ArgumentException("Provide an output group for every one of the eight RadioTEDU stations.");
-        if (Stations.Any(station => station is null || station.Outputs is null))
-            throw new ArgumentException("Each RadioTEDU channel needs a complete output group.");
         var outputs = Stations.SelectMany(station => station.Outputs.Select(output => (station.StationId, Output: output))).ToArray();
-        if (outputs.Length != 18) throw new ArgumentException("The production roster must contain all eighteen codec outputs.");
+        var expectedCount = Roster == ProductionOutputRoster.Existing16 ? 16 : 18;
+        if (outputs.Length != expectedCount || outputs.Any(entry => entry.Output is null))
+            throw new ArgumentException($"The selected production roster requires exactly {expectedCount} codec outputs.");
         foreach (var (stationId, output) in outputs)
         {
             output.ValidateCommissioned();
@@ -142,11 +148,11 @@ public sealed record ProductionOutputConfiguration(int SchemaVersion, IReadOnlyL
         {
             var group = Stations.Single(x => x.StationId == id).Outputs;
             var primary = PrimaryMounts[id];
-            var expected = new Dictionary<string, CodecProfile>(StringComparer.Ordinal)
-            {
-                [primary] = CodecProfile.AacLc192,
-                [primary + "-low"] = CodecProfile.HeAacV2_64
-            };
+            var expected = new Dictionary<string, CodecProfile>(StringComparer.Ordinal) { [primary] = CodecProfile.AacLc192 };
+            // The two stations have no low bitrate publisher in the existing
+            // broadcast lineup. Adding one is a separate commissioning choice.
+            if (Roster == ProductionOutputRoster.Expanded18 || id is not ("10" or "11"))
+                expected[primary + "-low"] = CodecProfile.HeAacV2_64;
             if (id is "1" or "5") expected[primary + "-flac"] = CodecProfile.OggFlac;
             if (group.Count != expected.Count || group.Any(output => !expected.TryGetValue(output.Mount, out var profile) || output.Profile != profile))
                 throw new ArgumentException("A station output group does not match its approved AAC-LC, HE-AACv2 and FLAC mount roster.");

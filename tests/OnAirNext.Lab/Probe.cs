@@ -6,6 +6,10 @@ namespace OnAirNext.Lab;
 
 internal sealed record ProbeResult(string Mount, double DecodedSeconds, int SilentWindows, int LongestSilentRun,
     long ToneTransitions, long UnexpectedToneTransitions, long LiveToneWindows, IReadOnlyList<int> FirstTones, string? Error);
+internal sealed record QuietInterval(double StartSeconds, double EndSeconds)
+{
+    public double Duration => EndSeconds - StartSeconds;
+}
 
 internal sealed class Probe : IAsyncDisposable
 {
@@ -20,11 +24,14 @@ internal sealed class Probe : IAsyncDisposable
     private long _windows, _transitions, _unexpected;
     private int _silence, _longestSilence, _currentSilence, _tone = -1, _candidate = -1, _candidateWindows;
     private readonly List<int> _tones = new();
+    private readonly List<QuietInterval>? _quietIntervals;
+    private long _quietStart = -1;
     private string? _error;
     private static readonly int[] Frequencies = [440, 880, 1320, 660];
-    public Probe(string ffmpeg, int port, string mount, bool analyzeLive = false)
+    public Probe(string ffmpeg, int port, string mount, bool analyzeLive = false, bool captureQuietIntervals = false)
     {
         _mount = mount; _analyzeLive = analyzeLive;
+        if (captureQuietIntervals) _quietIntervals = [];
         _process = ChildProcess.Start(ffmpeg, ["-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-rw_timeout", "5000000",
             "-analyzeduration", "200000", "-probesize", "32768", "-i", $"http://127.0.0.1:{port}{mount}", "-vn", "-ac", "1", "-ar", "48000",
             "-f", "s16le", "-c:a", "pcm_s16le", _pcm.Path], role: "listener-probe");
@@ -72,11 +79,22 @@ internal sealed class Probe : IAsyncDisposable
         if (windows <= 10) return; // Decoder priming is measured separately from the continuing stream.
         double squares = 0;
         foreach (var sample in samples) squares += (double)sample * sample;
-        if (Math.Sqrt(squares / samples.Length) < 200)
+        var quiet = Math.Sqrt(squares / samples.Length) < 200;
+        if (quiet)
         {
             _silence++; _currentSilence++; _longestSilence = Math.Max(_longestSilence, _currentSilence);
         }
         else _currentSilence = 0;
+        if (_quietIntervals is not null)
+            lock (_quietIntervals)
+            {
+                if (quiet && _quietStart < 0) _quietStart = windows - 1;
+                else if (!quiet && _quietStart >= 0)
+                {
+                    _quietIntervals.Add(new(_quietStart * .02, (windows - 1) * .02));
+                    _quietStart = -1;
+                }
+            }
         var best = -1; double maximum = 0;
         for (var i = 0; i < Frequencies.Length; i++)
         {
@@ -109,6 +127,14 @@ internal sealed class Probe : IAsyncDisposable
     {
         lock (_tones) return new(_mount, Interlocked.Read(ref _windows) * 0.02, _silence, _longestSilence,
             _transitions, _unexpected, Interlocked.Read(ref _liveToneWindows), _tones.ToArray(), _error);
+    }
+
+    public IReadOnlyList<QuietInterval> SnapshotQuietIntervals()
+    {
+        if (_quietIntervals is null) return [];
+        lock (_quietIntervals)
+            return _quietStart < 0 ? [.. _quietIntervals]
+                : [.. _quietIntervals, new(_quietStart * .02, Interlocked.Read(ref _windows) * .02)];
     }
 
     public async ValueTask DisposeAsync()

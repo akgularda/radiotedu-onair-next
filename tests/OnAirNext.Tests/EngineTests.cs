@@ -98,6 +98,31 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void ExistingProductionRosterAcceptsOnlyTheSixteenLiveMounts()
+    {
+        string[] ids = ["1", "2", "4", "5", "8", "9", "10", "11"];
+        var expanded = ValidProductionProfile();
+        var existing = expanded with
+        {
+            Roster = ProductionOutputRoster.Existing16,
+            Stations = expanded.Stations.Select(station => station.StationId is "10" or "11"
+                ? station with { Outputs = station.Outputs.Take(1).ToArray() } : station).ToArray()
+        };
+        Assert.Equal(16, existing.Validate(ids).Stations.Sum(station => station.Outputs.Count));
+        Assert.Throws<ArgumentException>(() => (expanded with { Roster = existing.Roster }).Validate(ids));
+        Assert.Throws<ArgumentException>(() => (existing with { Roster = expanded.Roster }).Validate(ids));
+        var wrong = existing with
+        {
+            Stations = existing.Stations.Select(station => station.StationId == "10"
+                ? station with { Outputs = [station.Outputs[0] with { Mount = "/situation-low" }] } : station).ToArray()
+        };
+        Assert.Throws<ArgumentException>(() => wrong.Validate(ids));
+        var roundTrip = System.Text.Json.JsonSerializer.Deserialize<ProductionOutputConfiguration>(
+            System.Text.Json.JsonSerializer.Serialize(existing));
+        Assert.Equal(ProductionOutputRoster.Existing16, roundTrip!.Validate(ids).Roster);
+    }
+
+    [Fact]
     public void ProductionOutputProfileRejectsUnapprovedIcecastOrigins()
     {
         var profile = ValidProductionProfile();
