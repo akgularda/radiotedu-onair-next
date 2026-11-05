@@ -39,12 +39,21 @@ public static class ChildProcess
         return tail.ToString();
     }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
     public static Process Start(string executable, IEnumerable<string> arguments, bool input = false, bool output = false, string role = "codec")
+        => StartCore(executable, arguments, input, output, role, null);
+    public static Process StartText(string executable, IEnumerable<string> arguments, System.Text.Encoding encoding, string role = "codec")
+        => StartCore(executable, arguments, false, true, role, encoding);
+    private static Process StartCore(string executable, IEnumerable<string> arguments, bool input, bool output, string role, System.Text.Encoding? textEncoding)
     {
         var info = new ProcessStartInfo(executable)
         {
             UseShellExecute = false, CreateNoWindow = true,
             RedirectStandardInput = input, RedirectStandardOutput = output, RedirectStandardError = true
         };
+        if (textEncoding is not null)
+        {
+            if (output) info.StandardOutputEncoding = textEncoding;
+            info.StandardErrorEncoding = textEncoding;
+        }
         foreach (var arg in arguments) info.ArgumentList.Add(arg);
         var process = new Process { StartInfo = info, EnableRaisingEvents = true };
         try

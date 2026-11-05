@@ -36,11 +36,13 @@ public sealed class LibraryAudioProbe(string ffmpeg) : IAsyncDisposable
         var hash = Convert.ToHexString(await SHA256.HashDataAsync(source, token));
         // Validate and measure the entire decoded stream once, on the serialized background lane.
         // Match the playback downmix/sample format before ebur128; never normalize source files.
+        var edges = new SourceEdgeAnalysis();
         var decoded = await CaptureAsync(ffmpeg, ["-hide_banner", "-v", "info", "-nostats", "-nostdin", "-xerror", "-err_detect", "explode",
             "-threads", "1", "-i", path, "-map", "0:a:0", "-vn", "-sn", "-dn", "-filter_threads", "1",
-            "-af", SourceNormalization.DecodeFormat + ",ebur128=peak=true:framelog=verbose", "-threads", "1", "-f", "null", "-"],
-            TimeSpan.FromSeconds(Math.Clamp(seconds / 2, 60, 600)), token);
+            "-af", SourceNormalization.DecodeFormat + ",ebur128=peak=true:framelog=verbose", "-threads", "1", "-c:a", "pcm_f32le", "-f", "f32le", "pipe:1"],
+            TimeSpan.FromSeconds(Math.Clamp(seconds / 2, 60, 600)), token, edges);
         var loudness = SourceLoudness.FromSummary(decoded.Diagnostic, hash, bytes, modified, seconds);
+        loudness = loudness with { PlaybackRange = edges.Complete(loudness) };
         var tags = format.ValueKind == JsonValueKind.Object && format.TryGetProperty("tags", out var value) ? value : default;
         var fallback = Path.GetFileNameWithoutExtension(path);
         var suffix = fallback.LastIndexOf("--", StringComparison.Ordinal);
@@ -54,7 +56,7 @@ public sealed class LibraryAudioProbe(string ffmpeg) : IAsyncDisposable
     private static string Clean(string value, int limit) => new(value.Where(c => !char.IsControl(c)).Take(limit).ToArray());
 
     private sealed record CaptureResult(string Output, string Diagnostic);
-    private async Task<CaptureResult> CaptureAsync(string executable, string[] arguments, TimeSpan timeout, CancellationToken token)
+    private async Task<CaptureResult> CaptureAsync(string executable, string[] arguments, TimeSpan timeout, CancellationToken token, SourceEdgeAnalysis? edges = null)
     {
         if (_cleanupPending is { } pending)
         {
@@ -62,14 +64,14 @@ public sealed class LibraryAudioProbe(string ffmpeg) : IAsyncDisposable
             catch (Exception ex) { throw new LibraryValidationUnavailableException("Previous validation worker cleanup is pending.", ex); }
         }
         Process process;
-        try { process = ChildProcess.Start(executable, arguments, output: true, role: "library-validation"); }
+        try { process = ChildProcess.StartText(executable, arguments, Encoding.UTF8, role: "library-validation"); }
         catch (System.ComponentModel.Win32Exception ex) { throw new LibraryValidationUnavailableException("The audio validation tool is unavailable.", ex); }
         try
         {
             try { process.PriorityClass = ProcessPriorityClass.Idle; }
             catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { }
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token); deadline.CancelAfter(timeout);
-            var output = ReadBoundedAsync(process.StandardOutput, deadline.Token);
+            var output = edges is null ? ReadBoundedAsync(process.StandardOutput, deadline.Token) : ReadSourcePcmAsync(process.StandardOutput.BaseStream, edges, deadline.Token);
             var error = ChildProcess.DrainErrorAsync(process);
             // A bounded-reader failure must also stop a worker that is blocked writing stdout.
             var exited = process.WaitForExitAsync(deadline.Token);
@@ -89,6 +91,29 @@ public sealed class LibraryAudioProbe(string ffmpeg) : IAsyncDisposable
             }
         }
     }
+
+    private static Task<string> ReadSourcePcmAsync(Stream source, SourceEdgeAnalysis edges, CancellationToken token)
+        => Task.Factory.StartNew(() =>
+        {
+            var buffer = System.Buffers.ArrayPool<byte>.Shared.Rent(65536);
+            var carried = 0;
+            try
+            {
+                int count;
+                while ((count = source.Read(buffer, carried, buffer.Length - carried)) > 0)
+                {
+                    token.ThrowIfCancellationRequested();
+                    var total = carried + count;
+                    var aligned = total - total % AudioFormat.BytesPerSampleFrame;
+                    edges.ObservePcm(buffer.AsSpan(0, aligned));
+                    carried = total - aligned;
+                    if (carried > 0) Buffer.BlockCopy(buffer, aligned, buffer, 0, carried);
+                }
+                if (carried != 0) throw new InvalidDataException("Truncated source analysis PCM frame.");
+                return "";
+            }
+            finally { System.Buffers.ArrayPool<byte>.Shared.Return(buffer); }
+        }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
     private static async Task<string> ReadBoundedAsync(StreamReader reader, CancellationToken token)
     {

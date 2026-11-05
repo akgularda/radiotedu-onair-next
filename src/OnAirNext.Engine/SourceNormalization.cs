@@ -6,10 +6,12 @@ namespace OnAirNext.Engine;
 // A completed full-file scan, tied to the source bytes. Never a final-mix/output compliance verdict.
 public sealed record SourceLoudness(string ContentSha256, long Bytes, long ModifiedTicks, double Seconds,
     double? IntegratedLufs, double? TruePeakDbtp, double? LoudnessRangeLu, DateTimeOffset MeasuredAtUtc,
-    string Algorithm = "ffmpeg-ebur128-stereo48k-v1")
+    string Algorithm = "ffmpeg-ebur128-stereo48k-v1",
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] SourcePlaybackRange? PlaybackRange = null)
 {
     public void Validate()
     {
+        PlaybackRange?.Validate();
         if (Algorithm != "ffmpeg-ebur128-stereo48k-v1" || string.IsNullOrEmpty(ContentSha256) || ContentSha256.Length != 64 || !ContentSha256.All(char.IsAsciiHexDigit) ||
             Bytes <= 0 || ModifiedTicks <= 0 || !double.IsFinite(Seconds) || Seconds <= 0 || Seconds > 604800 ||
             !Valid(IntegratedLufs, -70, 80) || !Valid(TruePeakDbtp, -200, 80) || !Valid(LoudnessRangeLu, 0, 100) ||

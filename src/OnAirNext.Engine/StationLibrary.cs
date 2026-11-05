@@ -169,9 +169,11 @@ public sealed class StationLibrary : IAsyncDisposable
             if(info.Length!=asset.Bytes||info.LastWriteTimeUtc.Ticks!=asset.ModifiedTicks||!_journal.LibraryRoots().Contains(root)||
                 _journal.LibraryItem(request.StationId,request.Revision,request.AssetId) is not {State:"Ready"} current||current.EditVersion!=asset.EditVersion||current.SourceStamp!=asset.SourceStamp)
                 throw new IOException("The source changed. Wait for Library to validate it before cueing.");
-            var frames=checked((long)Math.Round(asset.Seconds*48000));
+            var kind=_contentKinds.GetValueOrDefault(request.StationId,ContentKind.Music);
+            var seconds=SourcePlaybackRange.Duration(kind,asset.Seconds,asset.Loudness);
+            var frames=checked((long)Math.Round(seconds*48000));
             if(request.StartSample>=frames)throw new ArgumentException("Choose a cue position before the end of this item.");
-            return new(new(asset.Id,path,asset.Artist,asset.Title,DurationSeconds:asset.Seconds,Loudness:asset.Loudness),frames,guard);
+            return new(new(asset.Id,path,asset.Artist,asset.Title,Kind:kind,DurationSeconds:seconds,Loudness:asset.Loudness),frames,guard);
         }
         catch{guard.Dispose();throw;}
     }
@@ -346,7 +348,7 @@ public sealed class StationLibrary : IAsyncDisposable
         {
             token.ThrowIfCancellationRequested();
             var id = EventJournal.LibraryAssetId(file.Relative);
-            if (existing.TryGetValue(id, out var prior) && prior.State is "Ready" or "Invalid" or "Retired" && prior.Bytes == file.Bytes && prior.ModifiedTicks == file.Modified && !prior.AnalysisRequested && (_audioProbe is null || prior.Loudness is not null || prior.State != "Ready")) continue;
+            if (existing.TryGetValue(id, out var prior) && prior.State is "Ready" or "Invalid" or "Retired" && prior.Bytes == file.Bytes && prior.ModifiedTicks == file.Modified && !prior.AnalysisRequested && (_audioProbe is null || prior.Loudness?.PlaybackRange is not null || prior.State != "Ready")) continue;
             if (!_observed.TryGetValue(file.Path, out var observed) || observed.Bytes != file.Bytes || observed.Modified != file.Modified)
             {
                 _observed[file.Path] = new(file.Bytes, file.Modified, Stopwatch.GetTimestamp());
@@ -358,6 +360,8 @@ public sealed class StationLibrary : IAsyncDisposable
             try
             {
                 var metadata = await _probe(file.Path, token);
+                if (metadata.Loudness?.PlaybackRange is { HasSignal: false })
+                    throw new InvalidDataException("The entire source is below the broadcast silence threshold.");
                 var after = new FileInfo(file.Path);
                 if (after.Length != file.Bytes || after.LastWriteTimeUtc.Ticks != file.Modified) { _observed.Remove(file.Path); continue; }
                 asset = new(id, file.Relative, metadata.Artist, metadata.Title, metadata.Seconds, file.Bytes, file.Modified, "Ready", Loudness: metadata.Loudness);
@@ -391,7 +395,7 @@ public sealed class StationLibrary : IAsyncDisposable
                 .OrderBy(x => x.Id, StringComparer.Ordinal).ToArray();
             var items = assets
                 .Select(x => new MediaItem(x.Id, Path.Combine(root.Path, x.RelativePath), x.Artist, x.Title,
-                    Kind: _contentKinds.GetValueOrDefault(root.StationId, ContentKind.Music), DurationSeconds: x.Seconds, Loudness: x.Loudness))
+                    Kind: _contentKinds.GetValueOrDefault(root.StationId, ContentKind.Music), DurationSeconds: SourcePlaybackRange.Duration(_contentKinds.GetValueOrDefault(root.StationId, ContentKind.Music),x.Seconds,x.Loudness), Loudness: x.Loudness))
                 .ToArray();
             var identities = assets.Select(x => new QueueIdentity(x.EditVersion,x.Bytes,x.ModifiedTicks)).ToArray();
             if (prior is not null && prior.Configured && prior.RootRevision == root.Revision && prior.Items.SequenceEqual(items) &&

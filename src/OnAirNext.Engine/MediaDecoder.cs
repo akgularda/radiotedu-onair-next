@@ -31,9 +31,16 @@ public sealed class MediaDecoder : IAsyncDisposable
             if (file.Length != measured.Bytes || file.LastWriteTimeUtc.Ticks != measured.ModifiedTicks)
                 throw new InvalidDataException("The measured source changed; revalidate it in Library before playback.");
         }
-        var seekSeconds=fastSeek?startSample/48000:0;
-        var trimSamples=fastSeek?startSample%48000:startSample;
+        if (startSample < 0) throw new ArgumentOutOfRangeException(nameof(startSample));
+        var range = SourcePlaybackRange.AppliesTo(item.Kind) ? item.Loudness?.PlaybackRange : null;
+        if (range is { HasSignal: false }) throw new InvalidDataException("The entire source is below the broadcast silence threshold.");
+        var absoluteStart = checked(startSample + (range?.StartFrame ?? 0));
+        if (range is not null && absoluteStart >= range.EndFrame) throw new ArgumentOutOfRangeException(nameof(startSample));
+        var seekSeconds=fastSeek?absoluteStart/48000:0;
+        var trimSamples=fastSeek?absoluteStart%48000:absoluteStart;
         var filters = SourceNormalization.DecodeFormat + ",atrim=start_sample=" + trimSamples.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (range is not null) filters += ":end_sample=" + (range.EndFrame - seekSeconds * 48000).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (range is not null) filters += ",asetpts=PTS-STARTPTS";
         if (gain.AppliedDb != 0) filters += ",volume=" + gain.Linear.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + ":precision=double";
         _pcm = new(System.IO.Pipes.PipeDirection.In);
         var arguments=new List<string>{"-hide_banner","-loglevel","error","-nostdin","-y"};

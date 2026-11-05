@@ -5,6 +5,9 @@ using System.IO.Pipes;
 using OnAirNext.Engine;
 using OnAirNext.Lab;
 
+if (args is ["--source-cue-qualification", var cueFfmpeg, var cueOutput])
+    return await SourceCueQualification.RunAsync(cueFfmpeg,cueOutput);
+
 if (args is ["--legacy-programme-fixture", var programmeFfmpeg, var programmeOrigin, var programmeRoot, var programmeObserver])
     return await LegacyProgrammeReplay.RunAsync(programmeFfmpeg, programmeOrigin, programmeRoot, programmeObserver);
 
