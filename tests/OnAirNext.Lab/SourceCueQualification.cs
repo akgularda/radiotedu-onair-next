@@ -8,7 +8,7 @@ namespace OnAirNext.Lab;
 
 internal static class SourceCueQualification
 {
-    public static async Task<int> RunAsync(string ffmpeg,string output)
+    public static async Task<int> RunAsync(string ffmpeg,string output,string? icecastRoot=null)
     {
         output=Path.GetFullPath(output);Directory.CreateDirectory(output);
         var wave=Path.Combine(output,"original.wav");WriteWave(wave);
@@ -36,6 +36,7 @@ internal static class SourceCueQualification
                 checks.Add(new{kind="PrivateCueSeek",seek.Frames,expected=range.Frames-48000});
             }
         }
+        if(icecastRoot is not null)await EncodedAsync(ffmpeg,icecastRoot,output,music,checks);
         var music=new MediaItem("first",encoded,metadata.Artist,metadata.Title,ContentKind.Music,range.Frames/48000d,metadata.Loudness);
         await using(var journal=new EventJournal(Path.Combine(output,"cue-playout.db")))
         {
@@ -51,9 +52,43 @@ internal static class SourceCueQualification
         }
         if(Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(encoded)))!=original)throw new InvalidDataException("Source file changed during cue measurement or playback.");
         if(ChildProcess.ActiveProcesses.Count!=0)throw new InvalidDataException("Qualification child cleanup remains pending.");
-        var result=new{passed=true,sourceUnchanged=true,utf8Metadata=true,range,checks,scope="Real source validation and decoder output. Exterior silence removed; internal silence and program timing preserved. No live outputs were opened."};
+        var result=new{passed=true,sourceUnchanged=true,utf8Metadata=true,range,checks,encodedLoopback=icecastRoot is not null,scope="Real source validation and decoder output. Exterior silence removed; internal silence and program timing preserved. Optional three-codec checks use literal loopback only. No production outputs were opened."};
         await File.WriteAllTextAsync(Path.Combine(output,"source-cue-evidence.json"),JsonSerializer.Serialize(result,new JsonSerializerOptions{WriteIndented=true}));
         Console.WriteLine(JsonSerializer.Serialize(new{passed=true,checks=checks.Count,evidence=Path.Combine(output,"source-cue-evidence.json")}));return 0;
+    }
+    private static async Task EncodedAsync(string ffmpeg,string icecastRoot,string root,MediaItem music,List<object> checks)
+    {
+        await using var origin=new Sandbox(icecastRoot,Path.Combine(root,"encoded-origin"));await origin.StartAsync();
+        var outputs=new[]{origin.Output("cue-aac",CodecProfile.AacLc192),origin.Output("cue-low",CodecProfile.HeAacV2_64),origin.Output("cue-flac",CodecProfile.OggFlac)};
+        await using var journal=new EventJournal(Path.Combine(root,"encoded-cues.db"));
+        await using var engine=new StationEngine(ffmpeg,new("encoded-cues",[music,music with{Id="second"}],outputs),journal);
+        await engine.StartAsync();using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(25));
+        while(engine.Snapshot().Outputs.Any(o=>o.State!="SourceConnected"))await Task.Delay(50,deadline.Token);
+        var results=await Task.WhenAll(outputs.Select(async output=>
+        {
+            using var pipe=new CodecPipe(System.IO.Pipes.PipeDirection.In);
+            var input=$"http://127.0.0.1:{origin.Port}{output.Mount}";
+            var process=ChildProcess.Start(ffmpeg,["-hide_banner","-v","error","-nostdin","-y","-rw_timeout","5000000","-f",output.Profile==CodecProfile.OggFlac?"ogg":"aac","-i",input,"-t","10","-map","0:a:0","-vn","-threads","1","-filter_threads","1","-ac","2","-ar","48000","-c:a","pcm_f32le","-f","f32le",pipe.Path],role:"source-cue-listener");
+            var error=ChildProcess.DrainErrorAsync(process);
+            try
+            {
+                var connected=pipe.ConnectAsync(deadline.Token);var exited=process.WaitForExitAsync(deadline.Token);
+                if(await Task.WhenAny(connected,exited)==exited&&!connected.IsCompleted)throw new InvalidDataException("Cue listener exited before opening PCM: "+await error);
+                await connected;var buffer=new byte[65536];int carried=0,count;long frames=0,quiet=0,longest=0;
+                while((count=await pipe.Stream.ReadAsync(buffer.AsMemory(carried),deadline.Token))>0)
+                {
+                    var total=carried+count;var aligned=total-total%8;
+                    Measure(buffer.AsSpan(0,aligned),ref frames,ref quiet,ref longest,.0004);
+                    carried=total-aligned;if(carried>0)Buffer.BlockCopy(buffer,aligned,buffer,0,carried);
+                }
+                await exited;
+                if(process.ExitCode!=0||carried!=0||frames!=480000||longest<86400||longest>110400)throw new InvalidDataException("Encoded cue timing or preserved internal pause failed: "+output.Profile+" "+await error);
+                return (object)new{kind="EncodedCue",output.Profile,decodedFrames=frames,longestQuietFrames=longest};
+            }
+            finally {await ChildProcess.StopAsync(process);}
+        }));
+        checks.AddRange(results);
+        if(engine.Snapshot().Outputs.Any(o=>o.State!="SourceConnected"||o.Connections!=1||o.EncoderStarts!=1||o.DroppedBlocks!=0))throw new InvalidDataException("Cued programme restarted or dropped an encoded output.");
     }
     private sealed class BoundarySink(long boundary):IProgramOutput
     {
@@ -82,11 +117,11 @@ internal static class SourceCueQualification
         {try{Measure(block.Memory.Span,ref frames,ref quiet,ref longest);}finally{block.Dispose();}}
         return(frames,longest);
     }
-    private static void Measure(ReadOnlySpan<byte> bytes,ref long frames,ref long quiet,ref long longest)
+    private static void Measure(ReadOnlySpan<byte> bytes,ref long frames,ref long quiet,ref long longest,double threshold=.00001)
     {
         var samples=MemoryMarshal.Cast<byte,float>(bytes);
         for(var i=0;i<samples.Length;i+=2)
-        {frames++;if(Math.Max(Math.Abs(samples[i]),Math.Abs(samples[i+1]))<.00001){quiet++;longest=Math.Max(longest,quiet);}else quiet=0;}
+        {frames++;if(Math.Max(Math.Abs(samples[i]),Math.Abs(samples[i+1]))<threshold){quiet++;longest=Math.Max(longest,quiet);}else quiet=0;}
     }
     private static void WriteWave(string path)
     {

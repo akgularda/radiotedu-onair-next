@@ -61,6 +61,7 @@ internal static class NormalizationChecks
             result.Details["engine"]=new{State=state,Reading=reading,Events=events};
         }
         await EncodedChecksAsync(ffmpeg,icecastRoot,root,target!,result);
+        Check(result,await SourceCueQualification.RunAsync(ffmpeg,Path.Combine(root,"source-cues"),icecastRoot)==0,"Measured exterior source silence is removed across real finite playout and all three persistent codec profiles, preserving internal pauses and source bytes.");
         var bad=target! with{Loudness=target!.Loudness! with{ModifiedTicks=target.Loudness!.ModifiedTicks-1}};
         var rejected=false;try{await using var decoder=new MediaDecoder(ffmpeg,bad);}catch(InvalidDataException){rejected=true;}
         Check(result,rejected,"A changed source revision is rejected before a decoder starts.");
