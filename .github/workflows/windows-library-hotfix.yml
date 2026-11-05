@@ -1,0 +1,30 @@
+name: Windows library fairness qualification
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qualify:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+      DOTNET_PROCESSOR_COUNT: '2'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          dotnet-version: 10.0.402
+      - name: Restore locked test and engine dependencies
+        run: dotnet restore tests/OnAirNext.Tests/OnAirNext.Tests.csproj --locked-mode --disable-parallel -m:1 -p:ArtifactsPath=${{ github.workspace }}/artifacts/fair-build
+      - name: Qualify station library and branding behavior
+        run: dotnet test tests/OnAirNext.Tests/OnAirNext.Tests.csproj -c Release --no-restore -m:1 -p:ArtifactsPath=${{ github.workspace }}/artifacts/fair-build --filter "FullyQualifiedName~StationLibraryTests|FullyQualifiedName~StationBrandingTests|FullyQualifiedName~LibraryEditingWorkerTests" --logger "trx;LogFileName=fair-library.trx" --results-directory artifacts/fair-results
+      - name: Retain exact engine and test evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: library-fairness-hotfix
+          path: |
+            artifacts/fair-build/bin/OnAirNext.Engine/release/OnAirNext.Engine.dll
+            artifacts/fair-results/fair-library.trx
+          if-no-files-found: error

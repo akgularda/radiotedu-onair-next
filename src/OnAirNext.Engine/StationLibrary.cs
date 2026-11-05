@@ -227,7 +227,7 @@ public sealed class StationLibrary : IAsyncDisposable
                 foreach (var root in roots)
                 {
                     _stop.Token.ThrowIfCancellationRequested();
-                    try { await ScanAsync(root, _stop.Token); }
+                    try { await ScanAsync(root, _stop.Token, validationBudget: 2); }
                     catch (OperationCanceledException) when (_stop.IsCancellationRequested) { throw; }
                     catch (LibraryValidationUnavailableException ex)
                     { _status[root.StationId] = new("Validation paused", ex.Message, DateTimeOffset.UtcNow); }
@@ -327,7 +327,7 @@ public sealed class StationLibrary : IAsyncDisposable
         if (errors.Count > 0) throw new IOException(string.Join("; ", errors));
     }
 
-    private async Task ScanAsync(LibraryRoot root, CancellationToken token)
+    private async Task ScanAsync(LibraryRoot root, CancellationToken token, int validationBudget = int.MaxValue)
     {
         _status[root.StationId] = new("Scanning", null, null);
         var all = Enumerate(root.Path, token); // failure/partial enumeration must never mark existing songs missing
@@ -341,6 +341,7 @@ public sealed class StationLibrary : IAsyncDisposable
         foreach (var batch in changed.Chunk(100)) await _journal.ApplyLibraryChangesAsync(root, batch, []);
         Publish(root);
         var lastPublish = Stopwatch.StartNew();
+        var validated = 0;
         foreach (var file in all)
         {
             token.ThrowIfCancellationRequested();
@@ -368,6 +369,9 @@ public sealed class StationLibrary : IAsyncDisposable
             _observed.Remove(file.Path);
             if (lastPublish.Elapsed >= TimeSpan.FromSeconds(5)) { Publish(root); lastPublish.Restart(); }
             await Task.Delay(100, token);
+            // Yield the single validation lane to the other channels and branding
+            // inventories instead of draining an entire first-time music library.
+            if (++validated >= validationBudget) break;
         }
         var paths = all.Select(x => x.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var path in _observed.Keys.Where(path => path.StartsWith(root.Path + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) && !paths.Contains(path)).ToArray()) _observed.Remove(path);

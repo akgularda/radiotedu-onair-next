@@ -63,6 +63,30 @@ public sealed class StationLibraryTests
     }
 
     [Fact]
+    public async Task ANewChannelBecomesPlayableBeforeAnEarlierBulkLibraryIsDrained()
+    {
+        var root=Root();var bulk=Path.Combine(root,"bulk");var urgent=Path.Combine(root,"urgent");
+        Directory.CreateDirectory(bulk);Directory.CreateDirectory(urgent);
+        for(var i=0;i<12;i++)await File.WriteAllTextAsync(Path.Combine(bulk,$"song-{i}.wav"),"fixture");
+        await File.WriteAllTextAsync(Path.Combine(urgent,"song.wav"),"fixture");
+        await using var journal=new EventJournal(Path.Combine(root,"catalog.db"));
+        foreach(var id in new[]{"bulk","urgent"})await journal.InitializeDesiredStateAsync(new(id,[],[],AutoStart:false));
+        var bulkProbes=0;var bulkAtUrgent=-1;
+        async Task<AudioMetadata> Probe(string path,CancellationToken token)
+        {
+            if(Path.GetDirectoryName(path)==bulk)Interlocked.Increment(ref bulkProbes);
+            else bulkAtUrgent=Volatile.Read(ref bulkProbes);
+            await Task.Delay(30,token);return new("Fixture",Path.GetFileName(path),10);
+        }
+        await using var library=new StationLibrary(journal,"unused",root,["bulk","urgent"],Probe);
+        await library.InitializeAsync();await library.SetRootAsync("bulk",bulk,"bulk-root");
+        await library.SetRootAsync("urgent",urgent,"urgent-root");
+        await WaitAsync(library,()=>library.ReadyInventory("urgent").ReadyCount==1);
+        Assert.InRange(bulkAtUrgent,0,11);
+        Assert.True(library.ReadyInventory("bulk").ReadyCount<12);
+    }
+
+    [Fact]
     public async Task ShuffledCyclesConsumeEverySongOnceAndAvoidABoundaryRepeat()
     {
         var root = Root(); var music = Path.Combine(root, "music"); Directory.CreateDirectory(music);
