@@ -2,7 +2,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const roster = [{id:'1',name:'Classic'},{id:'2',name:'Lofi'},{id:'4',name:'Pop'},{id:'5',name:'Cazz'},{id:'8',name:'Rock'},{id:'9',name:'Energize'},{id:'10',name:'Situation'},{id:'11',name:'Main Character'}];
-  const state = {page:'air',station:'9',engine:null,stations:[],session:null,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null,folderTarget:null,folderSource:null,editTarget:null,assetStateTarget:null,controller:null,consoleClosed:false,upload:null,uploadSelection:null};
+  const state = {page:'air',station:'9',engine:null,stations:[],session:null,autoConnect:true,discovering:false,sampleAt:0,polling:false,busy:false,library:null,offset:0,query:'',folder:null,folderGeneration:0,pending:[],stopTarget:null,folderTarget:null,folderSource:null,editTarget:null,assetStateTarget:null,controller:null,consoleClosed:false,upload:null,uploadSelection:null};
   const migration={engine:null,preview:null,loading:false,busy:false,key:null,selects:new Map(),pending:null,submissionError:null};
   let brandingUI=null,cueUI=null,programmeUI=null;
   let outputProfile=null,outputBusy=false;
@@ -225,8 +225,13 @@
   $('meter-history-next').addEventListener('click',()=>{const t=state.meterHistoryTarget;if(t){state.meterHistoryTarget={...t,offset:t.offset+50};void loadMeterHistory();}});
   setInterval(()=>{if(!document.hidden&&!state.consoleClosed&&state.page==='air'){renderProgrammeMeter();void pollProgrammeMeter();}},100);
   async function discover(){
+    if(state.discovering)return;state.discovering=true;
     try{const result=await api('/api/engines');const options=result.engines??[];$('engine-select').replaceChildren(...(options.length?options.map(name=>{const option=element('option','',name);option.value=name;return option;}):[element('option','','No engines available')]));$('engine-select').disabled=!options.length;$('connect-engine').disabled=!options.length;text('engine-discovery',options.length?`${options.length} isolated engine${options.length===1?'':'s'} found on this computer.`:result.preview?'Visual preview. No broadcasting engine is connected.':'No isolated engine is running. Review the separate installation below or refresh discovery after service startup.');}
     catch(error){text('engine-discovery','Engine discovery unavailable: '+error.message);}
+    finally{state.discovering=false;}
+    if(state.autoConnect&&state.session?.preview===false&&!state.engine&&Array.from($('engine-select').children).some(option=>option.value==='onair-next-dev-service')){
+      state.engine='onair-next-dev-service';$('engine-select').value=state.engine;await poll();
+    }
   }
   async function poll(){
     if(state.polling||!state.engine||document.hidden)return;state.polling=true;const engine=state.engine;
@@ -250,8 +255,8 @@
   }
   $('retry-command').addEventListener('click',()=>{const saved=pending();if(saved)void command(saved.request.Action,{},saved);});
   $('refresh-engines').addEventListener('click',()=>void discover());
-  $('connect-engine').addEventListener('click',async()=>{state.engine=$('engine-select').value;state.sampleAt=0;await poll();if(fresh()){message('Connected to the isolated engine.');navigate('air');}});
-  $('disconnect-engine').addEventListener('click',()=>{state.engine=null;state.stations=[];state.sampleAt=0;state.library=null;stationTabs();resetLibrary();renderStatus();message('Console disconnected. The engine continues independently.');});
+  $('connect-engine').addEventListener('click',async()=>{state.autoConnect=false;state.engine=$('engine-select').value;state.sampleAt=0;await poll();if(fresh()){message('Connected to the selected engine.');navigate('air');}});
+  $('disconnect-engine').addEventListener('click',()=>{state.autoConnect=false;state.engine=null;state.stations=[];state.sampleAt=0;state.library=null;stationTabs();resetLibrary();renderStatus();message('Console disconnected. The engine continues independently.');});
   $('start-station').addEventListener('click',()=>void command('start-station'));
   $('stop-station').addEventListener('click',()=>{state.stopTarget={station:state.station,engine:state.engine};text('stop-heading','Stop '+stationName()+'?');text('stop-name',stationName());$('stop-dialog').returnValue='cancel';$('stop-dialog').showModal();});
   $('stop-dialog').addEventListener('close',()=>{const target=state.stopTarget;state.stopTarget=null;if($('stop-dialog').returnValue!=='stop')return;if(!target||target.station!==state.station||target.engine!==state.engine){message('Channel changed. Stop was cancelled.');return;}void command('stop-station');});
@@ -693,7 +698,7 @@
   });
 
   async function initialize(){stationTabs();renderStatus();try{state.session=await api('/api/session');text('build-label',state.session.preview?'UI PREVIEW':'DEVELOPMENT');}catch(error){message('Console connection unavailable: '+error.message);}await discover();}
-  let ticks=0;setInterval(()=>{if(document.hidden||state.consoleClosed)return;text('clock',clock.format(new Date()));renderStatus();if(++ticks%2===0){void poll();void pollFolderCheck();}if(ticks%4===0&&state.page==='library')void loadLibrary();if(ticks%4===0&&state.page==='system'){void loadSetup();void loadMigration();void loadAppUpdates();void loadAudioTools();}},1000);text('clock',clock.format(new Date()));document.addEventListener('visibilitychange',()=>{if(!document.hidden){text('clock',clock.format(new Date()));void poll();}});void initialize();
+  let ticks=0;setInterval(()=>{if(document.hidden||state.consoleClosed)return;text('clock',clock.format(new Date()));renderStatus();if(++ticks%2===0){void poll();void pollFolderCheck();}if(ticks%5===0&&state.autoConnect&&state.session&&!state.engine)void discover();if(ticks%4===0&&state.page==='library')void loadLibrary();if(ticks%4===0&&state.page==='system'){void loadSetup();void loadMigration();void loadAppUpdates();void loadAudioTools();}},1000);text('clock',clock.format(new Date()));document.addEventListener('visibilitychange',()=>{if(!document.hidden){text('clock',clock.format(new Date()));void poll();}});void initialize();
 
   const reports={items:[],engine:null,loadedAt:0,offset:0,polling:false,busy:false,rows:new Map(),pending:[]};
   try{const saved=JSON.parse(localStorage.getItem('studio-report-requests')??'[]');if(Array.isArray(saved))reports.pending=saved.filter(p=>typeof p.engine==='string'&&/^[0-9a-f]{32}$/.test(p.id??'')&&['day','year'].includes(p.period)&&typeof p.selection==='string').slice(0,16);}catch{}
