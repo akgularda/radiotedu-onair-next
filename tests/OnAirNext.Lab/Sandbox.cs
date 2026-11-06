@@ -14,7 +14,7 @@ internal sealed class Sandbox : IAsyncDisposable
     public int Port { get; }
     public string Password { get; } = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(24));
     public string Root { get; }
-    public Sandbox(string icecastRoot, string root)
+    public Sandbox(string icecastRoot, string root, bool utf8Metadata = false)
     {
         _icecastRoot = icecastRoot; Root = root;
         Directory.CreateDirectory(root); Directory.CreateDirectory(Path.Combine(root, "origin-logs"));
@@ -35,6 +35,11 @@ internal sealed class Sandbox : IAsyncDisposable
                 new XElement("webroot", Path.Combine(icecastRoot, "web")), new XElement("adminroot", Path.Combine(icecastRoot, "admin")),
                 new XElement("mime-types", Path.Combine(icecastRoot, "mime.types"))),
             new XElement("logging", new XElement("accesslog", "access.log"), new XElement("errorlog", "error.log"), new XElement("loglevel", 2))));
+        // Icecast otherwise converts ICY titles to ISO-8859-1 and cannot represent
+        // the Japanese/Turkish qualification signal. This configures the owned
+        // fixture only; it does not alter any source or production server.
+        if (utf8Metadata)
+            document.Root!.Add(new XElement("mount", new XAttribute("type", "default"), new XElement("charset", "UTF-8")));
         document.Save(_configuration);
     }
 

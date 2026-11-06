@@ -60,7 +60,7 @@ internal static class SourceCueQualification
     }
     private static async Task EncodedAsync(string ffmpeg,string icecastRoot,string root,MediaItem music,List<object> checks)
     {
-        await using var origin=new Sandbox(icecastRoot,Path.Combine(root,"encoded-origin"));await origin.StartAsync();
+        await using var origin=new Sandbox(icecastRoot,Path.Combine(root,"encoded-origin"),utf8Metadata:true);await origin.StartAsync();
         var outputs=new[]{origin.Output("cue-aac",CodecProfile.AacLc192),origin.Output("cue-low",CodecProfile.HeAacV2_64),origin.Output("cue-flac",CodecProfile.OggFlac)};
         await using var journal=new EventJournal(Path.Combine(root,"encoded-cues.db"));
         await using var engine=new StationEngine(ffmpeg,new("encoded-cues",[music,music with{Id="second"}],outputs),journal);
@@ -116,7 +116,7 @@ internal static class SourceCueQualification
         if(!metadataReady)throw new InvalidDataException("Live AAC metadata did not reach the independent origin with exact Unicode artist/title. "+
             JsonSerializer.Serialize(new{expectedSong,observedMetadata,originAcknowledgements,outputs=engine.Snapshot().Outputs,
                 originLog=File.ReadLines(Path.Combine(origin.Root,"origin-logs","error.log")).TakeLast(16).ToArray()}));
-        checks.Add(new{kind="LiveMetadata",dynamicOutputs=2,utf8=true,expectedSong,scope="Real loopback Icecast URL updates; Ogg in-band comments are not ICY metadata."});
+        checks.Add(new{kind="LiveMetadata",dynamicOutputs=2,utf8=true,originCharset="UTF-8",expectedSong,scope="Real loopback Icecast URL updates and exact listener ICY blocks, with the fixture explicitly configured to represent Unicode. Ogg in-band comments are not ICY metadata."});
         if(engine.Snapshot().Outputs.Any(o=>o.State!="SourceConnected"||o.Connections!=1||o.EncoderStarts!=1||o.DroppedBlocks!=0))throw new InvalidDataException("Cued programme restarted or dropped an encoded output.");
     }
     private static async Task<string> ReadIcyTitleAsync(HttpClient client,string address,CancellationToken token)
