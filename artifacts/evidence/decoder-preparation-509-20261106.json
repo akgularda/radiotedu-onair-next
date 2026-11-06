@@ -1,0 +1,50 @@
+{
+  "recordedAt": "2026-11-06T10:04:10.254Z",
+  "source": "6d02f100120c1b82556fac6831b304f6cf336d69",
+  "validation": {
+    "workflow": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/42196133930",
+    "unitCases": 509,
+    "blockingOperationRegressions": 6,
+    "browserCases": 30,
+    "realAudioScenarios": 12,
+    "realAudioChecks": 473,
+    "remainingOwnedAudioChildren": 0,
+    "serviceChecks": 49,
+    "setupChecks": 84,
+    "conclusion": "success"
+  },
+  "installed": {
+    "filesVerified": 767,
+    "plannedUpdateSeconds": 7.025,
+    "previousImageAndConsistentDatabaseRetained": true,
+    "protectedSettingsFilesUnchanged": 3,
+    "restoredCatalogueLabelsVerified": 3220,
+    "musicFoldersUnchanged": 8
+  },
+  "independentListeners": {
+    "workflow": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/42198757174",
+    "mounts": 16,
+    "tlsVerified": true,
+    "allFirstAttempt": true,
+    "minimumDecodedSeconds": 5,
+    "minimumAudibleSeconds": 2.1,
+    "mediaSaved": false
+  },
+  "initialLiveObservation": {
+    "from": "2026-11-06T09:54:20.727Z",
+    "to": "2026-11-06T10:01:22.836Z",
+    "mounts": 16,
+    "listenerReconnections": 0,
+    "listenerErrors": 0,
+    "observerStalls": 0,
+    "maximumPcmChunkGapSeconds": 0.5643361999988555,
+    "stationsWithNaturalSourceChanges": 8,
+    "cleanupErrors": 0,
+    "maximumObservedActiveDecoderSlots": 3,
+    "approximateSourceSamplingSeconds": 2
+  },
+  "limits": [
+    "Finite post-install acceptance and the initial live observation do not establish permanent uninterrupted operation.",
+    "The earlier shared03:00 origin/source-reset incident remains unresolved; this client-side change does not claim to repair the streaming server."
+  ]
+}
