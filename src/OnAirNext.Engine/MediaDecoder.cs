@@ -5,7 +5,7 @@ using System.Threading.Channels;
 namespace OnAirNext.Engine;
 
 // Two seconds of predecoded audio at most, regardless of file length.
-public sealed class MediaDecoder : IAsyncDisposable
+public sealed class MediaDecoder : IAsyncDisposable, IFrameDecoder
 {
     private readonly Channel<PcmBlock> _blocks = Channel.CreateBounded<PcmBlock>(new BoundedChannelOptions(100)
         { SingleWriter = true, SingleReader = true, FullMode = BoundedChannelFullMode.Wait });

@@ -5,10 +5,10 @@ namespace OnAirNext.Engine;
 public sealed partial class StationEngine
 {
     private Exception? _decoderFault;
-    private sealed class PreparedSource(PlayoutSelection selection,MediaDecoder? decoder,Exception? fault)
+    private sealed class PreparedSource(PlayoutSelection selection,DecoderPreparation.Source? decoder,Exception? fault)
     {
         public PlayoutSelection Selection {get;}=selection;
-        public MediaDecoder? Decoder {get;}=decoder;
+        public DecoderPreparation.Source? Decoder {get;}=decoder;
         public Exception? Fault {get;set;}=fault;
     }
     private async ValueTask<PcmBlock?> RenderNextAsync(CancellationToken token)
@@ -99,7 +99,7 @@ public sealed partial class StationEngine
     }
     private void OpenCurrentDecoder()
     {
-        try{_decoder=new MediaDecoder(_ffmpeg,_selection!.Item);_decoderFault=null;}
+        try{_decoder=_decoders.Start(_selection!.Item);_decoderFault=null;}
         catch(Exception ex)when(ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
         {_decoder=null;_decoderFault=ex;}
     }
@@ -128,9 +128,9 @@ public sealed partial class StationEngine
         if(_planner is not null)return _planner.SelectPrepared(index,_inflightQueue);
         return _settings.Playlist.Count==0||!_settings.Repeat&&index>=_settings.Playlist.Count?null:new(_settings.Playlist[index%_settings.Playlist.Count]);
     }
-    private MediaDecoder? CreatePreparedDecoder(PlayoutSelection selection,out Exception? fault)
+    private DecoderPreparation.Source? CreatePreparedDecoder(PlayoutSelection selection,out Exception? fault)
     {
-        try{fault=null;return new MediaDecoder(_ffmpeg,selection.Item);}
+        try{fault=null;return _decoders.Start(selection.Item);}
         catch(Exception error)when(error is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
         {fault=error;return null;}
     }
@@ -148,7 +148,7 @@ public sealed partial class StationEngine
         catch(Exception error)when(error is not OperationCanceledException){source.Fault=error;}
     }
 
-    private async ValueTask PrepareNextAsync(bool assumeCurrentCompleted=true,bool retryFault=false)
+    private ValueTask PrepareNextAsync(bool assumeCurrentCompleted=true,bool retryFault=false)
     {
         var ordinary=TrySelectOrdinary(NextRotationIndex);
         var projected=assumeCurrentCompleted&&_selection is not null
@@ -168,7 +168,7 @@ public sealed partial class StationEngine
             if(found is not null)retained.Remove(found);return found;
         }
         var nextPrepared=Take(desired);var secondPrepared=Take(second);var fallbackPrepared=Take(fallback);
-        foreach(var stale in retained)if(stale.Decoder is not null)await stale.Decoder.DisposeAsync();
+        foreach(var stale in retained)if(stale.Decoder is not null)_decoders.Retire(stale.Decoder);
         var created=new List<PreparedSource>(3);
         PreparedSource? Make(PlayoutSelection? target,PreparedSource? existing)
         {
@@ -183,11 +183,12 @@ public sealed partial class StationEngine
         }
         catch
         {
-            await Task.WhenAll(created.Where(x=>x.Decoder is not null).Select(x=>x.Decoder!.DisposeAsync().AsTask()));throw;
+            foreach(var source in created)if(source.Decoder is not null)_decoders.Retire(source.Decoder);throw;
         }
         // At most two branding categories and one ordinary fallback are prepared
         // alongside the current decoder. Both collision clips are warm even when
         // the first is too short to start another FFmpeg process in time.
+        return ValueTask.CompletedTask;
     }
 
     private ValueTask RefreshPreparedAsync()=>PrepareNextAsync(retryFault:true);
@@ -207,7 +208,7 @@ public sealed partial class StationEngine
         if(ReferenceEquals(chosen,_nextSource))_nextSource=null;
         else if(ReferenceEquals(chosen,_musicFallback))_musicFallback=null;
         _decoded?.Dispose();_decoded=null;
-        if(_decoder is not null)await _decoder.DisposeAsync();
+        if(_decoder is not null)_decoders.Retire(_decoder);
         _decoder=chosen?.Decoder;_decoderFault=chosen?.Fault;
         if(_selection?.AdvancesRotation==true)_index++;
         _selection=chosen?.Selection;_announced=false;_occurrence=Guid.NewGuid().ToString("N");
