@@ -92,12 +92,14 @@ internal static class SourceCueQualification
         checks.AddRange(results);
         var expectedSong=music.Artist+" - "+music.Title;
         string[] observedMetadata;
+        IcyRead[] observedIcy;
         string[] originAcknowledgements=[];
         using(var statusClient=new HttpClient(new SocketsHttpHandler{UseProxy=false}){Timeout=TimeSpan.FromSeconds(2)})
         {
             // Anonymous status JSON can omit title. Verify the actual ICY block a listener receives.
-            observedMetadata=await Task.WhenAll(outputs.Where(o=>o.Profile!=CodecProfile.OggFlac)
+            observedIcy=await Task.WhenAll(outputs.Where(o=>o.Profile!=CodecProfile.OggFlac)
                 .Select(output=>ReadIcyTitleAsync(statusClient,$"http://127.0.0.1:{origin.Port}{output.Mount}",deadline.Token)));
+            observedMetadata=observedIcy.Select(read=>read.Title).ToArray();
             // On failure only: distinguish a misleading acknowledgement from a listener parser failure.
             // This origin and its credentials are synthetic, literal-loopback fixtures only.
             if(observedMetadata.Any(song=>song!=expectedSong))
@@ -114,12 +116,12 @@ internal static class SourceCueQualification
             engine.Snapshot().Outputs.Where(o=>o.Id!=outputs.Single(x=>x.Profile==CodecProfile.OggFlac).Id)
                 .All(o=>o.Metadata is{Updates:>0,LastError:null}&&o.Metadata.PublishedTitle==expectedSong);
         if(!metadataReady)throw new InvalidDataException("Live AAC metadata did not reach the independent origin with exact Unicode artist/title. "+
-            JsonSerializer.Serialize(new{expectedSong,observedMetadata,originAcknowledgements,outputs=engine.Snapshot().Outputs,
-                originLog=File.ReadLines(Path.Combine(origin.Root,"origin-logs","error.log")).TakeLast(16).ToArray()}));
+            JsonSerializer.Serialize(new{expectedSong,observedMetadata,observedIcy,originAcknowledgements,outputs=engine.Snapshot().Outputs}));
         checks.Add(new{kind="LiveMetadata",dynamicOutputs=2,utf8=true,originCharset="UTF-8",expectedSong,scope="Real loopback Icecast URL updates and exact listener ICY blocks, with the fixture explicitly configured to represent Unicode. Ogg in-band comments are not ICY metadata."});
         if(engine.Snapshot().Outputs.Any(o=>o.State!="SourceConnected"||o.Connections!=1||o.EncoderStarts!=1||o.DroppedBlocks!=0))throw new InvalidDataException("Cued programme restarted or dropped an encoded output.");
     }
-    private static async Task<string> ReadIcyTitleAsync(HttpClient client,string address,CancellationToken token)
+    private sealed record IcyRead(string Title,string[] Blocks);
+    private static async Task<IcyRead> ReadIcyTitleAsync(HttpClient client,string address,CancellationToken token)
     {
         using var request=new HttpRequestMessage(HttpMethod.Get,address);
         request.Headers.Add("Icy-MetaData","1");
@@ -129,16 +131,17 @@ internal static class SourceCueQualification
         if(!response.Headers.TryGetValues("icy-metaint",out var values)||!int.TryParse(values.Single(),out var interval)||interval is <1 or >1048576)
             throw new InvalidDataException("The loopback AAC listener did not advertise bounded ICY metadata.");
         await using var stream=await response.Content.ReadAsStreamAsync(token);
-        var audio=new byte[interval];var length=new byte[1];
+        var audio=new byte[interval];var length=new byte[1];var blocks=new List<string>();
         for(var attempt=0;attempt<4;attempt++)
         {
             await stream.ReadExactlyAsync(audio,token);await stream.ReadExactlyAsync(length,token);
             var metadata=new byte[length[0]*16];await stream.ReadExactlyAsync(metadata,token);
             var text=Encoding.UTF8.GetString(metadata).TrimEnd('\0');
+            blocks.Add(text[..Math.Min(256,text.Length)]);
             var match=System.Text.RegularExpressions.Regex.Match(text,@"StreamTitle='(.*?)';",System.Text.RegularExpressions.RegexOptions.Singleline);
-            if(match.Success)return match.Groups[1].Value;
+            if(match.Success&&match.Groups[1].Value.Length>0)return new(match.Groups[1].Value,blocks.ToArray());
         }
-        return "";
+        return new("",blocks.ToArray());
     }
     private sealed class BoundarySink(long boundary):IProgramOutput
     {
