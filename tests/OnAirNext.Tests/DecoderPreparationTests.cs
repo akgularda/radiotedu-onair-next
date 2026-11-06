@@ -112,7 +112,7 @@ public sealed class DecoderPreparationTests
         {
             if(item.Id=="future"){futureEntered.TrySetResult();open.Wait();}
             return item.Id=="first"?new Decoder(20,async()=>{oldClosing.TrySetResult();await close.Task;}):new Decoder(200);
-        });
+        },()=>Task.CompletedTask);
         try
         {
             await station.StartAsync();await futureEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));await oldClosing.Task.WaitAsync(TimeSpan.FromSeconds(10));
