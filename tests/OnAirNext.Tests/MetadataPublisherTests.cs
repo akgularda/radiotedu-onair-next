@@ -22,6 +22,17 @@ public sealed class MetadataPublisherTests
         while (!condition()) await Task.Delay(10, limit.Token);
     }
 
+    [Theory]
+    [InlineData("Metadata updated successfully\r\n", true)]
+    [InlineData("<?xml version=\"1.0\"?><iceresponse><message>Metadata update successful</message><return>1</return></iceresponse>", true)]
+    [InlineData("<iceresponse><message>Mountpoint will not accept URL updates</message><return>1</return></iceresponse>", false)]
+    [InlineData("<return>1</return>", false)]
+    [InlineData("Metadata not updated successfully", false)]
+    [InlineData("<?xml version=\"1.0\"?>", false)]
+    [InlineData("", false)]
+    public void AcknowledgementRequiresAnExplicitPositiveMessage(string body, bool accepted)
+        => Assert.Equal(accepted, IcecastMetadataPublisher.IsAcceptedAcknowledgement(body));
+
     [Fact]
     public void FormattingIsBoundedUnicodeSafeAndDoesNotInjectControlCharacters()
     {

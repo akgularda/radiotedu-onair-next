@@ -123,7 +123,7 @@ internal sealed class IcecastMetadataPublisher : IAsyncDisposable
                             body.Write(buffer, 0, read);
                         }
                         var acknowledgement = Encoding.UTF8.GetString(body.ToArray());
-                        if (!Regex.IsMatch(acknowledgement, @"<return>\s*1\s*</return>|metadata[^\r\n<]*(successful|updated)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+                        if (!IsAcceptedAcknowledgement(acknowledgement))
                             throw new MetadataRejectedException("Metadata acknowledgement was not successful.");
                         _published = song; _acknowledged = desired; _acknowledgedConnection = connection; _error = null;
                         Interlocked.Increment(ref _updates); _state = "Published";
@@ -142,6 +142,10 @@ internal sealed class IcecastMetadataPublisher : IAsyncDisposable
         catch (OperationCanceledException) when (_stop.IsCancellationRequested) { }
         finally { if (!_disabled) _state = "Stopped"; }
     }
+
+    internal static bool IsAcceptedAcknowledgement(string body) => Regex.IsMatch(body,
+        @"\A\s*(?:Metadata updated successfully|(?:<\?xml[^>]*>\s*)?<iceresponse>\s*<message>Metadata update successful</message>\s*<return>1</return>\s*</iceresponse>)\s*\z",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     public async ValueTask DisposeAsync()
     {

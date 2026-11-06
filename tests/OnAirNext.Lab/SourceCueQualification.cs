@@ -92,17 +92,30 @@ internal static class SourceCueQualification
         checks.AddRange(results);
         var expectedSong=music.Artist+" - "+music.Title;
         string[] observedMetadata;
+        string[] originAcknowledgements=[];
         using(var statusClient=new HttpClient(new SocketsHttpHandler{UseProxy=false}){Timeout=TimeSpan.FromSeconds(2)})
         {
             // Anonymous status JSON can omit title. Verify the actual ICY block a listener receives.
             observedMetadata=await Task.WhenAll(outputs.Where(o=>o.Profile!=CodecProfile.OggFlac)
                 .Select(output=>ReadIcyTitleAsync(statusClient,$"http://127.0.0.1:{origin.Port}{output.Mount}",deadline.Token)));
+            // On failure only: distinguish a misleading acknowledgement from a listener parser failure.
+            // This origin and its credentials are synthetic, literal-loopback fixtures only.
+            if(observedMetadata.Any(song=>song!=expectedSong))
+                originAcknowledgements=await Task.WhenAll(outputs.Where(o=>o.Profile!=CodecProfile.OggFlac).Select(async output=>
+            {
+                using var update=new HttpRequestMessage(HttpMethod.Get,$"http://127.0.0.1:{origin.Port}/admin/metadata?mode=updinfo&charset=UTF-8&mount={Uri.EscapeDataString(output.Mount)}&song={Uri.EscapeDataString(expectedSong)}");
+                update.Headers.Authorization=new("Basic",Convert.ToBase64String(Encoding.UTF8.GetBytes("source:"+origin.Password)));
+                using var response=await statusClient.SendAsync(update,deadline.Token);
+                var body=await response.Content.ReadAsStringAsync(deadline.Token);
+                return ((int)response.StatusCode)+":"+body[..Math.Min(1024,body.Length)];
+            }));
         }
         var metadataReady=observedMetadata.Length==2&&observedMetadata.All(song=>song==expectedSong)&&
             engine.Snapshot().Outputs.Where(o=>o.Id!=outputs.Single(x=>x.Profile==CodecProfile.OggFlac).Id)
                 .All(o=>o.Metadata is{Updates:>0,LastError:null}&&o.Metadata.PublishedTitle==expectedSong);
         if(!metadataReady)throw new InvalidDataException("Live AAC metadata did not reach the independent origin with exact Unicode artist/title. "+
-            JsonSerializer.Serialize(new{expectedSong,observedMetadata,outputs=engine.Snapshot().Outputs}));
+            JsonSerializer.Serialize(new{expectedSong,observedMetadata,originAcknowledgements,outputs=engine.Snapshot().Outputs,
+                originLog=File.ReadLines(Path.Combine(origin.Root,"origin-logs","error.log")).TakeLast(16).ToArray()}));
         checks.Add(new{kind="LiveMetadata",dynamicOutputs=2,utf8=true,expectedSong,scope="Real loopback Icecast URL updates; Ogg in-band comments are not ICY metadata."});
         if(engine.Snapshot().Outputs.Any(o=>o.State!="SourceConnected"||o.Connections!=1||o.EncoderStarts!=1||o.DroppedBlocks!=0))throw new InvalidDataException("Cued programme restarted or dropped an encoded output.");
     }
