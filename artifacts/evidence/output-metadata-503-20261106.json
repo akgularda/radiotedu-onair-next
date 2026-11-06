@@ -25,5 +25,20 @@
     "Short post-update observations do not establish 24/72-hour acceptance.",
     "The prior03:00 shared source closure and public502 event remain unresolved; Next recovered without its service process restarting.",
     "Source folder validation continues autonomously; rejected files remain on disk."
-  ]
+  ],
+  "externalPublicCheck": {
+    "at": "2026-11-06T01:31:28.835Z",
+    "installedSource": "6e40e916149fff2f48eb16c7a460df1edaa88686",
+    "diagnosticRun": 42144361241,
+    "workflow": "https://github.com/akgularda/radiotedu-onair-next/actions/runs/42144361241",
+    "artifact": 13468653798,
+    "digest": "sha256:fa16694eaf1af5a7c28fb50c33d3be21e2ceb989e7c90389f5c802bc7f07b57b",
+    "verifiedMounts": 16,
+    "attempts": 16,
+    "failedAttempts": 0,
+    "certificateVerified": true,
+    "minimumDecodedSeconds": 5,
+    "readOnly": true,
+    "mediaSaved": false
+  }
 }
