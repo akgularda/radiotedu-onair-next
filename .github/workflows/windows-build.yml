@@ -9,14 +9,41 @@ on:
         description: Run only the bounded, read-only public HTTPS listener check
         type: boolean
         default: false
+      public_continuity_only:
+        description: Observe the two public RadioTEDU listeners for 15 minutes without source control
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
   group: windows-build-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  public-continuity:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.public_continuity_only }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Prepare decoder on disposable runner
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends ffmpeg
+          fi
+      - name: Validate observer syntax
+        run: node --check scripts/observe-public-continuity.cjs
+      - name: Observe two existing HTTPS listeners without station control
+        run: node scripts/observe-public-continuity.cjs 900 radio radio-low
+      - name: Retain timing metadata without audio or source credentials
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: independent-public-continuity
+          path: artifacts/public-continuity.jsonl
+          if-no-files-found: error
   public-listeners:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.public_listeners_only }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.public_listeners_only && !inputs.public_continuity_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:
@@ -39,7 +66,7 @@ jobs:
           path: artifacts/public-listener-check.json
           if-no-files-found: warn
   loudness-reference:
-    if: ${{ !inputs.public_listeners_only }}
+    if: ${{ !inputs.public_listeners_only && !inputs.public_continuity_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -71,7 +98,7 @@ jobs:
           path: artifacts/loudness-reference/summary.json
           if-no-files-found: error
   windows-codec-runtime:
-    if: ${{ !inputs.public_listeners_only }}
+    if: ${{ !inputs.public_listeners_only && !inputs.public_continuity_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 55
     steps:
