@@ -1,0 +1,29 @@
+{
+  "source": "6e40e916149fff2f48eb16c7a460df1edaa88686",
+  "run": 42140359275,
+  "unitTests": 503,
+  "realAudioScenarios": 12,
+  "realAudioChecks": 473,
+  "completeWindowsWorkflow": "success",
+  "production": {
+    "installedAtUtc": "2026-11-06T01:16:32.8509238Z",
+    "stations": 8,
+    "outputs": 16,
+    "publicHttpsAudioVerified": 16,
+    "dynamicAacAutomaticMetadataVerified": 12,
+    "staticLoFiPreserved": 2,
+    "oggNotIcy": 2,
+    "configurationAndEncryptedProfilesUnchanged": true,
+    "previousNextRetained": true,
+    "legacyStoppedDisabled": true,
+    "plannedUpdateSeconds": 9.127,
+    "sourceConnectionsPerOutputAtPostUpdateCheck": 1,
+    "droppedPcmBlocksAtPostUpdateCheck": 0,
+    "startupRecovery": "An interrupted Jazz jingle was unavailable to the initial recovery pool; music resumed automatically and its own jingle subsequently played normally."
+  },
+  "limitations": [
+    "Short post-update observations do not establish 24/72-hour acceptance.",
+    "The prior03:00 shared source closure and public502 event remain unresolved; Next recovered without its service process restarting.",
+    "Source folder validation continues autonomously; rejected files remain on disk."
+  ]
+}
