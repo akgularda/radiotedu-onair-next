@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
-using System.Text.RegularExpressions;
+using System.Xml;
+using System.Xml.Linq;
 
 namespace OnAirNext.Engine;
 
@@ -143,9 +144,25 @@ internal sealed class IcecastMetadataPublisher : IAsyncDisposable
         finally { if (!_disabled) _state = "Stopped"; }
     }
 
-    internal static bool IsAcceptedAcknowledgement(string body) => Regex.IsMatch(body,
-        @"\A\s*(?:Metadata updated successfully|(?:<\?xml[^>]*>\s*)?<iceresponse>\s*<message>Metadata update successful</message>\s*<return>1</return>\s*</iceresponse>)\s*\z",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    internal static bool IsAcceptedAcknowledgement(string body)
+    {
+        if (body.Trim().Equals("Metadata updated successfully", StringComparison.OrdinalIgnoreCase)) return true;
+        try
+        {
+            using var text = new StringReader(body);
+            using var reader = XmlReader.Create(text, new XmlReaderSettings
+                { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, MaxCharactersInDocument = 8192 });
+            var root = XDocument.Load(reader).Root;
+            if (root?.Name.LocalName != "iceresponse") return false;
+            // Icecast 2.5 also includes a modules tree. Check the direct response
+            // fields rather than assuming a fixed serialization or field order.
+            var messages = root.Elements().Where(e => e.Name.LocalName == "message").ToArray();
+            var codes = root.Elements().Where(e => e.Name.LocalName == "return").ToArray();
+            return messages.Length == 1 && codes.Length == 1 && codes[0].Value.Trim() == "1" &&
+                messages[0].Value.Trim().Equals("Metadata update successful", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (XmlException) { return false; }
+    }
 
     public async ValueTask DisposeAsync()
     {

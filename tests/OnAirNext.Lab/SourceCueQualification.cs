@@ -102,7 +102,7 @@ internal static class SourceCueQualification
             observedMetadata=observedIcy.Select(read=>read.Title).ToArray();
             // On failure only: distinguish a misleading acknowledgement from a listener parser failure.
             // This origin and its credentials are synthetic, literal-loopback fixtures only.
-            if(observedMetadata.Any(song=>song!=expectedSong))
+            if(observedMetadata.Any(song=>song!=expectedSong)||engine.Snapshot().Outputs.Any(o=>o.Metadata is{Failures:>0}))
                 originAcknowledgements=await Task.WhenAll(outputs.Where(o=>o.Profile!=CodecProfile.OggFlac).Select(async output=>
             {
                 using var update=new HttpRequestMessage(HttpMethod.Get,$"http://127.0.0.1:{origin.Port}/admin/metadata?mode=updinfo&charset=UTF-8&mount={Uri.EscapeDataString(output.Mount)}&song={Uri.EscapeDataString(expectedSong)}");
